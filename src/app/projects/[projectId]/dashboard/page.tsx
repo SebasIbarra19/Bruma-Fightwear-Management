@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject, EcommerceSettings } from '@/types/database'
+import { SmartLogoCard } from '@/components/common/SmartLogo'
 
 interface ProjectDashboardData {
   project: UserProject
@@ -230,18 +231,17 @@ export default function ProjectDashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg text-white font-bold text-xl"
-                style={{ background: `linear-gradient(135deg, ${projectColors.primary}, ${projectColors.secondary})` }}
-              >
-                {project.project_name.charAt(0)}
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{project.project_name}</h1>
-                <p className="text-sm text-gray-600">
-                  {project.project_description} • Rol: {project.user_role === 'owner' ? 'Propietario' : 
-                   project.user_role === 'admin' ? 'Administrador' : 'Usuario'}
-                </p>
+              
+              {/* Logo contextual - BRUMA cuando es proyecto BRUMA, SmartAdmin en otros casos */}
+              <div className="flex items-center space-x-3">
+                <SmartLogoCard size="md" showText={false} />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{project.project_name}</h1>
+                  <p className="text-sm text-gray-600">
+                    {project.project_description} • Rol: {project.user_role === 'owner' ? 'Propietario' : 
+                     project.user_role === 'admin' ? 'Administrador' : 'Usuario'}
+                  </p>
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">

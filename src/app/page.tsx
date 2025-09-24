@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SmartLogoNavbar, SmartLogoHero } from '@/components/common/SmartLogo'
 
 export default function HomePage() {
   return (
@@ -9,14 +10,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
         <div className="container mx-auto px-4 py-4">
           <nav className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">S</span>
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                SmartAdmin
-              </span>
-            </div>
+            <SmartLogoNavbar showText={true} />
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-indigo-600 transition-colors">
                 Características
@@ -50,19 +44,17 @@ export default function HomePage() {
         <div className="relative container mx-auto px-4 py-24 text-center">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
-              <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 mb-8">
-                🚀 Ahora disponible en beta
-              </span>
+              <SmartLogoHero showText={false} />
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-8 leading-tight">
-              La plataforma que gestiona{' '}
+              Sistema de{' '}
               <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                todos tus proyectos
+                SmartAdmin
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-              SmartAdmin centraliza la gestión de múltiples proyectos empresariales.
-              Desde e-commerce hasta servicios, todo en una sola plataforma inteligente.
+              Plataforma integral para la administración empresarial. 
+              Gestiona proyectos, productos, categorías y más con eficiencia.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link href="/auth/register">
@@ -70,7 +62,7 @@ export default function HomePage() {
                   size="lg" 
                   className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-xl text-lg px-8 py-4"
                 >
-                  Comenzar Gratis
+                  Acceder al Sistema
                   <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -104,7 +96,7 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Descubre cómo SmartAdmin puede transformar la manera en que gestionas tus proyectos
+Descubre cómo BRUMA Management puede transformar la manera en que gestionas tu negocio
             </p>
           </div>
 
@@ -459,13 +451,19 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">S</span>
-                </div>
-                <span className="text-2xl font-bold">SmartAdmin</span>
+                <img 
+                  src="/images/bruma/logo-circle.svg" 
+                  alt="BRUMA Fightwear" 
+                  className="w-10 h-10 rounded-xl bg-white p-1"
+                />
+                <img 
+                  src="/images/bruma/logo-full.svg" 
+                  alt="BRUMA Fightwear" 
+                  className="h-8 w-auto filter invert"
+                />
               </div>
               <p className="text-gray-400 leading-relaxed">
-                La plataforma integral para gestionar todos tus proyectos empresariales con inteligencia artificial.
+                Ropa deportiva de combate profesional con sistema de gestión integral para optimizar tu negocio.
               </p>
             </div>
             <div>
@@ -495,7 +493,7 @@ export default function HomePage() {
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
             <div className="text-gray-400 text-sm">
-              © 2025 SmartAdmin. Todos los derechos reservados.
+              © 2025 BRUMA Fightwear. Todos los derechos reservados.
             </div>
           </div>
         </div>

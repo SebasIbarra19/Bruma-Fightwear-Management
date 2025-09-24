@@ -183,11 +183,18 @@ export default function ProductsMainPage() {
           </div>
           
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Productos</h1>
-              <p className="text-gray-600 mt-2">
-                Sistema completo para gestionar el catálogo de BRUMA Fightwear
-              </p>
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/images/bruma/logo-circle.svg" 
+                alt="BRUMA Fightwear" 
+                className="w-12 h-12"
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Gestión de Productos</h1>
+                <p className="text-gray-600 mt-2">
+                  Sistema completo para gestionar el catálogo de BRUMA Fightwear
+                </p>
+              </div>
             </div>
           </div>
         </div>

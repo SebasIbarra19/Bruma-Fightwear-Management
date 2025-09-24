@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { validateEmail } from '@/utils'
+import { SmartLogoCard } from '@/components/common/SmartLogo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -43,11 +44,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-bruma-50 to-bruma-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-100">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">BRUMA</h1>
-          <h2 className="text-xl text-gray-600">Iniciar Sesión</h2>
+          <SmartLogoCard showText={true} />
+          <h3 className="text-lg text-gray-600 mt-4">Iniciar Sesión</h3>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>

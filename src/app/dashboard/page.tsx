@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject, DashboardStats } from '@/types/database'
+import { SmartLogoCard } from '@/components/common/SmartLogo'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -63,6 +64,64 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
+  }
+
+  const createBrumaProject = async () => {
+    if (!user) return
+
+    try {
+      // Crear proyecto BRUMA de ejemplo
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          name: 'BRUMA Fightwear',
+          description: 'Proyecto de gestión para BRUMA Fightwear - Ropa deportiva de combate profesional',
+          status: 'active',
+          project_type: 'ecommerce',
+          settings: {
+            theme: 'bruma',
+            logo: '/images/bruma/logo-full.svg'
+          }
+        })
+        .select()
+        .single()
+
+      if (projectError) {
+        console.error('Error creando proyecto:', projectError)
+        return
+      }
+
+      // Asignar al usuario como propietario
+      const { error: memberError } = await supabase
+        .from('project_members')
+        .insert({
+          project_id: projectData.id,
+          user_id: user.id,
+          role: 'owner',
+          status: 'active'
+        })
+
+      if (memberError) {
+        console.error('Error asignando usuario:', memberError)
+        return
+      }
+
+      // Recargar proyectos
+      const { data: userProjectsData, error: refreshError } = await supabase
+        .rpc('get_user_projects', { user_uuid: user.id })
+
+      if (!refreshError && userProjectsData) {
+        setUserProjects(userProjectsData)
+        setStats({
+          totalProjects: userProjectsData.length,
+          activeProjects: userProjectsData.length,
+          recentActivity: userProjectsData.length,
+          userRole: 'owner'
+        })
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
   }
 
   const getProjectColor = (projectType: string) => {
@@ -129,13 +188,8 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
+              <SmartLogoCard showText={true} />
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  SmartAdmin
-                </h1>
                 <p className="text-sm text-gray-600">
                   Bienvenido, {user?.email}
                 </p>
@@ -364,20 +418,25 @@ export default function DashboardPage() {
                   No tienes proyectos asignados
                 </h3>
                 <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Solicita acceso a un proyecto existente o pide que se cree uno nuevo específicamente para ti.
+                  Crea un proyecto de ejemplo o solicita acceso a uno existente.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                  <Button 
+                    onClick={createBrumaProject}
+                    className="bg-gradient-to-r from-red-600 to-black hover:from-red-700 hover:to-gray-900"
+                  >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Solicitar Proyecto
+                    Crear Proyecto BRUMA
                   </Button>
-                  <Button variant="outline">
+                  <Button 
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                  >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Contactar Soporte
+                    Crear Proyecto General
                   </Button>
                 </div>
               </CardContent>
