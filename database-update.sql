@@ -99,6 +99,87 @@ CREATE TABLE IF NOT EXISTS public.ecommerce_config (
 );
 
 -- ==========================================
+-- TABLAS DE PRODUCTOS - FASE 1
+-- ==========================================
+
+-- Tabla de líneas o colecciones de productos
+CREATE TABLE IF NOT EXISTS public.product_lines (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) NOT NULL,
+    description TEXT,
+    season VARCHAR(50), -- Temporada: "2024", "Verano 2024", etc.
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    UNIQUE(project_id, slug)
+);
+
+-- Tabla de categorías de productos
+CREATE TABLE IF NOT EXISTS public.categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    UNIQUE(project_id, slug)
+);
+
+-- Tabla principal de productos
+CREATE TABLE IF NOT EXISTS public.products (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+    category_id UUID NOT NULL REFERENCES public.categories(id) ON DELETE RESTRICT,
+    product_line_id UUID REFERENCES public.product_lines(id) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) NOT NULL,
+    description TEXT,
+    short_description TEXT,
+    sku VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    compare_price DECIMAL(10,2), -- Precio de comparación (precio original si está en oferta)
+    cost DECIMAL(10,2), -- Costo del producto
+    track_inventory BOOLEAN DEFAULT true,
+    continue_selling_when_out_of_stock BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    UNIQUE(project_id, slug),
+    UNIQUE(project_id, sku)
+);
+
+-- Tabla de variantes de productos (tallas, colores, etc.)
+CREATE TABLE IF NOT EXISTS public.product_variants (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL, -- Ej: "Talla M - Color Rojo"
+    sku VARCHAR(100),
+    variant_type VARCHAR(50) NOT NULL, -- "size", "color", "material", etc.
+    variant_value VARCHAR(100) NOT NULL, -- "M", "Rojo", "Algodón", etc.
+    price_adjustment DECIMAL(10,2) DEFAULT 0.00, -- Ajuste de precio (+/-)
+    cost_adjustment DECIMAL(10,2) DEFAULT 0.00, -- Ajuste de costo (+/-)
+    inventory_quantity INTEGER DEFAULT 0,
+    inventory_policy VARCHAR(20) DEFAULT 'deny', -- 'deny' o 'continue'
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    UNIQUE(product_id, variant_type, variant_value),
+    UNIQUE(product_id, sku)
+);
+
+-- ==========================================
 -- 4. INSERTAR PROYECTOS
 -- ==========================================
 
@@ -165,7 +246,7 @@ SELECT
     true,
     '{"methods": ["standard", "express"], "zones": ["national", "international"]}'::jsonb,
     '{"providers": ["stripe", "paypal"]}'::jsonb,
-    '{"categories": ["boxing", "mma", "muay_thai", "accessories"]}'::jsonb
+    '{"categories": ["rashguards", "pantalonetas_sin_licra", "tshirts"]}'::jsonb
 FROM public.projects p
 WHERE p.slug = 'bruma-fightwear'
 ON CONFLICT (project_id) DO UPDATE SET
@@ -174,6 +255,49 @@ ON CONFLICT (project_id) DO UPDATE SET
     currency = EXCLUDED.currency,
     tax_rate = EXCLUDED.tax_rate,
     additional_config = EXCLUDED.additional_config;
+
+-- Insertar categorías iniciales para BRUMA Fightwear
+INSERT INTO public.categories (project_id, name, slug, description, sort_order)
+SELECT 
+    p.id,
+    'Rashguards',
+    'rashguards',
+    'Camisetas de compresión para entrenamiento y competencia',
+    1
+FROM public.projects p
+WHERE p.slug = 'bruma-fightwear'
+ON CONFLICT (project_id, slug) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    sort_order = EXCLUDED.sort_order;
+
+INSERT INTO public.categories (project_id, name, slug, description, sort_order)
+SELECT 
+    p.id,
+    'Pantalonetas Sin Licra',
+    'pantalonetas-sin-licra',
+    'Shorts de entrenamiento sin compresión interna',
+    2
+FROM public.projects p
+WHERE p.slug = 'bruma-fightwear'
+ON CONFLICT (project_id, slug) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    sort_order = EXCLUDED.sort_order;
+
+INSERT INTO public.categories (project_id, name, slug, description, sort_order)
+SELECT 
+    p.id,
+    'T-shirts',
+    'tshirts',
+    'Camisetas casuales y de entrenamiento',
+    3
+FROM public.projects p
+WHERE p.slug = 'bruma-fightwear'
+ON CONFLICT (project_id, slug) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    sort_order = EXCLUDED.sort_order;
 
 -- ==========================================
 -- 6. ROW LEVEL SECURITY
@@ -312,6 +436,27 @@ CREATE TRIGGER update_projects_updated_at
 DROP TRIGGER IF EXISTS update_ecommerce_config_updated_at ON public.ecommerce_config;
 CREATE TRIGGER update_ecommerce_config_updated_at 
     BEFORE UPDATE ON public.ecommerce_config 
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- Triggers para tablas de productos
+DROP TRIGGER IF EXISTS update_product_lines_updated_at ON public.product_lines;
+CREATE TRIGGER update_product_lines_updated_at 
+    BEFORE UPDATE ON public.product_lines 
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_categories_updated_at ON public.categories;
+CREATE TRIGGER update_categories_updated_at 
+    BEFORE UPDATE ON public.categories 
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_products_updated_at ON public.products;
+CREATE TRIGGER update_products_updated_at 
+    BEFORE UPDATE ON public.products 
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_product_variants_updated_at ON public.product_variants;
+CREATE TRIGGER update_product_variants_updated_at 
+    BEFORE UPDATE ON public.product_variants 
     FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
 -- ==========================================

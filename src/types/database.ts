@@ -131,6 +131,191 @@ export interface Database {
           updated_at?: string
         }
       }
+      // Tabla de líneas de productos
+      product_lines: {
+        Row: {
+          id: string
+          project_id: string
+          name: string
+          slug: string
+          description: string | null
+          season: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          name: string
+          slug: string
+          description?: string | null
+          season?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          season?: string | null
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+      }
+      // Tabla de categorías
+      categories: {
+        Row: {
+          id: string
+          project_id: string
+          name: string
+          slug: string
+          description: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          name: string
+          slug: string
+          description?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+      }
+      // Tabla de productos
+      products: {
+        Row: {
+          id: string
+          project_id: string
+          category_id: string
+          product_line_id: string | null
+          name: string
+          slug: string
+          description: string | null
+          short_description: string | null
+          sku: string | null
+          price: number
+          compare_price: number | null
+          cost: number | null
+          track_inventory: boolean
+          continue_selling_when_out_of_stock: boolean
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          category_id: string
+          product_line_id?: string | null
+          name: string
+          slug: string
+          description?: string | null
+          short_description?: string | null
+          sku?: string | null
+          price: number
+          compare_price?: number | null
+          cost?: number | null
+          track_inventory?: boolean
+          continue_selling_when_out_of_stock?: boolean
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          category_id?: string
+          product_line_id?: string | null
+          name?: string
+          slug?: string
+          description?: string | null
+          short_description?: string | null
+          sku?: string | null
+          price?: number
+          compare_price?: number | null
+          cost?: number | null
+          track_inventory?: boolean
+          continue_selling_when_out_of_stock?: boolean
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+      }
+      // Tabla de variantes de productos
+      product_variants: {
+        Row: {
+          id: string
+          product_id: string
+          name: string
+          sku: string | null
+          variant_type: string
+          variant_value: string
+          price_adjustment: number
+          cost_adjustment: number
+          inventory_quantity: number
+          inventory_policy: string
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          name: string
+          sku?: string | null
+          variant_type: string
+          variant_value: string
+          price_adjustment?: number
+          cost_adjustment?: number
+          inventory_quantity?: number
+          inventory_policy?: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          name?: string
+          sku?: string | null
+          variant_type?: string
+          variant_value?: string
+          price_adjustment?: number
+          cost_adjustment?: number
+          inventory_quantity?: number
+          inventory_policy?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -325,4 +510,130 @@ export interface ProjectConfigForm {
     secondary: string
   }
   config: Record<string, any>
+}
+
+// ==========================================
+// TIPOS PARA PRODUCTOS - FASE 1
+// ==========================================
+
+// Línea o colección de productos
+export interface ProductLine {
+  id: string
+  project_id: string
+  name: string
+  slug: string
+  description?: string
+  season?: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// Categoría de productos
+export interface Category {
+  id: string
+  project_id: string
+  name: string
+  slug: string
+  description?: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// Producto
+export interface Product {
+  id: string
+  project_id: string
+  category_id: string
+  product_line_id?: string
+  name: string
+  slug: string
+  description?: string
+  short_description?: string
+  sku?: string
+  price: number
+  compare_price?: number
+  cost?: number
+  track_inventory: boolean
+  continue_selling_when_out_of_stock: boolean
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+  // Relaciones populadas
+  category?: Category
+  product_line?: ProductLine
+  variants?: ProductVariant[]
+}
+
+// Variante de producto
+export interface ProductVariant {
+  id: string
+  product_id: string
+  name: string
+  sku?: string
+  variant_type: string
+  variant_value: string
+  price_adjustment: number
+  cost_adjustment: number
+  inventory_quantity: number
+  inventory_policy: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+  // Calculados
+  final_price?: number
+  final_cost?: number
+}
+
+// Tipos para formularios
+export interface ProductLineFormData {
+  name: string
+  slug: string
+  description?: string
+  season?: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface CategoryFormData {
+  name: string
+  slug: string
+  description?: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface ProductFormData {
+  name: string
+  slug: string
+  description?: string
+  short_description?: string
+  sku?: string
+  price: number
+  compare_price?: number
+  cost?: number
+  category_id: string
+  product_line_id?: string
+  track_inventory: boolean
+  continue_selling_when_out_of_stock: boolean
+  is_active: boolean
+  sort_order: number
+}
+
+export interface ProductVariantFormData {
+  name: string
+  sku?: string
+  variant_type: string
+  variant_value: string
+  price_adjustment: number
+  cost_adjustment: number
+  inventory_quantity: number
+  inventory_policy: string
+  is_active: boolean
+  sort_order: number
 }
