@@ -124,9 +124,33 @@ export default function ProjectDashboardPage() {
           available: true
         },
         {
+          title: 'Inventario',
+          description: 'Control de stock y almacén',
+          icon: '📊',
+          href: `/projects/${projectSlug}/inventory`,
+          color: 'bg-orange-500',
+          available: true
+        },
+        {
+          title: 'Proveedores',
+          description: 'Gestionar proveedores y contactos',
+          icon: '🏢',
+          href: `/projects/${projectSlug}/suppliers`,
+          color: 'bg-cyan-500',
+          available: true
+        },
+        {
+          title: 'Órdenes de Compra',
+          description: 'Gestionar órdenes a proveedores',
+          icon: '🛒',
+          href: `/projects/${projectSlug}/purchase-orders`,
+          color: 'bg-emerald-500',
+          available: true
+        },
+        {
           title: 'Pedidos',
           description: 'Gestionar pedidos y ventas',
-          icon: '🛒',
+          icon: '🎯',
           href: `/projects/${projectSlug}/orders`,
           color: 'bg-green-500',
           available: true
@@ -134,17 +158,9 @@ export default function ProjectDashboardPage() {
         {
           title: 'Clientes',
           description: 'Gestionar base de clientes',
-          icon: '👥',
+          icon: '�',
           href: `/projects/${projectSlug}/customers`,
           color: 'bg-purple-500',
-          available: true
-        },
-        {
-          title: 'Inventario',
-          description: 'Control de stock y almacén',
-          icon: '📊',
-          href: `/projects/${projectSlug}/inventory`,
-          color: 'bg-orange-500',
           available: true
         },
         {
