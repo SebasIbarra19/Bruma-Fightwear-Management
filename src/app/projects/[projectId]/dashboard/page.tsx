@@ -156,6 +156,14 @@ export default function ProjectDashboardPage() {
           available: true
         },
         {
+          title: 'Envíos',
+          description: 'Gestionar métodos de envío y seguimiento',
+          icon: '🚚',
+          href: `/projects/${projectSlug}/shipping`,
+          color: 'bg-yellow-500',
+          available: true
+        },
+        {
           title: 'Analytics',
           description: 'Métricas y reportes',
           icon: '📈',
