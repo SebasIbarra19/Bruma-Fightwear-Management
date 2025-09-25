@@ -1003,13 +1003,13 @@ export default function ProjectInventoryPage() {
                               {getMovementTypeBadge(movement.movement_type)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {formatQuantity(movement.quantity_change, movement.movement_type)}
+                              {formatQuantity(movement.quantity, movement.movement_type)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {movement.previous_quantity}
+                              -
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {movement.new_quantity}
+                              {movement.quantity}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {movement.reference_type && movement.reference_id && (

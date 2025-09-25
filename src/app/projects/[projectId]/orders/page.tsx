@@ -510,7 +510,11 @@ export default function OrdersPage() {
         project_name: projectData.name,
         project_slug: projectData.slug,
         project_description: projectData.description,
-        user_role: userProjects.role
+        project_type: projectData.project_type || 'ecommerce',
+        color_scheme: projectData.color_scheme || { primary: '#3b82f6', secondary: '#1d4ed8' },
+        config: projectData.config || {},
+        user_role: userProjects.role,
+        assigned_at: projectData.created_at || new Date().toISOString()
       })
     }
 
