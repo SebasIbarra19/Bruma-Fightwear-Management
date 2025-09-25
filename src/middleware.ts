@@ -16,17 +16,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/projects/${defaultProject}/inventory`, request.url))
   }
 
-  if (pathname === '/purchase-orders') {
-    return NextResponse.redirect(new URL(`/projects/${defaultProject}/purchase-orders`, request.url))
-  }
-
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     '/suppliers',
-    '/inventory', 
-    '/purchase-orders'
+    '/inventory'
   ]
 }

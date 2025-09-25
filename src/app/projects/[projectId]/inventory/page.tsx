@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject } from '@/types/database'
 
-// Tipo específico para inventory de Phase 2
+// Tipos específicos para inventory de Phase 2
 interface InventoryItemPhase2 {
   id: string
   project_id: string
@@ -40,6 +40,29 @@ interface InventoryItemPhase2 {
   } | null
 }
 
+// Tipos para inventory movements
+interface InventoryMovementPhase2 {
+  id: string
+  project_id: string
+  inventory_id: string
+  movement_type: 'in' | 'out' | 'adjustment' | 'transfer'
+  quantity: number
+  unit_cost: number | null
+  total_cost: number | null
+  reference_type: string | null
+  reference_id: string | null
+  notes: string | null
+  created_by: string
+  created_at: string
+  // Relaciones
+  inventory?: {
+    id: string
+    sku: string
+    product_name: string | null
+    product_description: string | null
+  } | null
+}
+
 // Agregamos campos adicionales para compatibilidad
 interface InventoryWithDetailsPhase2 extends InventoryItemPhase2 {
   name: string // alias para product_name
@@ -57,6 +80,11 @@ export default function ProjectInventoryPage() {
   const [project, setProject] = useState<UserProject | null>(null)
   const [inventory, setInventory] = useState<InventoryWithDetailsPhase2[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
+  
+  // Estado para tabs
+  const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory')
+  
+  // Estados para inventory
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -70,11 +98,33 @@ export default function ProjectInventoryPage() {
     totalValue: 0
   })
 
+  // Estados para movements
+  const [movements, setMovements] = useState<InventoryMovementPhase2[]>([])
+  const [movementsLoading, setMovementsLoading] = useState(false)
+  const [movementsSearchTerm, setMovementsSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState<string>('all')
+  const [selectedDateRange, setSelectedDateRange] = useState<string>('all')
+  const [selectedProduct, setSelectedProduct] = useState<string>('all')
+  const [movementsStats, setMovementsStats] = useState({
+    total: 0,
+    inMovements: 0,
+    outMovements: 0,
+    adjustments: 0,
+    transfers: 0,
+    totalValue: 0
+  })
+
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const projectSlug = params.projectId as string
 
   useEffect(() => {
+    // Verificar si se debe mostrar la tab de movimientos desde URL
+    const tab = searchParams.get('tab')
+    if (tab === 'movements') {
+      setActiveTab('movements')
+    }
     loadProjectAndAuth()
   }, [])
 
@@ -222,6 +272,55 @@ export default function ProjectInventoryPage() {
     }
   }
 
+  const loadMovementsData = async (projectId: string) => {
+    setMovementsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('inventory_movements')
+        .select(`
+          *,
+          inventory (
+            id,
+            sku,
+            product_name,
+            product_description
+          )
+        `)
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading inventory movements:', error)
+        return
+      }
+
+      const movementsData = (data as InventoryMovementPhase2[]) || []
+      setMovements(movementsData)
+
+      // Calcular estadísticas de movimientos
+      const total = movementsData.length
+      const inMovements = movementsData.filter(m => m.movement_type === 'in').length
+      const outMovements = movementsData.filter(m => m.movement_type === 'out').length
+      const adjustments = movementsData.filter(m => m.movement_type === 'adjustment').length
+      const transfers = movementsData.filter(m => m.movement_type === 'transfer').length
+      const totalValue = movementsData.reduce((sum, m) => sum + (m.total_cost || 0), 0)
+
+      setMovementsStats({
+        total,
+        inMovements,
+        outMovements,
+        adjustments,
+        transfers,
+        totalValue
+      })
+
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setMovementsLoading(false)
+    }
+  }
+
   // Filtrar inventario
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = 
@@ -243,6 +342,79 @@ export default function ProjectInventoryPage() {
 
   // Obtener categorías únicas
   const categories = Array.from(new Set(inventory.map(item => item.category).filter(Boolean)))
+
+  // Filtrar movimientos
+  const filteredMovements = movements.filter(movement => {
+    const matchesSearch = 
+      movement.inventory?.sku?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
+      movement.inventory?.product_name?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
+      movement.notes?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
+      movement.reference_type?.toLowerCase().includes(movementsSearchTerm.toLowerCase())
+
+    const matchesType = selectedType === 'all' || movement.movement_type === selectedType
+    const matchesProduct = selectedProduct === 'all' || movement.inventory_id === selectedProduct
+    
+    // Filtro por fecha
+    let matchesDate = true
+    if (selectedDateRange !== 'all' && movement.created_at) {
+      const movementDate = new Date(movement.created_at)
+      const now = new Date()
+      
+      switch (selectedDateRange) {
+        case 'today':
+          matchesDate = movementDate.toDateString() === now.toDateString()
+          break
+        case 'week':
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (7 * 24 * 60 * 60 * 1000)
+          break
+        case 'month':
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (30 * 24 * 60 * 60 * 1000)
+          break
+        case '3months':
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (90 * 24 * 60 * 60 * 1000)
+          break
+      }
+    }
+
+    return matchesSearch && matchesType && matchesProduct && matchesDate
+  })
+
+  // Funciones de utilidad para movimientos
+  const getMovementTypeBadge = (type: string) => {
+    const typeConfig = {
+      'in': { bg: 'bg-green-100', text: 'text-green-800', label: 'Entrada', icon: '↗️' },
+      'out': { bg: 'bg-red-100', text: 'text-red-800', label: 'Salida', icon: '↖️' },
+      'adjustment': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Ajuste', icon: '⚖️' },
+      'transfer': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Transferencia', icon: '🔄' }
+    }
+    
+    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.adjustment
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text} flex items-center gap-1`}>
+        <span>{config.icon}</span>
+        {config.label}
+      </span>
+    )
+  }
+
+  const formatQuantity = (quantity: number, type: string) => {
+    const sign = type === 'in' || type === 'adjustment' ? '+' : '-'
+    const color = type === 'in' ? 'text-green-600' : type === 'out' ? 'text-red-600' : 'text-yellow-600'
+    return (
+      <span className={`font-medium ${color}`}>
+        {sign}{Math.abs(quantity)}
+      </span>
+    )
+  }
+
+  // Función para cambiar tabs
+  const handleTabChange = (tab: 'inventory' | 'movements') => {
+    setActiveTab(tab)
+    if (tab === 'movements' && movements.length === 0) {
+      loadMovementsData(project?.project_id || '')
+    }
+  }
 
   const toggleItemStatus = async (itemId: string) => {
     try {
@@ -337,7 +509,36 @@ export default function ProjectInventoryPage() {
           </div>
         </div>
 
-        {/* Estadísticas */}
+        {/* Tabs Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => handleTabChange('inventory')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'inventory'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              📦 Inventario
+            </button>
+            <button
+              onClick={() => handleTabChange('movements')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'movements'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              🔄 Movimientos
+            </button>
+          </div>
+        </div>
+
+        {/* Contenido del Tab de Inventario */}
+        {activeTab === 'inventory' && (
+          <>
+            {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
@@ -597,6 +798,239 @@ export default function ProjectInventoryPage() {
             )}
           </CardContent>
         </Card>
+          </>
+        )}
+
+        {/* Contenido del Tab de Movimientos */}
+        {activeTab === 'movements' && (
+          <>
+            {/* Estadísticas de Movimientos */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-2xl font-bold text-blue-600">{movementsStats.total}</div>
+                  <div className="text-sm text-gray-600">Total</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-2xl font-bold text-green-600">{movementsStats.inMovements}</div>
+                  <div className="text-sm text-gray-600">Entradas</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-2xl font-bold text-red-600">{movementsStats.outMovements}</div>
+                  <div className="text-sm text-gray-600">Salidas</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-2xl font-bold text-yellow-600">{movementsStats.adjustments}</div>
+                  <div className="text-sm text-gray-600">Ajustes</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-2xl font-bold text-purple-600">
+                    ${movementsStats.totalValue.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Valor Total</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Filtros de Movimientos */}
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Buscar
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="SKU, producto, notas..."
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={movementsSearchTerm}
+                      onChange={(e) => setMovementsSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tipo de Movimiento
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                    >
+                      <option value="all">Todos los tipos</option>
+                      <option value="in">Entradas</option>
+                      <option value="out">Salidas</option>
+                      <option value="adjustment">Ajustes</option>
+                      <option value="transfer">Transferencias</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Producto
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={selectedProduct}
+                      onChange={(e) => setSelectedProduct(e.target.value)}
+                    >
+                      <option value="all">Todos los productos</option>
+                      {inventory.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.sku} - {item.product_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Período
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={selectedDateRange}
+                      onChange={(e) => setSelectedDateRange(e.target.value)}
+                    >
+                      <option value="all">Todo el tiempo</option>
+                      <option value="today">Hoy</option>
+                      <option value="week">Última semana</option>
+                      <option value="month">Último mes</option>
+                      <option value="3months">Últimos 3 meses</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabla de Movimientos */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Movimientos de Inventario
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Mostrando {filteredMovements.length} movimientos
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      📊 Exportar
+                    </Button>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      + Nuevo Movimiento
+                    </Button>
+                  </div>
+                </div>
+
+                {filteredMovements.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 text-4xl mb-4">📦</div>
+                    <p className="text-gray-600 mb-2">No hay movimientos</p>
+                    <p className="text-sm text-gray-500">
+                      Los movimientos de inventario aparecerán aquí
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producto
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tipo
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cantidad
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Stock Anterior
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Stock Nuevo
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Referencia
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Notas
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredMovements.map((movement) => (
+                          <tr key={movement.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {new Date(movement.created_at).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {movement.inventory?.product_name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  SKU: {movement.inventory?.sku}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getMovementTypeBadge(movement.movement_type)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {formatQuantity(movement.quantity_change, movement.movement_type)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {movement.previous_quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {movement.new_quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {movement.reference_type && movement.reference_id && (
+                                <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                                  {movement.reference_type}: {movement.reference_id}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                              {movement.notes}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   )

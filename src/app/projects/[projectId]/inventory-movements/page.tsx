@@ -11,50 +11,48 @@ import { formatCurrency } from '@/lib/utils'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject } from '@/types/database'
 
-// Tipos específicos para purchase_orders de Phase 2
-interface PurchaseOrderPhase2 {
+// Tipos específicos para inventory_movements de Phase 2
+interface InventoryMovementPhase2 {
   id: string
   project_id: string
-  supplier_id: string
-  order_number: string | null
-  status: 'draft' | 'pending' | 'ordered' | 'partial' | 'received' | 'cancelled'
-  order_date: string | null
-  expected_date: string | null
-  received_date: string | null
-  subtotal: number
-  tax_amount: number
-  shipping_cost: number
-  total_amount: number
-  currency: string
-  payment_terms: string | null
+  inventory_id: string
+  movement_type: 'in' | 'out' | 'adjustment' | 'transfer'
+  quantity: number
+  unit_cost: number | null
+  total_cost: number | null
+  reference_type: string | null
+  reference_id: string | null
   notes: string | null
+  created_by: string
   created_at: string
-  updated_at: string
-  // Relación con suppliers
-  suppliers?: {
+  // Relaciones
+  inventory?: {
     id: string
-    name: string
-    contact_person?: string
-    email?: string
+    sku: string
+    product_name: string | null
+    product_description: string | null
+  } | null
+  created_by_user?: {
+    email: string
   } | null
 }
 
-export default function ProjectPurchaseOrdersPage() {
+export default function InventoryMovementsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [project, setProject] = useState<UserProject | null>(null)
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderPhase2[]>([])
-  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [movements, setMovements] = useState<InventoryMovementPhase2[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedDateRange, setSelectedDateRange] = useState<string>('all')
+  const [selectedProduct, setSelectedProduct] = useState<string>('all')
+  const [products, setProducts] = useState<any[]>([])
   const [stats, setStats] = useState({
     total: 0,
-    draft: 0,
-    pending: 0,
-    ordered: 0,
-    received: 0,
+    inMovements: 0,
+    outMovements: 0,
+    adjustments: 0,
+    transfers: 0,
     totalValue: 0
   })
 
@@ -96,8 +94,8 @@ export default function ProjectPurchaseOrdersPage() {
       }
 
       setProject(currentProject)
-      await loadPurchaseOrdersData(currentProject.project_id)
-      await loadSuppliersData(currentProject.project_id)
+      await loadMovementsData(currentProject.project_id)
+      await loadProductsData(currentProject.project_id)
       
     } catch (error) {
       console.error('Error:', error)
@@ -107,44 +105,44 @@ export default function ProjectPurchaseOrdersPage() {
     }
   }
 
-  const loadPurchaseOrdersData = async (projectId: string) => {
+  const loadMovementsData = async (projectId: string) => {
     try {
       const { data, error } = await supabase
-        .from('purchase_orders')
+        .from('inventory_movements')
         .select(`
           *,
-          suppliers (
+          inventory (
             id,
-            name,
-            contact_person,
-            email
+            sku,
+            product_name,
+            product_description
           )
         `)
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error loading purchase orders:', error)
+        console.error('Error loading inventory movements:', error)
         return
       }
 
-      const orderData = (data as PurchaseOrderPhase2[]) || []
-      setPurchaseOrders(orderData)
+      const movementsData = (data as InventoryMovementPhase2[]) || []
+      setMovements(movementsData)
 
       // Calcular estadísticas
-      const total = orderData.length
-      const draft = orderData.filter(order => order.status === 'draft').length
-      const pending = orderData.filter(order => order.status === 'pending').length
-      const ordered = orderData.filter(order => order.status === 'ordered').length
-      const received = orderData.filter(order => order.status === 'received').length
-      const totalValue = orderData.reduce((sum, order) => sum + order.total_amount, 0)
+      const total = movementsData.length
+      const inMovements = movementsData.filter(m => m.movement_type === 'in').length
+      const outMovements = movementsData.filter(m => m.movement_type === 'out').length
+      const adjustments = movementsData.filter(m => m.movement_type === 'adjustment').length
+      const transfers = movementsData.filter(m => m.movement_type === 'transfer').length
+      const totalValue = movementsData.reduce((sum, m) => sum + (m.total_cost || 0), 0)
 
       setStats({
         total,
-        draft,
-        pending,
-        ordered,
-        received,
+        inMovements,
+        outMovements,
+        adjustments,
+        transfers,
         totalValue
       })
 
@@ -153,73 +151,85 @@ export default function ProjectPurchaseOrdersPage() {
     }
   }
 
-  const loadSuppliersData = async (projectId: string) => {
+  const loadProductsData = async (projectId: string) => {
     try {
       const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name')
+        .from('inventory')
+        .select('id, sku, product_name')
         .eq('project_id', projectId)
-        .eq('is_active', true)
-        .order('name')
+        .order('product_name')
 
       if (error) {
-        console.error('Error loading suppliers:', error)
+        console.error('Error loading products:', error)
         return
       }
 
-      setSuppliers(data || [])
+      setProducts(data || [])
     } catch (error) {
       console.error('Error:', error)
     }
   }
 
-  // Filtrar órdenes de compra
-  const filteredOrders = purchaseOrders.filter(order => {
+  // Filtrar movimientos
+  const filteredMovements = movements.filter(movement => {
     const matchesSearch = 
-      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.suppliers?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      movement.inventory?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.inventory?.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      movement.reference_type?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesSupplier = selectedSupplier === 'all' || order.supplier_id === selectedSupplier
-    const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus
+    const matchesType = selectedType === 'all' || movement.movement_type === selectedType
+    const matchesProduct = selectedProduct === 'all' || movement.inventory_id === selectedProduct
     
-    // Filtro por fecha (último mes, últimos 3 meses, etc.)
+    // Filtro por fecha
     let matchesDate = true
-    if (selectedDateRange !== 'all' && order.created_at) {
-      const orderDate = new Date(order.created_at)
+    if (selectedDateRange !== 'all' && movement.created_at) {
+      const movementDate = new Date(movement.created_at)
       const now = new Date()
       
       switch (selectedDateRange) {
+        case 'today':
+          matchesDate = movementDate.toDateString() === now.toDateString()
+          break
         case 'week':
-          matchesDate = (now.getTime() - orderDate.getTime()) <= (7 * 24 * 60 * 60 * 1000)
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (7 * 24 * 60 * 60 * 1000)
           break
         case 'month':
-          matchesDate = (now.getTime() - orderDate.getTime()) <= (30 * 24 * 60 * 60 * 1000)
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (30 * 24 * 60 * 60 * 1000)
           break
         case '3months':
-          matchesDate = (now.getTime() - orderDate.getTime()) <= (90 * 24 * 60 * 60 * 1000)
+          matchesDate = (now.getTime() - movementDate.getTime()) <= (90 * 24 * 60 * 60 * 1000)
           break
       }
     }
 
-    return matchesSearch && matchesSupplier && matchesStatus && matchesDate
+    return matchesSearch && matchesType && matchesProduct && matchesDate
   })
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      'draft': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Borrador' },
-      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
-      'ordered': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Ordenado' },
-      'partial': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Parcial' },
-      'received': { bg: 'bg-green-100', text: 'text-green-800', label: 'Recibido' },
-      'cancelled': { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelado' }
+  const getMovementTypeBadge = (type: string) => {
+    const typeConfig = {
+      'in': { bg: 'bg-green-100', text: 'text-green-800', label: 'Entrada', icon: '↗️' },
+      'out': { bg: 'bg-red-100', text: 'text-red-800', label: 'Salida', icon: '↖️' },
+      'adjustment': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Ajuste', icon: '⚖️' },
+      'transfer': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Transferencia', icon: '🔄' }
     }
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft
+    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.adjustment
     
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text} flex items-center gap-1`}>
+        <span>{config.icon}</span>
         {config.label}
+      </span>
+    )
+  }
+
+  const formatQuantity = (quantity: number, type: string) => {
+    const sign = type === 'in' || type === 'adjustment' ? '+' : '-'
+    const color = type === 'in' ? 'text-green-600' : type === 'out' ? 'text-red-600' : 'text-yellow-600'
+    return (
+      <span className={`font-medium ${color}`}>
+        {sign}{Math.abs(quantity)}
       </span>
     )
   }
@@ -229,7 +239,7 @@ export default function ProjectPurchaseOrdersPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando órdenes de compra...</p>
+          <p className="mt-4 text-gray-600">Cargando movimientos de inventario...</p>
         </div>
       </div>
     )
@@ -258,7 +268,7 @@ export default function ProjectPurchaseOrdersPage() {
               {project?.project_name}
             </Link>
             <span>→</span>
-            <span className="text-gray-900">Órdenes de Compra</span>
+            <span className="text-gray-900">Movimientos de Inventario</span>
           </div>
           
           <div className="flex justify-between items-center">
@@ -269,9 +279,9 @@ export default function ProjectPurchaseOrdersPage() {
                 className="w-12 h-12"
               />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Órdenes de Compra</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Movimientos de Inventario</h1>
                 <p className="text-gray-600 mt-2">
-                  Gestión de pedidos a proveedores de {project.project_name}
+                  Historial completo de entradas y salidas de {project.project_name}
                 </p>
               </div>
             </div>
@@ -282,9 +292,9 @@ export default function ProjectPurchaseOrdersPage() {
                   📊 Insertar Datos de Prueba
                 </Button>
               </Link>
-              <Link href={`/projects/${projectSlug}/purchase-orders/new`}>
+              <Link href={`/projects/${projectSlug}/inventory-movements/new`}>
                 <Button className="bg-blue-600 hover:bg-blue-700">
-                  + Nueva Orden
+                  + Nuevo Movimiento
                 </Button>
               </Link>
             </div>
@@ -296,35 +306,35 @@ export default function ProjectPurchaseOrdersPage() {
           <Card>
             <CardContent className="p-6">
               <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-              <div className="text-sm text-gray-600">Total Órdenes</div>
+              <div className="text-sm text-gray-600">Total Movimientos</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6">
-              <div className="text-2xl font-bold text-gray-600">{stats.draft}</div>
-              <div className="text-sm text-gray-600">Borrador</div>
+              <div className="text-2xl font-bold text-green-600">{stats.inMovements}</div>
+              <div className="text-sm text-gray-600">Entradas</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-6">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-              <div className="text-sm text-gray-600">Pendientes</div>
+              <div className="text-2xl font-bold text-red-600">{stats.outMovements}</div>
+              <div className="text-sm text-gray-600">Salidas</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-6">
-              <div className="text-2xl font-bold text-blue-600">{stats.ordered}</div>
-              <div className="text-sm text-gray-600">Ordenadas</div>
+              <div className="text-2xl font-bold text-yellow-600">{stats.adjustments}</div>
+              <div className="text-sm text-gray-600">Ajustes</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-6">
-              <div className="text-2xl font-bold text-green-600">{stats.received}</div>
-              <div className="text-sm text-gray-600">Recibidas</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.transfers}</div>
+              <div className="text-sm text-gray-600">Transferencias</div>
             </CardContent>
           </Card>
 
@@ -345,7 +355,7 @@ export default function ProjectPurchaseOrdersPage() {
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder="Buscar por número de orden, proveedor o notas..."
+                    placeholder="Buscar por SKU, producto, notas o referencia..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className=""
@@ -353,36 +363,34 @@ export default function ProjectPurchaseOrdersPage() {
                 </div>
               </div>
 
-              {/* Filtro por proveedor */}
-              <div className="min-w-[200px]">
+              {/* Filtro por tipo */}
+              <div className="min-w-[150px]">
                 <select
-                  value={selectedSupplier}
-                  onChange={(e) => setSelectedSupplier(e.target.value)}
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="all">Todos los proveedores</option>
-                  {suppliers.map(supplier => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
+                  <option value="all">Todos los tipos</option>
+                  <option value="in">Entradas</option>
+                  <option value="out">Salidas</option>
+                  <option value="adjustment">Ajustes</option>
+                  <option value="transfer">Transferencias</option>
                 </select>
               </div>
 
-              {/* Filtro por estado */}
-              <div className="min-w-[150px]">
+              {/* Filtro por producto */}
+              <div className="min-w-[200px]">
                 <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  value={selectedProduct}
+                  onChange={(e) => setSelectedProduct(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="all">Todos los estados</option>
-                  <option value="draft">Borrador</option>
-                  <option value="pending">Pendiente</option>
-                  <option value="ordered">Ordenado</option>
-                  <option value="partial">Parcial</option>
-                  <option value="received">Recibido</option>
-                  <option value="cancelled">Cancelado</option>
+                  <option value="all">Todos los productos</option>
+                  {products.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.product_name || product.sku}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -394,6 +402,7 @@ export default function ProjectPurchaseOrdersPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">Todas las fechas</option>
+                  <option value="today">Hoy</option>
                   <option value="week">Última semana</option>
                   <option value="month">Último mes</option>
                   <option value="3months">Últimos 3 meses</option>
@@ -403,23 +412,23 @@ export default function ProjectPurchaseOrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Lista de órdenes de compra */}
+        {/* Lista de movimientos */}
         <Card>
           <CardHeader>
-            <CardTitle>Órdenes de Compra ({filteredOrders.length})</CardTitle>
+            <CardTitle>Movimientos de Inventario ({filteredMovements.length})</CardTitle>
             <CardDescription>
-              Lista de todas las órdenes de compra
+              Historial completo de todos los movimientos de inventario
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {filteredOrders.length === 0 ? (
+            {filteredMovements.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">📋</div>
-                <p className="text-gray-600">No se encontraron órdenes de compra</p>
+                <div className="text-gray-500 text-lg mb-4">📦</div>
+                <p className="text-gray-600">No se encontraron movimientos</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  {searchTerm || selectedSupplier !== 'all' || selectedStatus !== 'all' 
+                  {searchTerm || selectedType !== 'all' || selectedProduct !== 'all' || selectedDateRange !== 'all'
                     ? 'Intenta ajustar los filtros'
-                    : 'Crea tu primera orden de compra'
+                    : 'Los movimientos aparecerán aquí cuando se registren entradas y salidas'
                   }
                 </p>
               </div>
@@ -428,78 +437,66 @@ export default function ProjectPurchaseOrdersPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-medium text-gray-900">N° Orden</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Proveedor</th>
                       <th className="text-left p-3 font-medium text-gray-900">Fecha</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Estado</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Producto</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Tipo</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Cantidad</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Costo Unit.</th>
                       <th className="text-left p-3 font-medium text-gray-900">Total</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Acciones</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Referencia</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50">
+                    {filteredMovements.map((movement) => (
+                      <tr key={movement.id} className="border-b hover:bg-gray-50">
                         <td className="p-3">
                           <div>
                             <div className="font-medium text-gray-900">
-                              {order.order_number || `PO-${order.id.slice(0, 8)}`}
+                              {new Date(movement.created_at).toLocaleDateString()}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {new Date(order.created_at).toLocaleDateString()}
+                              {new Date(movement.created_at).toLocaleTimeString()}
                             </div>
                           </div>
                         </td>
                         <td className="p-3">
                           <div>
                             <div className="font-medium text-gray-900">
-                              {order.suppliers?.name || 'Sin proveedor'}
+                              {movement.inventory?.sku || 'N/A'}
                             </div>
-                            {order.suppliers?.contact_person && (
-                              <div className="text-sm text-gray-500">
-                                {order.suppliers.contact_person}
-                              </div>
-                            )}
+                            <div className="text-sm text-gray-500">
+                              {movement.inventory?.product_name || 'Sin nombre'}
+                            </div>
                           </div>
                         </td>
                         <td className="p-3">
-                          <div>
-                            {order.order_date && (
-                              <div className="text-sm text-gray-900">
-                                {new Date(order.order_date).toLocaleDateString()}
-                              </div>
-                            )}
-                            {order.expected_date && (
-                              <div className="text-sm text-gray-500">
-                                Esperado: {new Date(order.expected_date).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
+                          {getMovementTypeBadge(movement.movement_type)}
                         </td>
                         <td className="p-3">
-                          {getStatusBadge(order.status)}
+                          {formatQuantity(movement.quantity, movement.movement_type)}
                         </td>
                         <td className="p-3">
                           <div className="font-medium text-gray-900">
-                            {formatCurrency(order.total_amount)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {order.currency}
+                            {movement.unit_cost ? formatCurrency(movement.unit_cost) : '-'}
                           </div>
                         </td>
                         <td className="p-3">
-                          <div className="flex space-x-2">
-                            <Link 
-                              href={`/projects/${projectSlug}/purchase-orders/${order.id}`}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              Ver
-                            </Link>
-                            <Link 
-                              href={`/projects/${projectSlug}/purchase-orders/${order.id}/edit`}
-                              className="text-green-600 hover:text-green-800 text-sm"
-                            >
-                              Editar
-                            </Link>
+                          <div className="font-medium text-gray-900">
+                            {movement.total_cost ? formatCurrency(movement.total_cost) : '-'}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div>
+                            {movement.reference_type && (
+                              <div className="text-sm text-gray-600 capitalize">
+                                {movement.reference_type}
+                              </div>
+                            )}
+                            {movement.notes && (
+                              <div className="text-sm text-gray-500 mt-1">
+                                {movement.notes}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

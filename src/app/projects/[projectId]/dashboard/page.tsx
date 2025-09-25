@@ -133,18 +133,10 @@ export default function ProjectDashboardPage() {
         },
         {
           title: 'Proveedores',
-          description: 'Gestionar proveedores y contactos',
-          icon: '🏢',
+          description: 'Gestionar red de proveedores y órdenes de compra',
+          icon: '🏭',
           href: `/projects/${projectSlug}/suppliers`,
-          color: 'bg-cyan-500',
-          available: true
-        },
-        {
-          title: 'Órdenes de Compra',
-          description: 'Gestionar órdenes a proveedores',
-          icon: '🛒',
-          href: `/projects/${projectSlug}/purchase-orders`,
-          color: 'bg-emerald-500',
+          color: 'bg-purple-500',
           available: true
         },
         {
