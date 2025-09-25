@@ -541,13 +541,7 @@ export default function ProductsPage() {
               </div>
             </div>
             
-            <div className="flex gap-2">
-              <Link href="/insert-data">
-                <Button variant="outline" className="bg-green-50 hover:bg-green-100 border-green-200">
-                  📊 Insertar Datos de Prueba
-                </Button>
-              </Link>
-            </div>
+
           </div>
         </div>
 

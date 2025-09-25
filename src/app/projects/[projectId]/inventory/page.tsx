@@ -495,11 +495,6 @@ export default function ProjectInventoryPage() {
             </div>
             
             <div className="flex gap-2">
-              <Link href="/insert-data">
-                <Button variant="outline" className="bg-green-50 hover:bg-green-100 border-green-200">
-                  📊 Insertar Datos de Prueba
-                </Button>
-              </Link>
               <Link href={`/projects/${projectSlug}/inventory/new`}>
                 <Button className="bg-blue-600 hover:bg-blue-700">
                   + Nuevo Item
@@ -660,7 +655,7 @@ export default function ProjectInventoryPage() {
                 <p className="text-gray-500 mb-4">
                   {searchTerm || selectedCategory !== 'all' || selectedSupplier !== 'all' || selectedStatus !== 'all'
                     ? 'No se encontraron items con los filtros aplicados'
-                    : 'Comienza agregando tu primer item de inventario o usa datos de prueba'
+                    : 'Comienza agregando tu primer item de inventario'
                   }
                 </p>
                 {searchTerm || selectedCategory !== 'all' || selectedSupplier !== 'all' || selectedStatus !== 'all' ? (
@@ -677,11 +672,6 @@ export default function ProjectInventoryPage() {
                   </Button>
                 ) : (
                   <div className="flex gap-4 justify-center">
-                    <Link href="/insert-data">
-                      <Button className="bg-green-600 hover:bg-green-700">
-                        📊 Insertar Datos de Prueba
-                      </Button>
-                    </Link>
                     <Link href={`/projects/${projectSlug}/inventory/new`}>
                       <Button className="bg-blue-600 hover:bg-blue-700">
                         + Nuevo Item
