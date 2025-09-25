@@ -149,10 +149,10 @@ export default function ProjectDashboardPage() {
         },
         {
           title: 'Clientes',
-          description: 'Gestionar base de clientes',
-          icon: '�',
+          description: 'Gestionar base de clientes y contactos',
+          icon: '👥',
           href: `/projects/${projectSlug}/customers`,
-          color: 'bg-purple-500',
+          color: 'bg-blue-500',
           available: true
         },
         {
