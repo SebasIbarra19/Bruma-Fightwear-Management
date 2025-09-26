@@ -6,8 +6,10 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { validateEmail } from '@/utils'
 import { SmartLogoCard } from '@/components/common/SmartLogo'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export default function LoginPage() {
+  const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,23 +46,41 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-100">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+    <div 
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: theme.colors.background }}
+    >
+      <div 
+        className="max-w-md w-full space-y-8 p-8 rounded-xl shadow-lg"
+        style={{ 
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          border: `1px solid ${theme.colors.border}`,
+          boxShadow: theme.colors.shadow
+        }}
+      >
         <div className="text-center">
           <SmartLogoCard showText={true} />
-          <h3 className="text-lg text-gray-600 mt-4">Iniciar Sesión</h3>
+          <h3 className="text-lg mt-4" style={{ color: theme.colors.textPrimary }}>Iniciar Sesión</h3>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <div 
+              className="px-4 py-3 rounded-md border"
+              style={{ 
+                backgroundColor: theme.colors.error + '20',
+                borderColor: theme.colors.error,
+                color: theme.colors.error
+              }}
+            >
               {error}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
                 Email
               </label>
               <input
@@ -70,13 +90,20 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bruma-500 focus:border-bruma-500"
+                className="mt-1 block w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 transition-colors"
+                style={{
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  border: `1px solid ${theme.colors.border}`,
+                  color: theme.colors.textPrimary,
+                  '--tw-ring-color': theme.colors.primary
+                } as React.CSSProperties}
                 placeholder="tu@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
                 Contraseña
               </label>
               <input
@@ -86,7 +113,14 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-bruma-500 focus:border-bruma-500"
+                className="mt-1 block w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 transition-colors"
+                style={{
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.border,
+                  border: `1px solid ${theme.colors.border}`,
+                  color: theme.colors.textPrimary,
+                  '--tw-ring-color': theme.colors.primary
+                } as React.CSSProperties}
                 placeholder="••••••••"
               />
             </div>
@@ -96,16 +130,38 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-bruma-600 hover:bg-bruma-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bruma-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-2 px-4 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{
+                backgroundColor: theme.colors.primary,
+                color: theme.colors.textInverse,
+                borderColor: theme.colors.primary,
+                '--tw-ring-color': theme.colors.primary
+              } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.primaryHover
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = theme.colors.primary
+              }}
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
           </div>
 
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
               ¿No tienes una cuenta?{' '}
-              <Link href="/auth/register" className="font-medium text-bruma-600 hover:text-bruma-500">
+              <Link 
+                href="/auth/register" 
+                className="font-medium hover:underline transition-colors"
+                style={{ color: theme.colors.primary }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = theme.colors.primaryHover
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = theme.colors.primary
+                }}
+              >
                 Regístrate aquí
               </Link>
             </p>

@@ -114,18 +114,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ className, onSubmit }) => 
             type="submit"
             className="w-full py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors font-medium"
             style={{ 
-              backgroundColor: theme.colors.primary, 
+              backgroundColor: theme.colors.secondary, 
               color: theme.colors.textInverse,
-              '--tw-ring-color': theme.colors.primary,
+              '--tw-ring-color': theme.colors.secondary,
               '--tw-ring-offset-color': theme.colors.surface
             } as React.CSSProperties}
             onMouseEnter={(e) => {
-              if (theme.colors.primaryHover) {
-                e.currentTarget.style.backgroundColor = theme.colors.primaryHover
+              if (theme.colors.secondaryHover) {
+                e.currentTarget.style.backgroundColor = theme.colors.secondaryHover
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.primary
+              e.currentTarget.style.backgroundColor = theme.colors.secondary
             }}
           >
             Iniciar Sesión
@@ -182,7 +182,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
         <div className="text-center mb-8">
           <div 
             className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ backgroundColor: theme.colors.success }}
+            style={{ backgroundColor: theme.colors.primary }}
           >
             <span className="text-2xl" style={{ color: theme.colors.textInverse }}>👤</span>
           </div>
@@ -207,7 +207,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
                 borderColor: theme.colors.border,
                 border: `1px solid ${theme.colors.border}`,
                 color: theme.colors.textPrimary,
-                '--tw-ring-color': theme.colors.success
+                '--tw-ring-color': theme.colors.primary
               } as React.CSSProperties}
               placeholder="Tu nombre completo"
             />
@@ -229,7 +229,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
                 borderColor: theme.colors.border,
                 border: `1px solid ${theme.colors.border}`,
                 color: theme.colors.textPrimary,
-                '--tw-ring-color': theme.colors.success
+                '--tw-ring-color': theme.colors.primary
               } as React.CSSProperties}
               placeholder="correo@ejemplo.com"
             />
@@ -251,7 +251,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
                 borderColor: theme.colors.border,
                 border: `1px solid ${theme.colors.border}`,
                 color: theme.colors.textPrimary,
-                '--tw-ring-color': theme.colors.success
+                '--tw-ring-color': theme.colors.primary
               } as React.CSSProperties}
               placeholder="••••••••"
             />
@@ -273,7 +273,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
                 borderColor: theme.colors.border,
                 border: `1px solid ${theme.colors.border}`,
                 color: theme.colors.textPrimary,
-                '--tw-ring-color': theme.colors.success
+                '--tw-ring-color': theme.colors.primary
               } as React.CSSProperties}
               placeholder="••••••••"
             />
@@ -286,8 +286,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
               required
               className="h-4 w-4 rounded focus:ring-2"
               style={{ 
-                accentColor: theme.colors.success,
-                '--tw-ring-color': theme.colors.success
+                accentColor: theme.colors.primary,
+                '--tw-ring-color': theme.colors.primary
               } as React.CSSProperties}
             />
             <label htmlFor="terms" className="ml-2 block text-sm" style={{ color: theme.colors.textPrimary }}>
@@ -295,7 +295,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
               <a 
                 href="#" 
                 className="hover:underline transition-colors"
-                style={{ color: theme.colors.success }}
+                style={{ color: theme.colors.secondary }}
               >
                 términos y condiciones
               </a>
@@ -306,18 +306,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
             type="submit"
             className="w-full py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors font-medium"
             style={{ 
-              backgroundColor: theme.colors.success, 
+              backgroundColor: theme.colors.primary, 
               color: theme.colors.textInverse,
-              '--tw-ring-color': theme.colors.success,
+              '--tw-ring-color': theme.colors.primary,
               '--tw-ring-offset-color': theme.colors.surface
             } as React.CSSProperties}
             onMouseEnter={(e) => {
-              if (theme.colors.successHover) {
-                e.currentTarget.style.backgroundColor = theme.colors.successHover
+              if (theme.colors.primaryHover) {
+                e.currentTarget.style.backgroundColor = theme.colors.primaryHover
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.success
+              e.currentTarget.style.backgroundColor = theme.colors.primary
             }}
           >
             Crear Cuenta
@@ -330,7 +330,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ className, onSubmit 
             <a 
               href="#" 
               className="font-medium hover:underline transition-colors"
-              style={{ color: theme.colors.success }}
+              style={{ color: theme.colors.secondary }}
             >
               Inicia sesión
             </a>

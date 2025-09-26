@@ -570,19 +570,39 @@ interface ProjectInfoProps {
 }
 
 export function ProjectInfo({ name, logo, description, status, version, tags }: ProjectInfoProps) {
+  const { theme } = useTheme()
+  
   return (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 aspect-square flex flex-col justify-between hover:bg-gray-750 transition-colors">
+    <div 
+      className="rounded-xl p-6 aspect-square flex flex-col justify-between hover:opacity-90 transition-all duration-200"
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.border,
+        border: `1px solid ${theme.colors.border}`
+      }}
+    >
       {/* Header con Logo y Status */}
       <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          {logo || <Icons.Boxing className="w-6 h-6 text-white" />}
+        <div 
+          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            background: `linear-gradient(to bottom right, ${theme.colors.surfaceActive}, ${theme.colors.borderHover})`
+          }}
+        >
+          {logo || <Icons.Boxing className="w-6 h-6" color={theme.colors.textInverse} />}
         </div>
         
-        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          status === 'active' ? 'bg-green-500/20 text-green-400' :
-          status === 'development' ? 'bg-blue-500/20 text-blue-400' :
-          'bg-gray-500/20 text-gray-400'
-        }`}>
+        <div 
+          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+          style={{
+            backgroundColor: status === 'active' ? theme.colors.success + '20' :
+                           status === 'development' ? theme.colors.info + '20' :
+                           theme.colors.textTertiary + '20',
+            color: status === 'active' ? theme.colors.success :
+                   status === 'development' ? theme.colors.info :
+                   theme.colors.textTertiary
+          }}
+        >
           {status === 'active' && <Icons.Check className="w-3 h-3 mr-1" />}
           {status === 'development' && <Icons.Info className="w-3 h-3 mr-1" />}
           {status === 'inactive' && <Icons.Warning className="w-3 h-3 mr-1" />}
@@ -595,19 +615,29 @@ export function ProjectInfo({ name, logo, description, status, version, tags }: 
       <div className="flex-1 flex flex-col">
         <div className="mb-3">
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-lg font-bold text-white truncate">{name}</h3>
+            <h3 className="text-lg font-bold truncate" style={{ color: theme.colors.textPrimary }}>{name}</h3>
             {version && (
-              <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded shrink-0">
+              <span 
+                className="text-xs px-2 py-1 rounded shrink-0"
+                style={{
+                  backgroundColor: theme.colors.surfaceHover,
+                  color: theme.colors.textSecondary
+                }}
+              >
                 v{version}
               </span>
             )}
           </div>
           
-          <p className="text-gray-400 text-sm leading-relaxed overflow-hidden" style={{
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical'
-          }}>{description}</p>
+          <p 
+            className="text-sm leading-relaxed overflow-hidden" 
+            style={{
+              color: theme.colors.textSecondary,
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical'
+            }}
+          >{description}</p>
         </div>
         
         {/* Tags en la parte inferior */}
@@ -616,13 +646,23 @@ export function ProjectInfo({ name, logo, description, status, version, tags }: 
             {tags.slice(0, 3).map((tag, index) => (
               <span 
                 key={index}
-                className="text-xs bg-gray-700/50 text-gray-300 px-2 py-1 rounded"
+                className="text-xs px-2 py-1 rounded"
+                style={{
+                  backgroundColor: theme.colors.surfaceActive,
+                  color: theme.colors.textSecondary
+                }}
               >
                 {tag}
               </span>
             ))}
             {tags.length > 3 && (
-              <span className="text-xs bg-gray-700/50 text-gray-300 px-2 py-1 rounded">
+              <span 
+                className="text-xs px-2 py-1 rounded"
+                style={{
+                  backgroundColor: theme.colors.surfaceActive,
+                  color: theme.colors.textSecondary
+                }}
+              >
                 +{tags.length - 3}
               </span>
             )}

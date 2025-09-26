@@ -611,22 +611,20 @@ export function ModernTable<T extends Record<string, any>>({
                   {/* Fila expandida */}
                   {isExpanded && renderExpandedRow && (
                     <tr style={{ 
-                      borderBottom: `1px solid ${theme.colors.border}`,
-                      backgroundColor: theme.colors.surfaceHover
+                      backgroundColor: theme.colors.surface
                     }}>
                       <td colSpan={columns.filter(col => visibleColumns[String(col.key)]).length + 1 + ((onEdit || onDelete) ? 1 : 0)}>
                         <div 
-                          className="p-6 border-t" 
+                          className="p-6" 
                           style={{ 
                             backgroundColor: theme.colors.surface,
-                            borderColor: theme.colors.border,
-                            borderLeftWidth: '3px',
-                            borderLeftColor: theme.colors.primary
+                            borderTop: `1px solid ${theme.colors.border}`,
+                            borderBottom: `1px solid ${theme.colors.border}`,
+                            borderLeft: `4px solid ${theme.colors.primary}`,
+                            color: theme.colors.textPrimary
                           }}
                         >
-                          <div style={{ color: theme.colors.textPrimary }}>
-                            {renderExpandedRow(row)}
-                          </div>
+                          {renderExpandedRow(row)}
                         </div>
                       </td>
                     </tr>

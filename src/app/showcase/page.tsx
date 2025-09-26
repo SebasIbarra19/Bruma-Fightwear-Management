@@ -26,10 +26,12 @@ import {
   Header, 
   ProgressSteps, 
   ProjectInfo, 
-  LoginForm, 
-  RegisterForm, 
   Icons 
 } from '../../components/ui/navigation'
+import { 
+  LoginForm, 
+  RegisterForm 
+} from '../../components/ui/auth-forms-clean'
 import { ProgressBar, SteppedProgress } from '../../components/ui/progress'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog'
 
@@ -307,16 +309,27 @@ function ShowcaseContent() {
           
           {/* Stats Grid */}
           <StatsGrid>
-            <Card className="bg-gradient-to-br from-blue-600 to-blue-700 border-blue-500">
+            <Card 
+              style={{
+                background: `linear-gradient(to bottom right, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                borderColor: theme.colors.primary
+              }}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardDescription className="text-blue-100">Total Empleados</CardDescription>
+                  <CardDescription style={{ color: theme.colors.textInverse }}>Total Empleados</CardDescription>
                   <span className="text-2xl">👥</span>
                 </div>
               </CardHeader>
               <CardContent>
                 <CardTitle className="text-3xl text-white">156</CardTitle>
-                <Badge className="bg-green-500/20 text-green-300 mt-2">
+                <Badge 
+                  style={{
+                    backgroundColor: theme.colors.success + '20',
+                    color: theme.colors.success
+                  }}
+                  className="mt-2"
+                >
                   ↗ +12% este mes
                 </Badge>
               </CardContent>
@@ -331,7 +344,13 @@ function ShowcaseContent() {
               </CardHeader>
               <CardContent>
                 <CardTitle className="text-3xl text-white">89</CardTitle>
-                <Badge className="bg-green-500/20 text-green-300 mt-2">
+                <Badge 
+                  style={{
+                    backgroundColor: theme.colors.success + '20',
+                    color: theme.colors.success
+                  }}
+                  className="mt-2"
+                >
                   ↗ +5% nuevo stock
                 </Badge>
               </CardContent>
@@ -346,7 +365,13 @@ function ShowcaseContent() {
               </CardHeader>
               <CardContent>
                 <CardTitle className="text-3xl text-white">42</CardTitle>
-                <Badge className="bg-yellow-500/20 text-yellow-300 mt-2">
+                <Badge 
+                  style={{
+                    backgroundColor: theme.colors.warning + '20',
+                    color: theme.colors.warning
+                  }}
+                  className="mt-2"
+                >
                   → estable
                 </Badge>
               </CardContent>
@@ -361,7 +386,13 @@ function ShowcaseContent() {
               </CardHeader>
               <CardContent>
                 <CardTitle className="text-3xl text-white">€125K</CardTitle>
-                <Badge className="bg-green-500/20 text-green-300 mt-2">
+                <Badge 
+                  style={{
+                    backgroundColor: theme.colors.success + '20',
+                    color: theme.colors.success
+                  }}
+                  className="mt-2"
+                >
                   ↗ +18% vs mes pasado
                 </Badge>
               </CardContent>
@@ -407,7 +438,13 @@ function ShowcaseContent() {
                 title: 'Salario', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className="bg-green-500/20 text-green-400 font-mono">
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.success + '20',
+                      color: theme.colors.success,
+                      fontFamily: 'monospace'
+                    }}
+                  >
                     €{value.toLocaleString()}
                   </Badge>
                 )
@@ -417,11 +454,16 @@ function ShowcaseContent() {
                 title: 'Estado', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className={`${
-                    value === 'active' ? 'bg-green-500/20 text-green-400' :
-                    value === 'onLeave' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
+                  <Badge 
+                    style={{
+                      backgroundColor: value === 'active' ? theme.colors.success + '20' :
+                                     value === 'onLeave' ? theme.colors.warning + '20' :
+                                     theme.colors.error + '20',
+                      color: value === 'active' ? theme.colors.success :
+                             value === 'onLeave' ? theme.colors.warning :
+                             theme.colors.error
+                    }}
+                  >
                     {value === 'active' ? '✅ Activo' :
                      value === 'onLeave' ? '🏖️ Permiso' :
                      '❌ Inactivo'}
@@ -430,46 +472,49 @@ function ShowcaseContent() {
               }
             ]}
             renderExpandedRow={(employee: Employee) => (
-              <div className="bg-gray-900/80 rounded-lg p-6">
+              <div 
+                className="rounded-lg p-6"
+                style={{ backgroundColor: theme.colors.surface }}
+              >
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-blue-400 uppercase tracking-wide border-b border-gray-700 pb-2">Información de Contacto</h4>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.primary, borderColor: theme.colors.border }}>Información de Contacto</h4>
                     <div className="space-y-2">
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Email</Label>
-                        <Text className="text-white font-mono text-sm">{employee.email}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Email</Label>
+                        <Text className="font-mono text-sm" style={{ color: theme.colors.textPrimary }}>{employee.email}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Teléfono</Label>
-                        <Text className="text-white text-sm">{employee.phone}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Teléfono</Label>
+                        <Text className="text-sm" style={{ color: theme.colors.textPrimary }}>{employee.phone}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Ubicación</Label>
-                        <Text className="text-white text-sm">{employee.location}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Ubicación</Label>
+                        <Text className="text-sm" style={{ color: theme.colors.textPrimary }}>{employee.location}</Text>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-green-400 uppercase tracking-wide border-b border-gray-700 pb-2">Datos Laborales</h4>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.secondary, borderColor: theme.colors.border }}>Datos Laborales</h4>
                     <div className="space-y-2">
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Fecha de Ingreso</Label>
-                        <Text className="text-white text-sm">{new Date(employee.startDate).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Fecha de Ingreso</Label>
+                        <Text className="text-sm" style={{ color: theme.colors.textPrimary }}>{new Date(employee.startDate).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Salario</Label>
-                        <Text className="text-white text-sm font-semibold">€{employee.salary.toLocaleString()}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Salario</Label>
+                        <Text className="text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>€{employee.salary.toLocaleString()}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">ID de Empleado</Label>
-                        <Text className="text-white text-sm font-mono">#{employee.id.toString().padStart(4, '0')}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>ID de Empleado</Label>
+                        <Text className="text-sm font-mono" style={{ color: theme.colors.textPrimary }}>#{employee.id.toString().padStart(4, '0')}</Text>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-purple-400 uppercase tracking-wide border-b border-gray-700 pb-2">Acciones Rápidas</h4>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.info, borderColor: theme.colors.border }}>Acciones Rápidas</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <Button variant="minimal" size="sm" className="justify-start">
                         <Icons.User className="w-3 h-3 mr-2" />
@@ -525,7 +570,13 @@ function ShowcaseContent() {
                 title: 'Precio', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className="bg-blue-500/20 text-blue-400 font-mono">
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.primary + '20',
+                      color: theme.colors.primary,
+                      fontFamily: 'monospace'
+                    }}
+                  >
                     €{value}
                   </Badge>
                 )
@@ -535,12 +586,19 @@ function ShowcaseContent() {
                 title: 'Stock', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className={`font-semibold ${
-                    value > 50 ? 'bg-green-500/20 text-green-400' :
-                    value > 10 ? 'bg-yellow-500/20 text-yellow-400' :
-                    value > 0 ? 'bg-orange-500/20 text-orange-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
+                  <Badge 
+                    style={{
+                      backgroundColor: value > 50 ? theme.colors.success + '20' :
+                                     value > 10 ? theme.colors.warning + '20' :
+                                     value > 0 ? theme.colors.info + '20' :
+                                     theme.colors.error + '20',
+                      color: value > 50 ? theme.colors.success :
+                             value > 10 ? theme.colors.warning :
+                             value > 0 ? theme.colors.info :
+                             theme.colors.error,
+                      fontWeight: '600'
+                    }}
+                  >
                     {value}
                   </Badge>
                 )
@@ -550,11 +608,16 @@ function ShowcaseContent() {
                 title: 'Estado', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className={`${
-                    value === 'available' ? 'bg-green-500/20 text-green-400' :
-                    value === 'outOfStock' ? 'bg-red-500/20 text-red-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  }`}>
+                  <Badge 
+                    style={{
+                      backgroundColor: value === 'available' ? theme.colors.success + '20' :
+                                     value === 'outOfStock' ? theme.colors.error + '20' :
+                                     theme.colors.textSecondary + '20',
+                      color: value === 'available' ? theme.colors.success :
+                             value === 'outOfStock' ? theme.colors.error :
+                             theme.colors.textSecondary
+                    }}
+                  >
                     {value === 'available' ? '✅ Disponible' :
                      value === 'outOfStock' ? '❌ Sin Stock' :
                      '⏹️ Descontinuado'}
@@ -563,47 +626,47 @@ function ShowcaseContent() {
               }
             ]}
             renderExpandedRow={(product: Product) => (
-              <div className="bg-gray-900/80 rounded-lg p-6">
+              <div style={{ backgroundColor: theme.colors.surface, borderRadius: '8px', padding: '24px' }}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-orange-400 uppercase tracking-wide border-b border-gray-700 pb-2">Detalles del Producto</h4>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.primary, borderColor: theme.colors.border }}>Detalles del Producto</h4>
                     <div className="space-y-2">
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">SKU</Label>
-                        <Text className="text-white font-mono text-sm">{product.sku}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>SKU</Label>
+                        <Text className="font-mono text-sm" style={{ color: theme.colors.textPrimary }}>{product.sku}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Marca</Label>
-                        <Text className="text-white text-sm">{product.brand}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Marca</Label>
+                        <Text className="text-sm" style={{ color: theme.colors.textPrimary }}>{product.brand}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Peso</Label>
-                        <Text className="text-white text-sm">{product.weight} kg</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Peso</Label>
+                        <Text className="text-sm" style={{ color: theme.colors.textPrimary }}>{product.weight} kg</Text>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-blue-400 uppercase tracking-wide border-b border-gray-700 pb-2">Inventario</h4>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.secondary, borderColor: theme.colors.border }}>Inventario</h4>
                     <div className="space-y-2">
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Precio</Label>
-                        <Text className="text-white text-sm font-semibold">€{product.price}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Precio</Label>
+                        <Text className="text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>€{product.price}</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Stock</Label>
-                        <Text className="text-white text-sm font-semibold">{product.stock} unidades</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Stock</Label>
+                        <Text className="text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>{product.stock} unidades</Text>
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Valor Total</Label>
-                        <Text className="text-white text-sm font-semibold">€{(product.price * product.stock).toFixed(2)}</Text>
+                        <Label className="text-xs uppercase tracking-wide" style={{ color: theme.colors.textTertiary }}>Valor Total</Label>
+                        <Text className="text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>€{(product.price * product.stock).toFixed(2)}</Text>
                       </div>
                     </div>
                   </div>
                   
                   <div className="lg:col-span-2 xl:col-span-1 space-y-3">
-                    <h4 className="text-sm font-medium text-green-400 uppercase tracking-wide border-b border-gray-700 pb-2">Descripción</h4>
-                    <Text className="text-white text-sm leading-relaxed">{product.description}</Text>
+                    <h4 className="text-sm font-medium uppercase tracking-wide border-b pb-2" style={{ color: theme.colors.info, borderColor: theme.colors.border }}>Descripción</h4>
+                    <Text className="text-sm leading-relaxed" style={{ color: theme.colors.textPrimary }}>{product.description}</Text>
                     
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       <Button variant="minimal" size="sm" className="justify-start">
@@ -651,7 +714,13 @@ function ShowcaseContent() {
                 title: 'Pedidos', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className="bg-blue-500/20 text-blue-400 font-semibold">
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.primary + '20',
+                      color: theme.colors.primary,
+                      fontWeight: '600'
+                    }}
+                  >
                     {value}
                   </Badge>
                 )
@@ -661,7 +730,13 @@ function ShowcaseContent() {
                 title: 'Total Gastado', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className="bg-green-500/20 text-green-400 font-mono">
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.success + '20',
+                      color: theme.colors.success,
+                      fontFamily: 'monospace'
+                    }}
+                  >
                     €{value.toLocaleString()}
                   </Badge>
                 )
@@ -671,12 +746,18 @@ function ShowcaseContent() {
                 title: 'Nivel VIP', 
                 sortable: true,
                 render: (value) => (
-                  <Badge className={`${
-                    value === 'platinum' ? 'bg-purple-500/20 text-purple-400' :
-                    value === 'gold' ? 'bg-yellow-500/20 text-yellow-400' :
-                    value === 'silver' ? 'bg-gray-500/20 text-gray-400' :
-                    'bg-orange-500/20 text-orange-400'
-                  }`}>
+                  <Badge 
+                    style={{
+                      backgroundColor: value === 'platinum' ? theme.colors.secondary + '20' :
+                                     value === 'gold' ? theme.colors.warning + '20' :
+                                     value === 'silver' ? theme.colors.textSecondary + '20' :
+                                     theme.colors.info + '20',
+                      color: value === 'platinum' ? theme.colors.secondary :
+                             value === 'gold' ? theme.colors.warning :
+                             value === 'silver' ? theme.colors.textSecondary :
+                             theme.colors.info
+                    }}
+                  >
                     {value === 'platinum' ? '💎 Platino' :
                      value === 'gold' ? '🥇 Oro' :
                      value === 'silver' ? '🥈 Plata' :
@@ -760,7 +841,7 @@ function ShowcaseContent() {
       {activeSection === 'statistics' && (
         <div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-bold mb-6 text-blue-400">📊 Dashboard de Estadísticas</h2>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>📊 Dashboard de Estadísticas</h2>
             <Text className="text-gray-400 mb-8">
               Visualizaciones interactivas de datos del negocio con gráficos y métricas clave
             </Text>
@@ -784,12 +865,12 @@ function ShowcaseContent() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Clientes Nuevos</CardDescription>
-                <CardTitle className="text-3xl text-blue-400">142</CardTitle>
+                <CardTitle className="text-3xl" style={{ color: theme.colors.primary }}>142</CardTitle>
               </CardHeader>
               <CardContent>
-                <Text className="text-sm text-blue-400">↗ +8% vs mes anterior</Text>
+                <Text className="text-sm" style={{ color: theme.colors.primary }}>↗ +8% vs mes anterior</Text>
                 <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
-                  <div className="bg-blue-400 h-2 rounded-full" style={{ width: '60%' }}></div>
+                  <div className="h-2 rounded-full" style={{ backgroundColor: theme.colors.primary, width: '60%' }}></div>
                 </div>
               </CardContent>
             </Card>
@@ -872,7 +953,7 @@ function ShowcaseContent() {
                 <div className="space-y-4">
                   {[
                     { name: 'Guantes de Boxeo Pro', sales: 245, color: 'bg-green-400' },
-                    { name: 'Pantalones MMA Elite', sales: 198, color: 'bg-blue-400' },
+                    { name: 'Pantalones MMA Elite', sales: 198, color: 'bg-primary' },
                     { name: 'Camiseta BRUMA Logo', sales: 167, color: 'bg-yellow-400' },
                     { name: 'Vendas Profesionales', sales: 134, color: 'bg-purple-400' },
                     { name: 'Protector Bucal', sales: 89, color: 'bg-pink-400' }
@@ -1035,7 +1116,7 @@ function ShowcaseContent() {
                 renderExpandedRow={(row) => (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-gray-800 rounded-lg">
                     <div>
-                      <Text className="text-sm font-semibold text-blue-400 mb-2">Detalles del Cliente</Text>
+                      <Text className="text-sm font-semibold mb-2" style={{ color: theme.colors.primary }}>Detalles del Cliente</Text>
                       <div className="space-y-1 text-sm">
                         <Text><span className="text-gray-400">Nombre:</span> {row.customer}</Text>
                         <Text><span className="text-gray-400">Email:</span> cliente@email.com</Text>
@@ -1105,10 +1186,30 @@ function ShowcaseContent() {
               <div>
                 <Label>Badges</Label>
                 <Flex className="gap-2 mt-2">
-                  <Badge className="bg-green-500/20 text-green-400">✅ Success</Badge>
-                  <Badge className="bg-red-500/20 text-red-400">❌ Error</Badge>
-                  <Badge className="bg-yellow-500/20 text-yellow-400">⚠️ Warning</Badge>
-                  <Badge className="bg-blue-500/20 text-blue-400">ℹ️ Info</Badge>
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.success + '20',
+                      color: theme.colors.success
+                    }}
+                  >✅ Success</Badge>
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.error + '20',
+                      color: theme.colors.error
+                    }}
+                  >❌ Error</Badge>
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.warning + '20',
+                      color: theme.colors.warning
+                    }}
+                  >⚠️ Warning</Badge>
+                  <Badge 
+                    style={{
+                      backgroundColor: theme.colors.info + '20',
+                      color: theme.colors.info
+                    }}
+                  >ℹ️ Info</Badge>
                 </Flex>
               </div>
             </CardContent>
@@ -1137,7 +1238,19 @@ function ShowcaseContent() {
                 <div>
                   <Label className="mb-3 block">Colores</Label>
                   <div className="space-y-3">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700">Primary</Button>
+                    <Button 
+                      className="w-full transition-colors"
+                      style={{
+                        backgroundColor: theme.colors.primary,
+                        color: theme.colors.textInverse
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.colors.primaryHover
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.colors.primary
+                      }}
+                    >Primary</Button>
                     <Button className="w-full bg-green-600 hover:bg-green-700">Success</Button>
                     <Button className="w-full bg-red-600 hover:bg-red-700">Danger</Button>
                     <Button variant="warning" className="w-full">Warning</Button>
@@ -1208,17 +1321,42 @@ function ShowcaseContent() {
               <div>
                 <Label className="mb-3 block">Grid System</Label>
                 <Grid className="grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="h-16 bg-blue-500/20 border border-blue-500 rounded flex items-center justify-center">
-                    <Text className="text-blue-400">Grid 1</Text>
+                  <div 
+                    className="h-16 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.primary + '20',
+                      borderColor: theme.colors.primary,
+                      border: `1px solid ${theme.colors.primary}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.primary }}>Grid 1</Text>
                   </div>
-                  <div className="h-16 bg-green-500/20 border border-green-500 rounded flex items-center justify-center">
-                    <Text className="text-green-400">Grid 2</Text>
+                  <div 
+                    className="h-16 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.success + '20',
+                      border: `1px solid ${theme.colors.success}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.success }}>Grid 2</Text>
                   </div>
-                  <div className="h-16 bg-purple-500/20 border border-purple-500 rounded flex items-center justify-center">
-                    <Text className="text-purple-400">Grid 3</Text>
+                  <div 
+                    className="h-16 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.secondary + '20',
+                      border: `1px solid ${theme.colors.secondary}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.secondary }}>Grid 3</Text>
                   </div>
-                  <div className="h-16 bg-orange-500/20 border border-orange-500 rounded flex items-center justify-center">
-                    <Text className="text-orange-400">Grid 4</Text>
+                  <div 
+                    className="h-16 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.warning + '20',
+                      border: `1px solid ${theme.colors.warning}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.warning }}>Grid 4</Text>
                   </div>
                 </Grid>
               </div>
@@ -1226,14 +1364,32 @@ function ShowcaseContent() {
               <div>
                 <Label className="mb-3 block">Flex Layout</Label>
                 <Flex className="gap-4 p-4 bg-gray-800 rounded-lg">
-                  <div className="flex-1 h-12 bg-blue-500/20 border border-blue-500 rounded flex items-center justify-center">
-                    <Text className="text-blue-400">Flex 1</Text>
+                  <div 
+                    className="flex-1 h-12 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.info + '20',
+                      border: `1px solid ${theme.colors.info}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.info }}>Flex 1</Text>
                   </div>
-                  <div className="h-12 w-20 bg-green-500/20 border border-green-500 rounded flex items-center justify-center">
-                    <Text className="text-green-400 text-sm">Fixed</Text>
+                  <div 
+                    className="h-12 w-20 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.success + '20',
+                      border: `1px solid ${theme.colors.success}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.success }} className="text-sm">Fixed</Text>
                   </div>
-                  <div className="flex-1 h-12 bg-purple-500/20 border border-purple-500 rounded flex items-center justify-center">
-                    <Text className="text-purple-400">Flex 2</Text>
+                  <div 
+                    className="flex-1 h-12 rounded flex items-center justify-center"
+                    style={{
+                      backgroundColor: theme.colors.secondary + '20',
+                      border: `1px solid ${theme.colors.secondary}`
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.secondary }}>Flex 2</Text>
                   </div>
                 </Flex>
               </div>
@@ -1258,12 +1414,15 @@ function ShowcaseContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-gray-950 rounded-lg p-4 h-96 overflow-hidden relative">
+              <div 
+                className="rounded-lg p-4 h-96 overflow-hidden relative"
+                style={{ backgroundColor: theme.colors.background }}
+              >
                 <div className="absolute inset-0">
                   <Sidebar isOpen={true} onClose={() => setSidebarOpen(false)} />
                 </div>
                 <div className="ml-64 p-4">
-                  <Text className="text-gray-400">
+                  <Text style={{ color: theme.colors.textSecondary }}>
                     Contenido principal aquí...
                   </Text>
                 </div>
@@ -1303,9 +1462,24 @@ function ShowcaseContent() {
             <CardContent>
               <Grid className="grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
                 {Object.entries(Icons).map(([name, IconComponent]) => (
-                  <div key={name} className="text-center p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                    <IconComponent className="w-6 h-6 mx-auto mb-2 text-blue-400" />
-                    <Text className="text-xs text-gray-400">{name}</Text>
+                  <div 
+                    key={name} 
+                    className="text-center p-3 rounded-lg transition-colors cursor-pointer"
+                    style={{
+                      backgroundColor: theme.colors.surface
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.colors.surfaceHover
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.colors.surface
+                    }}
+                  >
+                    <IconComponent 
+                      className="w-6 h-6 mx-auto mb-2" 
+                      color={theme.colors.primary}
+                    />
+                    <Text className="text-xs" style={{ color: theme.colors.textSecondary }}>{name}</Text>
                   </div>
                 ))}
               </Grid>
