@@ -1,783 +1,456 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { formatCurrency } from '@/lib/utils'
-import type { User } from '@supabase/auth-helpers-nextjs'
-import type { UserProject } from '@/types/database'
+import { Button } from '@/components/ui/button'
+import { ModernSidebar } from '@/components/ui/modern-sidebar'
+import { Tabs } from '@/components/ui/tabs'
+import { ThemeSelector } from '@/components/ui/theme-selector'
 
-// Tipos específicos para inventory de Phase 2
-interface InventoryItemPhase2 {
-  id: string
+interface UserProject {
   project_id: string
-  product_id?: string | null
-  product_variant_id?: string | null
-  supplier_id?: string | null
-  sku: string
-  product_name?: string | null
-  product_description?: string | null
-  quantity_available: number
-  quantity_reserved: number
-  quantity_on_order: number
-  reorder_level?: number | null
-  reorder_quantity?: number | null
-  unit_cost?: number | null
-  last_cost?: number | null
-  average_cost?: number | null
-  location?: string | null
-  created_at: string
-  updated_at: string
-  // Relación con suppliers
-  suppliers?: {
-    id: string
-    name: string
-    contact_person?: string
-  } | null
+  project_name: string
+  project_slug: string
+  project_type: string
 }
 
-// Tipos para inventory movements
-interface InventoryMovementPhase2 {
-  id: string
-  project_id: string
-  inventory_id: string
-  movement_type: 'in' | 'out' | 'adjustment' | 'transfer'
-  quantity: number
-  unit_cost: number | null
-  total_cost: number | null
-  reference_type: string | null
-  reference_id: string | null
-  notes: string | null
-  created_by: string
-  created_at: string
-  // Relaciones
-  inventory?: {
-    id: string
-    sku: string
-    product_name: string | null
-    product_description: string | null
-  } | null
+interface ProjectInventoryData {
+  project: UserProject
 }
 
-// Agregamos campos adicionales para compatibilidad
-interface InventoryWithDetailsPhase2 extends InventoryItemPhase2 {
-  name: string // alias para product_name
-  description?: string | null // alias para product_description
-  category: string // lo obtendremos del SKU o lo agregaremos
-  quantity: number // alias para quantity_available
-  min_stock_level: number // alias para reorder_level
-  max_stock_level: number // calculado o por defecto
-  selling_price: number // lo calcularemos basado en unit_cost
-  is_active: boolean // por defecto true para Phase 2
-}
-
-export default function ProjectInventoryPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [project, setProject] = useState<UserProject | null>(null)
-  const [inventory, setInventory] = useState<InventoryWithDetailsPhase2[]>([])
-  const [suppliers, setSuppliers] = useState<any[]>([])
-  
-  // Estado para tabs
-  const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory')
-  
-  // Estados para inventory
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    inactive: 0,
-    lowStock: 0,
-    totalValue: 0
-  })
-
-  // Estados para movements
-  const [movements, setMovements] = useState<InventoryMovementPhase2[]>([])
-  const [movementsLoading, setMovementsLoading] = useState(false)
-  const [movementsSearchTerm, setMovementsSearchTerm] = useState('')
-  const [selectedType, setSelectedType] = useState<string>('all')
-  const [selectedDateRange, setSelectedDateRange] = useState<string>('all')
-  const [selectedProduct, setSelectedProduct] = useState<string>('all')
-  const [movementsStats, setMovementsStats] = useState({
-    total: 0,
-    inMovements: 0,
-    outMovements: 0,
-    adjustments: 0,
-    transfers: 0,
-    totalValue: 0
-  })
-
+export default function InventoryPage({ params }: { params: { projectId: string } }) {
+  const { user } = useAuth()
+  const { theme } = useTheme()
   const router = useRouter()
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const projectSlug = params.projectId as string
+  const projectSlug = params.projectId
+  
+  const [projectData, setProjectData] = useState<ProjectInventoryData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
-    // Verificar si se debe mostrar la tab de movimientos desde URL
-    const tab = searchParams.get('tab')
-    if (tab === 'movements') {
-      setActiveTab('movements')
-    }
-    loadProjectAndAuth()
-  }, [])
-
-  const loadProjectAndAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+    const loadProjectData = async () => {
+      if (!user) {
         router.push('/auth/login')
         return
       }
 
-      setUser(session.user)
+      try {
+        const { data: userProjects, error } = await supabase
+          .rpc('get_user_projects', { user_uuid: user.id })
 
-      // Obtener proyectos del usuario
-      const { data: userProjects, error } = await supabase
-        .rpc('get_user_projects', { user_uuid: session.user.id })
+        if (error) throw error
 
-      if (error) {
-        console.error('Error obteniendo proyectos:', error)
+        const project = userProjects?.find((p: UserProject) => p.project_slug === projectSlug)
+        
+        if (!project) {
+          console.error('Proyecto no encontrado')
+          router.push('/dashboard')
+          return
+        }
+
+        setProjectData({ project })
+      } catch (error) {
+        console.error('Error cargando proyecto:', error)
         router.push('/dashboard')
-        return
       }
 
-      const currentProject = userProjects?.find((p: UserProject) => p.project_slug === projectSlug)
-      
-      if (!currentProject) {
-        console.error('Proyecto no encontrado o sin acceso')
-        router.push('/dashboard')
-        return
-      }
-
-      setProject(currentProject)
-      await loadInventoryData(currentProject.project_id)
-      await loadSuppliersData(currentProject.project_id)
-      
-    } catch (error) {
-      console.error('Error:', error)
-      router.push('/dashboard')
-    } finally {
       setLoading(false)
     }
+
+    loadProjectData()
+  }, [router, projectSlug, user])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
   }
 
-  // Función auxiliar para extraer categoría del SKU
-  const extractCategoryFromSKU = (sku: string): string => {
-    if (!sku) return 'General'
-    
-    const skuParts = sku.split('-')
-    if (skuParts.length < 3) return 'General'
-    
-    const categoryCode = skuParts[1]
-    const categoryMap: Record<string, string> = {
-      'RG': 'Rashguards',
-      'SH': 'Shorts',
-      'GL': 'Guantes',
-      'SP': 'Protecciones',
-      'TS': 'Camisetas',
-      'HD': 'Sudaderas',
-      'VD': 'Accesorios',
-      'PB': 'Protecciones'
+  const sidebarItems = [
+    {
+      id: 'analytics',
+      label: 'Estadísticas y Métricas',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/dashboard`
+    },
+    {
+      id: 'inventory',
+      label: 'Gestión de Inventario',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/inventory`,
+      isActive: true
+    },
+    {
+      id: 'products',
+      label: 'Productos y Categorías',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      ),
+      subItems: [
+        { id: 'products-list', label: 'Lista de Productos', href: `/projects/${projectSlug}/products` },
+        { id: 'categories', label: 'Categorías', href: `/projects/${projectSlug}/categories` }
+      ]
+    },
+    {
+      id: 'orders',
+      label: 'Gestión de Pedidos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/orders`
+    },
+    {
+      id: 'customers',
+      label: 'Gestión de Clientes',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/customers`
+    },
+    {
+      id: 'suppliers',
+      label: 'Gestión de Proveedores',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/suppliers`
+    },
+    {
+      id: 'shipping',
+      label: 'Gestión de Envíos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/shipping`
+    },
+    {
+      id: 'movements',
+      label: 'Movimientos de Stock',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/movements`
     }
-    
-    return categoryMap[categoryCode] || 'General'
-  }
+  ]
 
-  // Función auxiliar para calcular precio de venta
-  const calculateSellingPrice = (unitCost: number | null | undefined): number => {
-    if (!unitCost) return 0
-    return Math.round(unitCost * 2.5 * 100) / 100 // Margen del 150%
-  }
+  const inventoryTabs = [
+    {
+      id: 'overview',
+      label: 'Resumen de Inventario',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Total de Productos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>1,234</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+12 nuevos este mes</p>
+              </CardContent>
+            </Card>
 
-  const loadInventoryData = async (projectId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select(`
-          *,
-          suppliers (
-            id,
-            name,
-            contact_person
-          )
-        `)
-        .eq('project_id', projectId)
-        .order('product_name')
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Stock Total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>8,456</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.warning }}>-5% vs mes anterior</p>
+              </CardContent>
+            </Card>
 
-      if (error) {
-        console.error('Error loading inventory:', error)
-        return
-      }
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Productos Bajo Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>23</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.error }}>Requieren reposición</p>
+              </CardContent>
+            </Card>
 
-      // Transformar datos de Phase 2 al formato esperado por la UI
-      const inventoryData = (data as InventoryItemPhase2[]).map((item): InventoryWithDetailsPhase2 => ({
-        ...item,
-        name: item.product_name || item.sku || 'Sin nombre',
-        description: item.product_description || '',
-        category: extractCategoryFromSKU(item.sku) || 'General',
-        quantity: item.quantity_available,
-        min_stock_level: item.reorder_level || 5,
-        max_stock_level: (item.reorder_level || 5) * 4,
-        selling_price: calculateSellingPrice(item.unit_cost),
-        is_active: true // Por defecto activo en Phase 2
-      }))
-
-      setInventory(inventoryData)
-
-      // Calcular estadísticas
-      const total = inventoryData.length
-      const active = inventoryData.filter(item => item.is_active).length
-      const inactive = total - active
-      const lowStock = inventoryData.filter(item => item.quantity <= item.min_stock_level).length
-      const totalValue = inventoryData.reduce((sum, item) => sum + (item.quantity * (item.unit_cost || 0)), 0)
-
-      setStats({
-        total,
-        active,
-        inactive,
-        lowStock,
-        totalValue
-      })
-
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
-
-  const loadSuppliersData = async (projectId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name')
-        .eq('project_id', projectId)
-        .eq('is_active', true)
-        .order('name')
-
-      if (error) {
-        console.error('Error loading suppliers:', error)
-        return
-      }
-
-      setSuppliers(data || [])
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
-
-  const loadMovementsData = async (projectId: string) => {
-    setMovementsLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select(`
-          *,
-          inventory (
-            id,
-            sku,
-            product_name,
-            product_description
-          )
-        `)
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error loading inventory movements:', error)
-        return
-      }
-
-      const movementsData = (data as InventoryMovementPhase2[]) || []
-      setMovements(movementsData)
-
-      // Calcular estadísticas de movimientos
-      const total = movementsData.length
-      const inMovements = movementsData.filter(m => m.movement_type === 'in').length
-      const outMovements = movementsData.filter(m => m.movement_type === 'out').length
-      const adjustments = movementsData.filter(m => m.movement_type === 'adjustment').length
-      const transfers = movementsData.filter(m => m.movement_type === 'transfer').length
-      const totalValue = movementsData.reduce((sum, m) => sum + (m.total_cost || 0), 0)
-
-      setMovementsStats({
-        total,
-        inMovements,
-        outMovements,
-        adjustments,
-        transfers,
-        totalValue
-      })
-
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setMovementsLoading(false)
-    }
-  }
-
-  // Filtrar inventario
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category?.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
-    const matchesSupplier = selectedSupplier === 'all' || item.supplier_id === selectedSupplier
-    const matchesStatus = 
-      selectedStatus === 'all' ||
-      (selectedStatus === 'active' && item.is_active) ||
-      (selectedStatus === 'inactive' && !item.is_active) ||
-      (selectedStatus === 'low-stock' && item.quantity <= item.min_stock_level)
-
-    return matchesSearch && matchesCategory && matchesSupplier && matchesStatus
-  })
-
-  // Obtener categorías únicas
-  const categories = Array.from(new Set(inventory.map(item => item.category).filter(Boolean)))
-
-  // Filtrar movimientos
-  const filteredMovements = movements.filter(movement => {
-    const matchesSearch = 
-      movement.inventory?.sku?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
-      movement.inventory?.product_name?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
-      movement.notes?.toLowerCase().includes(movementsSearchTerm.toLowerCase()) ||
-      movement.reference_type?.toLowerCase().includes(movementsSearchTerm.toLowerCase())
-
-    const matchesType = selectedType === 'all' || movement.movement_type === selectedType
-    const matchesProduct = selectedProduct === 'all' || movement.inventory_id === selectedProduct
-    
-    // Filtro por fecha
-    let matchesDate = true
-    if (selectedDateRange !== 'all' && movement.created_at) {
-      const movementDate = new Date(movement.created_at)
-      const now = new Date()
-      
-      switch (selectedDateRange) {
-        case 'today':
-          matchesDate = movementDate.toDateString() === now.toDateString()
-          break
-        case 'week':
-          matchesDate = (now.getTime() - movementDate.getTime()) <= (7 * 24 * 60 * 60 * 1000)
-          break
-        case 'month':
-          matchesDate = (now.getTime() - movementDate.getTime()) <= (30 * 24 * 60 * 60 * 1000)
-          break
-        case '3months':
-          matchesDate = (now.getTime() - movementDate.getTime()) <= (90 * 24 * 60 * 60 * 1000)
-          break
-      }
-    }
-
-    return matchesSearch && matchesType && matchesProduct && matchesDate
-  })
-
-  // Funciones de utilidad para movimientos
-  const getMovementTypeBadge = (type: string) => {
-    const typeConfig = {
-      'in': { bg: 'bg-green-100', text: 'text-green-800', label: 'Entrada', icon: '↗️' },
-      'out': { bg: 'bg-red-100', text: 'text-red-800', label: 'Salida', icon: '↖️' },
-      'adjustment': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Ajuste', icon: '⚖️' },
-      'transfer': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Transferencia', icon: '🔄' }
-    }
-    
-    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.adjustment
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text} flex items-center gap-1`}>
-        <span>{config.icon}</span>
-        {config.label}
-      </span>
-    )
-  }
-
-  const formatQuantity = (quantity: number, type: string) => {
-    const sign = type === 'in' || type === 'adjustment' ? '+' : '-'
-    const color = type === 'in' ? 'text-green-600' : type === 'out' ? 'text-red-600' : 'text-yellow-600'
-    return (
-      <span className={`font-medium ${color}`}>
-        {sign}{Math.abs(quantity)}
-      </span>
-    )
-  }
-
-  // Función para cambiar tabs
-  const handleTabChange = (tab: 'inventory' | 'movements') => {
-    setActiveTab(tab)
-    if (tab === 'movements' && movements.length === 0) {
-      loadMovementsData(project?.project_id || '')
-    }
-  }
-
-  const toggleItemStatus = async (itemId: string) => {
-    try {
-      const item = inventory.find(i => i.id === itemId)
-      if (!item) return
-
-      const newStatus = !item.is_active
-
-      // Nota: En Phase 2 no tenemos is_active en la tabla, así que solo actualizamos localmente
-      setInventory(inventory.map(i => 
-        i.id === itemId 
-          ? { ...i, is_active: newStatus }
-          : i
-      ))
-
-      // Actualizar stats
-      setStats(prev => ({
-        ...prev,
-        active: prev.active + (newStatus ? 1 : -1),
-        inactive: prev.inactive + (!newStatus ? 1 : -1)
-      }))
-
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando inventario...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!project) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600">Proyecto no encontrado</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-            <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
-            <span>→</span>
-            <Link href={`/projects/${projectSlug}/dashboard`} className="hover:text-blue-600">
-              {project?.project_name}
-            </Link>
-            <span>→</span>
-            <span className="text-gray-900">Inventario</span>
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Valor del Inventario
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>$156,789</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+8% vs mes anterior</p>
+              </CardContent>
+            </Card>
           </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/images/bruma/logo-circle.svg" 
-                alt="BRUMA Fightwear" 
-                className="w-12 h-12"
-              />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestión de Inventario</h1>
-                <p className="text-gray-600 mt-2">
-                  Control de stock y productos de {project.project_name}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Link href={`/projects/${projectSlug}/inventory/new`}>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  + Nuevo Item
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
 
-        {/* Tabs Navigation */}
-        <div className="mb-8">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => handleTabChange('inventory')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'inventory'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              📦 Inventario
-            </button>
-            <button
-              onClick={() => handleTabChange('movements')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'movements'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🔄 Movimientos
-            </button>
-          </div>
-        </div>
-
-        {/* Contenido del Tab de Inventario */}
-        {activeTab === 'inventory' && (
-          <>
-            {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-              <div className="text-sm text-gray-600">Total Items</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-              <div className="text-sm text-gray-600">Activos</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-gray-600">{stats.inactive}</div>
-              <div className="text-sm text-gray-600">Inactivos</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-red-600">{stats.lowStock}</div>
-              <div className="text-sm text-gray-600">Stock Bajo</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-purple-600">{formatCurrency(stats.totalValue)}</div>
-              <div className="text-sm text-gray-600">Valor Total</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filtros */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Búsqueda */}
-              <div className="flex-1">
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder="Buscar por nombre, SKU, descripción o categoría..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className=""
-                  />
+          {/* Alertas y Acciones Rápidas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader>
+                <CardTitle style={{ color: theme.colors.textPrimary }}>Alertas de Stock</CardTitle>
+                <CardDescription style={{ color: theme.colors.textSecondary }}>
+                  Productos que requieren atención inmediata
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { name: 'Guantes BRUMA Pro', stock: 5, minStock: 20, status: 'critical' },
+                    { name: 'Shorts MMA Elite', stock: 12, minStock: 25, status: 'warning' },
+                    { name: 'Vendas Elásticas', stock: 8, minStock: 30, status: 'critical' },
+                    { name: 'Protector Bucal', stock: 18, minStock: 50, status: 'warning' }
+                  ].map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {product.name}
+                        </p>
+                        <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                          Stock actual: {product.stock} | Mínimo: {product.minStock}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span 
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            product.status === 'critical' 
+                              ? 'text-red-700' 
+                              : 'text-yellow-700'
+                          }`}
+                          style={{ 
+                            backgroundColor: product.status === 'critical' 
+                              ? theme.colors.error + '20' 
+                              : theme.colors.warning + '20',
+                            border: `1px solid ${product.status === 'critical' ? theme.colors.error : theme.colors.warning}30`
+                          }}
+                        >
+                          {product.status === 'critical' ? 'Crítico' : 'Bajo'}
+                        </span>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          style={{ 
+                            borderColor: theme.colors.border,
+                            color: theme.colors.textSecondary
+                          }}
+                        >
+                          Reponer
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Filtro por categoría */}
-              <div className="min-w-[200px]">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Todas las categorías</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader>
+                <CardTitle style={{ color: theme.colors.textPrimary }}>Movimientos Recientes</CardTitle>
+                <CardDescription style={{ color: theme.colors.textSecondary }}>
+                  Últimas entradas y salidas de inventario
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { type: 'entrada', product: 'Guantes BRUMA Pro', quantity: 50, date: '2024-01-15' },
+                    { type: 'salida', product: 'Shorts MMA Elite', quantity: -25, date: '2024-01-15' },
+                    { type: 'entrada', product: 'Vendas Elásticas', quantity: 100, date: '2024-01-14' },
+                    { type: 'salida', product: 'Protector Bucal', quantity: -15, date: '2024-01-14' }
+                  ].map((movement, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                      <div className="flex items-center space-x-3">
+                        <div 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                          }`}
+                          style={{ 
+                            backgroundColor: movement.type === 'entrada' 
+                              ? theme.colors.success + '20' 
+                              : theme.colors.error + '20'
+                          }}
+                        >
+                          {movement.type === 'entrada' ? '+' : '-'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {movement.product}
+                          </p>
+                          <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                            {movement.date}
+                          </p>
+                        </div>
+                      </div>
+                      <span 
+                        className={`text-sm font-medium ${
+                          movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                      </span>
+                    </div>
                   ))}
-                </select>
-              </div>
-
-              {/* Filtro por proveedor */}
-              <div className="min-w-[200px]">
-                <select
-                  value={selectedSupplier}
-                  onChange={(e) => setSelectedSupplier(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Todos los proveedores</option>
-                  {suppliers.map(supplier => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro por estado */}
-              <div className="min-w-[150px]">
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="active">Activos</option>
-                  <option value="inactive">Inactivos</option>
-                  <option value="low-stock">Stock Bajo</option>
-                </select>
-              </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'stock-control',
+      label: 'Control de Stock',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                Control de Stock por Producto
+              </h3>
+              <p style={{ color: theme.colors.textSecondary }}>
+                Gestiona los niveles de inventario y configura alertas automáticas
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Button 
+              className="shadow-lg"
+              style={{ 
+                background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                border: 'none'
+              }}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Agregar Producto
+            </Button>
+          </div>
 
-        {/* Lista de inventario */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Inventario ({filteredInventory.length})</CardTitle>
-            <CardDescription>
-              Lista de todos los items de inventario
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredInventory.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">📦</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No hay items de inventario
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {searchTerm || selectedCategory !== 'all' || selectedSupplier !== 'all' || selectedStatus !== 'all'
-                    ? 'No se encontraron items con los filtros aplicados'
-                    : 'Comienza agregando tu primer item de inventario'
-                  }
-                </p>
-                {searchTerm || selectedCategory !== 'all' || selectedSupplier !== 'all' || selectedStatus !== 'all' ? (
-                  <Button 
-                    onClick={() => {
-                      setSearchTerm('')
-                      setSelectedCategory('all')
-                      setSelectedSupplier('all')
-                      setSelectedStatus('all')
-                    }}
-                    variant="outline"
-                  >
-                    Limpiar Filtros
-                  </Button>
-                ) : (
-                  <div className="flex gap-4 justify-center">
-                    <Link href={`/projects/${projectSlug}/inventory/new`}>
-                      <Button className="bg-blue-600 hover:bg-blue-700">
-                        + Nuevo Item
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ) : (
+          {/* Tabla de productos */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left p-4 font-medium text-gray-700">Producto</th>
-                      <th className="text-left p-4 font-medium text-gray-700">SKU</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Categoría</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Proveedor</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Stock</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Costo Unit.</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Precio Est.</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Estado</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Acciones</th>
+                  <thead style={{ backgroundColor: theme.colors.background }}>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        Producto
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        SKU
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        Stock Actual
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        Stock Mínimo
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        Estado
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredInventory.map((item) => (
-                      <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="p-4">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {item.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {item.description}
-                            </div>
-                            {item.location && (
-                              <div className="text-xs text-blue-600 mt-1">
-                                📍 {item.location}
-                              </div>
-                            )}
+                  <tbody className="divide-y" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                    {[
+                      { name: 'Guantes BRUMA Pro', sku: 'GBP-001', current: 5, min: 20, status: 'critical' },
+                      { name: 'Shorts MMA Elite', sku: 'SME-002', current: 45, min: 25, status: 'good' },
+                      { name: 'Vendas Elásticas', sku: 'VE-003', current: 8, min: 30, status: 'critical' },
+                      { name: 'Protector Bucal', sku: 'PB-004', current: 18, min: 50, status: 'warning' },
+                      { name: 'Camiseta Training', sku: 'CT-005', current: 85, min: 40, status: 'good' }
+                    ].map((product, index) => (
+                      <tr key={index} className="hover:bg-opacity-5" style={{ backgroundColor: theme.colors.surfaceHover + '10' }}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {product.name}
                           </div>
                         </td>
-                        <td className="p-4">
-                          <span className="text-sm text-gray-600 font-mono">
-                            {item.sku || '-'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                            {item.category || 'Sin categoría'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className="text-sm text-gray-900">
-                            {(item.suppliers as any)?.name || 'Sin proveedor'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              item.quantity > item.max_stock_level ? 'bg-blue-100 text-blue-800' :
-                              item.quantity > item.min_stock_level ? 'bg-green-100 text-green-800' :
-                              item.quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {item.quantity} unidades
-                            </span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Min: {item.min_stock_level} | Max: {item.max_stock_level}
-                            </div>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {product.sku}
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="text-gray-900">
-                            {formatCurrency(item.unit_cost || 0)}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {product.current}
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="text-gray-900">
-                            {formatCurrency(item.selling_price)}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {product.min}
                           </div>
-                          {item.unit_cost && item.unit_cost > 0 && (
-                            <div className="text-xs text-green-600">
-                              +{Math.round(((item.selling_price - item.unit_cost) / item.unit_cost) * 100)}% margen
-                            </div>
-                          )}
                         </td>
-                        <td className="p-4">
-                          <button
-                            onClick={() => toggleItemStatus(item.id)}
-                            className={`px-3 py-1 text-xs font-medium rounded-full ${
-                              item.is_active
-                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span 
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              product.status === 'critical' ? 'text-red-700' :
+                              product.status === 'warning' ? 'text-yellow-700' : 'text-green-700'
                             }`}
+                            style={{ 
+                              backgroundColor: 
+                                product.status === 'critical' ? theme.colors.error + '20' :
+                                product.status === 'warning' ? theme.colors.warning + '20' : theme.colors.success + '20',
+                              border: `1px solid ${
+                                product.status === 'critical' ? theme.colors.error :
+                                product.status === 'warning' ? theme.colors.warning : theme.colors.success
+                              }30`
+                            }}
                           >
-                            {item.is_active ? 'Activo' : 'Inactivo'}
-                          </button>
+                            {product.status === 'critical' ? 'Crítico' :
+                             product.status === 'warning' ? 'Bajo' : 'Bueno'}
+                          </span>
                         </td>
-                        <td className="p-4">
-                          <div className="flex gap-2">
-                            <Link href={`/projects/${projectSlug}/inventory/${item.id}/edit`}>
-                              <Button variant="outline" size="sm">
-                                Editar
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline">
+                              Editar
+                            </Button>
+                            {product.status !== 'good' && (
+                              <Button size="sm" style={{ backgroundColor: theme.colors.primary }}>
+                                Reponer
                               </Button>
-                            </Link>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -785,242 +458,196 @@ export default function ProjectInventoryPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
-          </>
-        )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    },
+    {
+      id: 'movements',
+      label: 'Movimientos de Inventario',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+      ),
+      content: (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary + '20' }}>
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.secondary}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+            Historial de Movimientos
+          </h3>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Registro completo de entradas, salidas, transferencias y ajustes de inventario
+          </p>
+        </div>
+      )
+    },
+    {
+      id: 'reports',
+      label: 'Reportes de Inventario',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      content: (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.accent + '20' }}>
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.accent || theme.colors.primary}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+            Reportes e Informes
+          </h3>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Genera reportes personalizados de valorización, rotación y análisis de inventario
+          </p>
+        </div>
+      )
+    }
+  ]
 
-        {/* Contenido del Tab de Movimientos */}
-        {activeTab === 'movements' && (
-          <>
-            {/* Estadísticas de Movimientos */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-blue-600">{movementsStats.total}</div>
-                  <div className="text-sm text-gray-600">Total</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-green-600">{movementsStats.inMovements}</div>
-                  <div className="text-sm text-gray-600">Entradas</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-red-600">{movementsStats.outMovements}</div>
-                  <div className="text-sm text-gray-600">Salidas</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-yellow-600">{movementsStats.adjustments}</div>
-                  <div className="text-sm text-gray-600">Ajustes</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-purple-600">
-                    ${movementsStats.totalValue.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600">Valor Total</div>
-                </CardContent>
-              </Card>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 mx-auto mb-4" style={{ border: `2px solid ${theme.colors.border}`, borderTop: `2px solid ${theme.colors.primary}` }}></div>
+          <p style={{ color: theme.colors.textPrimary }}>Cargando inventario...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!projectData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <div className="text-center">
+          <p style={{ color: theme.colors.error }}>Error cargando el proyecto</p>
+          <Button onClick={() => router.push('/dashboard')} className="mt-4">
+            Volver al Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: theme.colors.background }}>
+      <ModernSidebar 
+        items={sidebarItems}
+        projectName={projectData.project.project_name}
+        onCollapseChange={setSidebarCollapsed}
+      />
+
+      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ backgroundColor: theme.colors.surface + '90', borderColor: theme.colors.border }}>
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center space-x-2 p-2 rounded-lg transition-colors hover:bg-opacity-10"
+                  style={{ color: theme.colors.textSecondary }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="text-sm">Dashboard Personal</span>
+                </button>
+                <div className="h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
+                <div>
+                  <h1 className="text-xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                    {projectData.project.project_name}
+                  </h1>
+                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                    Gestión de Inventario
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <ThemeSelector />
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-3 p-2 rounded-xl transition-all duration-200"
+                    style={{ 
+                      backgroundColor: theme.colors.surface + '80',
+                      border: `1px solid ${theme.colors.border}`
+                    }}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                        color: 'white'
+                      }}
+                    >
+                      {user?.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {user?.email?.split('@')[0]}
+                    </span>
+                  </button>
+
+                  {userDropdownOpen && (
+                    <>
+                      <div 
+                        className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border z-50"
+                        style={{ 
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border
+                        }}
+                      >
+                        <div className="p-2">
+                          <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                            style={{ color: theme.colors.textPrimary }}
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3" />
+                            </svg>
+                            <span>Dashboard Principal</span>
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              handleLogout()
+                              setUserDropdownOpen(false)
+                            }}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-red-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                            </svg>
+                            <span>Cerrar Sesión</span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setUserDropdownOpen(false)}
+                      ></div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
+          </div>
+        </header>
 
-            {/* Filtros de Movimientos */}
-            <Card className="mb-8">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Buscar
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="SKU, producto, notas..."
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={movementsSearchTerm}
-                      onChange={(e) => setMovementsSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Movimiento
-                    </label>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
-                    >
-                      <option value="all">Todos los tipos</option>
-                      <option value="in">Entradas</option>
-                      <option value="out">Salidas</option>
-                      <option value="adjustment">Ajustes</option>
-                      <option value="transfer">Transferencias</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Producto
-                    </label>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={selectedProduct}
-                      onChange={(e) => setSelectedProduct(e.target.value)}
-                    >
-                      <option value="all">Todos los productos</option>
-                      {inventory.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.sku} - {item.product_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Período
-                    </label>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={selectedDateRange}
-                      onChange={(e) => setSelectedDateRange(e.target.value)}
-                    >
-                      <option value="all">Todo el tiempo</option>
-                      <option value="today">Hoy</option>
-                      <option value="week">Última semana</option>
-                      <option value="month">Último mes</option>
-                      <option value="3months">Últimos 3 meses</option>
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Tabla de Movimientos */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Movimientos de Inventario
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Mostrando {filteredMovements.length} movimientos
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      📊 Exportar
-                    </Button>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      + Nuevo Movimiento
-                    </Button>
-                  </div>
-                </div>
-
-                {filteredMovements.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 text-4xl mb-4">📦</div>
-                    <p className="text-gray-600 mb-2">No hay movimientos</p>
-                    <p className="text-sm text-gray-500">
-                      Los movimientos de inventario aparecerán aquí
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Fecha
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Producto
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Tipo
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cantidad
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Stock Anterior
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Stock Nuevo
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Referencia
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Notas
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMovements.map((movement) => (
-                          <tr key={movement.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {new Date(movement.created_at).toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {movement.inventory?.product_name}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  SKU: {movement.inventory?.sku}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {getMovementTypeBadge(movement.movement_type)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {formatQuantity(movement.quantity, movement.movement_type)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              -
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {movement.quantity}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {movement.reference_type && movement.reference_id && (
-                                <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                                  {movement.reference_type}: {movement.reference_id}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                              {movement.notes}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+        <main className="p-6">
+          <Tabs tabs={inventoryTabs} defaultTab="overview" />
+        </main>
       </div>
     </div>
   )
