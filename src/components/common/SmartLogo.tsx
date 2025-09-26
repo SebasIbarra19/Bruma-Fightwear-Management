@@ -1,6 +1,7 @@
 'use client'
 
 import { useProjectContext } from '@/hooks/useProjectContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import BrumaLogo from '@/components/bruma/BrumaLogo'
 
 interface SmartLogoProps {
@@ -19,6 +20,7 @@ export function SmartLogo({
   className = '' 
 }: SmartLogoProps) {
   const { isBrumaProject, projectName } = useProjectContext()
+  const { theme } = useTheme()
 
   // Si estamos en un proyecto BRUMA, mostrar logo de BRUMA
   if (isBrumaProject) {
@@ -56,7 +58,7 @@ export function SmartLogo({
         className={`${sizeClasses[size]}`}
       />
       {showText && (
-        <span className={`font-bold text-gray-900 ${textSizeClasses[size]}`}>
+        <span className={`font-bold ${textSizeClasses[size]}`} style={{ color: theme.colors.textPrimary }}>
           SmartAdmin
         </span>
       )}

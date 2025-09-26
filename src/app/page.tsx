@@ -65,7 +65,7 @@ function HomePageInner() {
           <div className="max-w-5xl mx-auto mb-16">
             <PageTitle className="mb-8">
               La nueva forma de gestionar tu{' '}
-              <span style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <span style={{ color: theme.colors.primary }}>
                 negocio inteligente
               </span>
             </PageTitle>
@@ -75,7 +75,15 @@ function HomePageInner() {
             </Text>
             <Flex className="flex-col sm:flex-row gap-6 justify-center mb-16">
               <Link href="/auth/register">
-                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-4 font-semibold shadow-2xl">
+                <Button 
+                  size="lg" 
+                  className="w-full sm:w-auto text-lg px-8 py-4 font-semibold shadow-2xl transition-all hover:shadow-3xl"
+                  style={{ 
+                    backgroundColor: theme.colors.primary,
+                    color: theme.colors.textInverse,
+                    border: `2px solid ${theme.colors.primary}`
+                  }}
+                >
                   Comenzar Gratis
                   <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -560,6 +568,33 @@ function HomePageInner() {
         </PageContainer>
       </section>
 
+      {/* Separator */}
+      <div className="relative">
+        <div className="absolute inset-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.colors.border}, transparent)` }}></div>
+        <div className="relative h-24 flex items-center justify-center">
+          <div 
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: theme.colors.primary }}
+          ></div>
+          <div 
+            className="w-16 h-px mx-4"
+            style={{ backgroundColor: theme.colors.border }}
+          ></div>
+          <div 
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: theme.colors.secondary }}
+          ></div>
+          <div 
+            className="w-16 h-px mx-4"
+            style={{ backgroundColor: theme.colors.border }}
+          ></div>
+          <div 
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: theme.colors.primary }}
+          ></div>
+        </div>
+      </div>
+
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})` }}>
         <div className="absolute inset-0" style={{ backgroundColor: theme.colors.background + '20' }}></div>
@@ -576,8 +611,13 @@ function HomePageInner() {
               <Link href="/auth/register">
                 <Button 
                   size="lg" 
-                  className="w-full sm:w-auto bg-white shadow-2xl text-lg px-8 py-4 font-semibold"
-                  style={{ color: theme.colors.primary }}
+                  className="w-full sm:w-auto text-lg px-8 py-4 font-semibold shadow-2xl transition-all hover:shadow-3xl hover:scale-105"
+                  style={{ 
+                    backgroundColor: theme.colors.textInverse,
+                    color: theme.colors.primary,
+                    border: `2px solid ${theme.colors.textInverse}`,
+                    fontWeight: '700'
+                  }}
                 >
                   Comenzar Gratis
                   <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -605,18 +645,11 @@ function HomePageInner() {
         <PageContainer>
           <Grid className="md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             <div>
-              <Flex className="items-center space-x-3 mb-6">
-                <img 
-                  src="/images/bruma/logo-circle.svg" 
-                  alt="BRUMA Fightwear" 
-                  className="w-10 h-10 rounded-xl bg-white p-1"
-                />
-                <img 
-                  src="/images/bruma/logo-full.svg" 
-                  alt="BRUMA Fightwear" 
-                  className="h-8"
-                />
-              </Flex>
+              <div className="mb-6">
+                <h3 className="text-xl font-bold" style={{ color: theme.colors.primary }}>
+                  SmartAdmin
+                </h3>
+              </div>
               <Text className="leading-relaxed mb-4">
                 La plataforma de gestión empresarial más completa para hacer crecer tu negocio de manera inteligente.
               </Text>
@@ -655,7 +688,7 @@ function HomePageInner() {
 
           <div className="pt-8 mt-8 border-t text-center" style={{ borderColor: theme.colors.border }}>
             <Text style={{ color: theme.colors.textTertiary }}>
-              © 2025 BRUMA Fightwear. Todos los derechos reservados.
+              © 2025 SmartAdmin. Todos los derechos reservados.
             </Text>
           </div>
         </PageContainer>
