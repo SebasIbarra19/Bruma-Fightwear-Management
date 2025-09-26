@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react'
 import AuthPage from '@/components/auth/AuthPage'
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    // Set the initial mode to register and mark as initialized
+    // Set the initial mode to login and mark as initialized
     setIsInitialized(true)
     
-    // Ensure URL shows register when this page loads
-    if (typeof window !== 'undefined' && window.location.pathname !== '/auth/register') {
-      window.history.replaceState({}, '', '/auth/register')
+    // Ensure URL shows login when this page loads
+    if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
+      window.history.replaceState({}, '', '/auth/login')
     }
   }, [])
 
