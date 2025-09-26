@@ -32,6 +32,7 @@ export default function ProjectDashboard({ params }: { params: { projectId: stri
   const [projectData, setProjectData] = useState<ProjectDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -309,15 +310,25 @@ export default function ProjectDashboard({ params }: { params: { projectId: stri
       <ModernSidebar 
         items={sidebarItems}
         projectName={projectData.project.project_name}
+        onCollapseChange={setSidebarCollapsed}
       />
 
-      <div className="flex-1 ml-64">
+      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ backgroundColor: theme.colors.surface + '90', borderColor: theme.colors.border }}>
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <SmartLogoNavbar showText={true} />
-                <div className="hidden sm:block h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center space-x-2 p-2 rounded-lg transition-colors hover:bg-opacity-10"
+                  style={{ color: theme.colors.textSecondary }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="text-sm">Dashboard Personal</span>
+                </button>
+                <div className="h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
                 <div>
                   <h1 className="text-xl font-bold" style={{ color: theme.colors.textPrimary }}>
                     {projectData.project.project_name}

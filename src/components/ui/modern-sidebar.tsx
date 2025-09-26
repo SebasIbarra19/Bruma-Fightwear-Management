@@ -24,9 +24,10 @@ interface ModernSidebarProps {
   items: SidebarItem[]
   className?: string
   projectName?: string
+  onCollapseChange?: (collapsed: boolean) => void
 }
 
-export function ModernSidebar({ items, className = '', projectName }: ModernSidebarProps) {
+export function ModernSidebar({ items, className = '', projectName, onCollapseChange }: ModernSidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const { theme } = useTheme()
@@ -70,7 +71,11 @@ export function ModernSidebar({ items, className = '', projectName }: ModernSide
             </div>
           )}
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              const newCollapsed = !collapsed
+              setCollapsed(newCollapsed)
+              onCollapseChange?.(newCollapsed)
+            }}
             className="p-2 rounded-lg transition-colors hover:bg-opacity-10"
             style={{ 
               backgroundColor: theme.colors.surfaceHover + '50'
