@@ -1,77 +1,62 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from '@/contexts/ThemeContext'
+import { SmartLogoNavbar } from '@/components/common/SmartLogo'
+import { ThemeSelector } from '@/components/ui/theme-selector'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import Link from 'next/link'
-import type { User } from '@supabase/auth-helpers-nextjs'
-import type { UserProject, EcommerceSettings } from '@/types/database'
-import { SmartLogoCard } from '@/components/common/SmartLogo'
+import { Button } from '@/components/ui/button'
+import { ModernSidebar } from '@/components/ui/modern-sidebar'
+import { Tabs } from '@/components/ui/tabs'
+
+interface UserProject {
+  project_id: string
+  project_name: string
+  project_slug: string
+  project_type: string
+}
 
 interface ProjectDashboardData {
   project: UserProject
-  ecommerceConfig?: EcommerceSettings
 }
 
-export default function ProjectDashboardPage() {
-  const [user, setUser] = useState<User | null>(null)
+export default function ProjectDashboard({ params }: { params: { projectId: string } }) {
+  const { user } = useAuth()
+  const { theme } = useTheme()
+  const router = useRouter()
+  const projectSlug = params.projectId
+  
   const [projectData, setProjectData] = useState<ProjectDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
-  const params = useParams()
-  const projectSlug = params.projectId as string
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
   useEffect(() => {
     const loadProjectData = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+      if (!user) {
         router.push('/auth/login')
         return
       }
 
-      setUser(session.user)
-
       try {
-        // Obtener proyectos del usuario usando la función de la base de datos
         const { data: userProjects, error } = await supabase
-          .rpc('get_user_projects', { user_uuid: session.user.id })
+          .rpc('get_user_projects', { user_uuid: user.id })
 
-        if (error) {
-          console.error('Error obteniendo proyectos:', error)
-          router.push('/dashboard')
-          return
-        }
+        if (error) throw error
 
-        // Encontrar el proyecto específico por slug
         const project = userProjects?.find((p: UserProject) => p.project_slug === projectSlug)
         
         if (!project) {
-          console.error('Proyecto no encontrado o sin acceso')
+          console.error('Proyecto no encontrado')
           router.push('/dashboard')
           return
         }
 
-        const projectInfo: ProjectDashboardData = { project }
-
-        // Si es un proyecto de e-commerce, obtener configuración adicional
-        if (project.project_type === 'ecommerce') {
-          const { data: ecommerceConfig } = await supabase
-            .from('ecommerce_config')
-            .select('*')
-            .eq('project_id', project.project_id)
-            .single()
-
-          if (ecommerceConfig) {
-            projectInfo.ecommerceConfig = ecommerceConfig
-          }
-        }
-
-        setProjectData(projectInfo)
+        setProjectData({ project })
       } catch (error) {
-        console.error('Error cargando datos del proyecto:', error)
+        console.error('Error cargando proyecto:', error)
         router.push('/dashboard')
       }
 
@@ -79,138 +64,228 @@ export default function ProjectDashboardPage() {
     }
 
     loadProjectData()
-  }, [router, projectSlug])
+  }, [router, projectSlug, user])
 
-  const getProjectStats = () => {
-    if (!projectData) return null
-
-    const { project } = projectData
-    
-    // Stats específicos según el tipo de proyecto
-    if (project.project_type === 'ecommerce') {
-      return {
-        totalProducts: 0, // TODO: Implementar conteo real
-        totalOrders: 0,
-        totalRevenue: 0,
-        activeCustomers: 0
-      }
-    }
-
-    return {
-      totalItems: 0,
-      activeItems: 0,
-      recentActivity: 0,
-      userCount: 1
-    }
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
   }
 
-  const getDashboardModules = () => {
-    if (!projectData) return []
-
-    const { project } = projectData
-    const isOwner = project.user_role === 'owner'
-    const isAdmin = project.user_role === 'admin'
-    const canManage = isOwner || isAdmin
-
-    if (project.project_type === 'ecommerce') {
-      // Módulos específicos para e-commerce
-      const modules = [
-        {
-          title: 'Productos',
-          description: 'Gestionar catálogo de productos',
-          icon: '📦',
-          href: `/projects/${projectSlug}/products`,
-          color: 'bg-blue-500',
-          available: true
-        },
-        {
-          title: 'Inventario',
-          description: 'Control de stock y almacén',
-          icon: '📊',
-          href: `/projects/${projectSlug}/inventory`,
-          color: 'bg-orange-500',
-          available: true
-        },
-        {
-          title: 'Proveedores',
-          description: 'Gestionar red de proveedores y órdenes de compra',
-          icon: '🏭',
-          href: `/projects/${projectSlug}/suppliers`,
-          color: 'bg-purple-500',
-          available: true
-        },
-        {
-          title: 'Pedidos',
-          description: 'Gestionar pedidos y ventas',
-          icon: '🎯',
-          href: `/projects/${projectSlug}/orders`,
-          color: 'bg-green-500',
-          available: true
-        },
-        {
-          title: 'Clientes',
-          description: 'Gestionar base de clientes y contactos',
-          icon: '👥',
-          href: `/projects/${projectSlug}/customers`,
-          color: 'bg-blue-500',
-          available: true
-        },
-        {
-          title: 'Envíos',
-          description: 'Gestionar métodos de envío y seguimiento',
-          icon: '🚚',
-          href: `/projects/${projectSlug}/shipping`,
-          color: 'bg-yellow-500',
-          available: true
-        },
-        {
-          title: 'Analytics',
-          description: 'Métricas y reportes',
-          icon: '📈',
-          href: `/projects/${projectSlug}/analytics`,
-          color: 'bg-indigo-500',
-          available: true
-        },
-        {
-          title: 'Configuración',
-          description: 'Ajustes del proyecto',
-          icon: '⚙️',
-          href: `/projects/${projectSlug}/settings`,
-          color: 'bg-gray-500',
-          available: canManage
-        }
+  const sidebarItems = [
+    {
+      id: 'analytics',
+      label: 'Estadísticas y Métricas',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/dashboard`,
+      isActive: true
+    },
+    {
+      id: 'inventory',
+      label: 'Gestión de Inventario',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/inventory`
+    },
+    {
+      id: 'products',
+      label: 'Productos y Categorías',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      ),
+      subItems: [
+        { id: 'products-list', label: 'Lista de Productos', href: `/projects/${projectSlug}/products` },
+        { id: 'categories', label: 'Categorías', href: `/projects/${projectSlug}/categories` }
       ]
-
-      return modules.filter(module => module.available)
+    },
+    {
+      id: 'orders',
+      label: 'Gestión de Pedidos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/orders`
+    },
+    {
+      id: 'customers',
+      label: 'Gestión de Clientes',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/customers`
+    },
+    {
+      id: 'suppliers',
+      label: 'Gestión de Proveedores',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/suppliers`
+    },
+    {
+      id: 'shipping',
+      label: 'Gestión de Envíos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/shipping`
+    },
+    {
+      id: 'movements',
+      label: 'Movimientos de Stock',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/movements`
     }
+  ]
 
-    // Módulos genéricos para otros tipos de proyecto
-    return [
-      {
-        title: 'Dashboard General',
-        description: 'Vista general del proyecto',
-        icon: '📊',
-        href: `/projects/${projectSlug}/overview`,
-        color: 'bg-blue-500',
-        available: true
-      },
-      {
-        title: 'Configuración',
-        description: 'Ajustes del proyecto',
-        icon: '⚙️',
-        href: `/projects/${projectSlug}/settings`,
-        color: 'bg-gray-500',
-        available: canManage
-      }
-    ]
-  }
+  const analyticsTabs = [
+    {
+      id: 'overview',
+      label: 'Resumen General',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Ventas Totales
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>$24,567</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+12.5% vs mes anterior</p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Pedidos Activos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>156</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.warning }}>+3 pendientes</p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Productos en Stock
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>1,234</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.error }}>23 bajo stock mínimo</p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Clientes Activos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>789</div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+45 nuevos este mes</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'sales',
+      label: 'Ventas e Ingresos',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2" />
+        </svg>
+      ),
+      content: (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+            Análisis de Ventas e Ingresos
+          </h3>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Reportes detallados de ventas, ingresos y tendencias financieras
+          </p>
+        </div>
+      )
+    },
+    {
+      id: 'inventory-analytics',
+      label: 'Analytics de Inventario',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4" />
+        </svg>
+      ),
+      content: (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+            Análisis de Inventario
+          </h3>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Seguimiento de stock, rotación de productos y alertas de reabastecimiento
+          </p>
+        </div>
+      )
+    },
+    {
+      id: 'customer-analytics',
+      label: 'Analytics de Clientes',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1z" />
+        </svg>
+      ),
+      content: (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+            Análisis de Clientes
+          </h3>
+          <p style={{ color: theme.colors.textSecondary }}>
+            Comportamiento de clientes, segmentación y análisis de fidelidad
+          </p>
+        </div>
+      )
+    }
+  ]
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando proyecto...</p>
+          <div className="animate-spin rounded-full h-8 w-8 mx-auto mb-4" style={{ border: `2px solid ${theme.colors.border}`, borderTop: `2px solid ${theme.colors.primary}` }}></div>
+          <p style={{ color: theme.colors.textPrimary }}>Cargando dashboard...</p>
         </div>
       </div>
     )
@@ -218,236 +293,119 @@ export default function ProjectDashboardPage() {
 
   if (!projectData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Proyecto no encontrado</h1>
-          <p className="text-gray-600 mb-4">No tienes acceso a este proyecto</p>
-          <Link href="/dashboard">
-            <Button>Volver al Dashboard</Button>
-          </Link>
+          <p style={{ color: theme.colors.error }}>Error cargando el proyecto</p>
+          <Button onClick={() => router.push('/dashboard')} className="mt-4">
+            Volver al Dashboard
+          </Button>
         </div>
       </div>
     )
   }
 
-  const { project, ecommerceConfig } = projectData
-  const stats = getProjectStats()
-  const modules = getDashboardModules()
-  const projectColors = project.color_scheme as any || { primary: '#3b82f6', secondary: '#1d4ed8' }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      {/* Header del Proyecto */}
-      <header className="bg-white shadow-lg border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </Link>
-              
-              {/* Logo contextual - BRUMA cuando es proyecto BRUMA, SmartAdmin en otros casos */}
-              <div className="flex items-center space-x-3">
-                <SmartLogoCard size="md" showText={false} />
+    <div className="min-h-screen flex" style={{ backgroundColor: theme.colors.background }}>
+      <ModernSidebar 
+        items={sidebarItems}
+        projectName={projectData.project.project_name}
+      />
+
+      <div className="flex-1 ml-64">
+        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ backgroundColor: theme.colors.surface + '90', borderColor: theme.colors.border }}>
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <SmartLogoNavbar showText={true} />
+                <div className="hidden sm:block h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{project.project_name}</h1>
-                  <p className="text-sm text-gray-600">
-                    {project.project_description} • Rol: {project.user_role === 'owner' ? 'Propietario' : 
-                     project.user_role === 'admin' ? 'Administrador' : 'Usuario'}
+                  <h1 className="text-xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                    {projectData.project.project_name}
+                  </h1>
+                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                    Dashboard Principal
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span 
-                className="px-3 py-1 text-white text-sm font-medium rounded-full"
-                style={{ backgroundColor: projectColors.primary }}
-              >
-                {project.project_type === 'ecommerce' ? 'E-commerce' : project.project_type}
-              </span>
-              <Button variant="outline" onClick={() => router.push('/dashboard')}>
-                Salir del Proyecto
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Bienvenida */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Dashboard de {project.project_name}
-          </h2>
-          <p className="text-gray-600">
-            {project.project_type === 'ecommerce' 
-              ? 'Gestiona tu tienda online desde aquí'
-              : 'Gestiona tu proyecto desde este panel de control'
-            }
-          </p>
-        </div>
-
-        {/* Estadísticas del Proyecto */}
-        {project.project_type === 'ecommerce' && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Productos</CardTitle>
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 text-lg">📦</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{stats.totalProducts}</div>
-                <p className="text-xs text-blue-600 font-medium">En catálogo</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Pedidos</CardTitle>
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-lg">🛒</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{stats.totalOrders}</div>
-                <p className="text-xs text-green-600 font-medium">Este mes</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Ingresos</CardTitle>
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600 text-lg">💰</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
-                  ${stats.totalRevenue?.toLocaleString() || '0'}
-                </div>
-                <p className="text-xs text-purple-600 font-medium">Este mes</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Clientes</CardTitle>
-                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <span className="text-orange-600 text-lg">👥</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{stats.activeCustomers}</div>
-                <p className="text-xs text-orange-600 font-medium">Activos</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Módulos del Proyecto */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Módulos Disponibles</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {modules.map((module, index) => (
-              <Link key={index} href={module.href}>
-                <Card className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-0 shadow-lg overflow-hidden relative cursor-pointer">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-50"></div>
-                  <CardHeader className="relative">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-14 h-14 ${module.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                        <span className="text-white text-2xl">{module.icon}</span>
-                      </div>
-                      <svg className="w-6 h-6 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </div>
-                    <CardTitle className="text-xl text-gray-900">{module.title}</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      {module.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="relative">
-                    <Button 
-                      className="w-full shadow-lg group-hover:shadow-xl transition-all"
-                      style={{ backgroundColor: module.color.replace('bg-', '').replace('-500', '') }}
+              <div className="flex items-center space-x-4">
+                <ThemeSelector />
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-3 p-2 rounded-xl transition-all duration-200"
+                    style={{ 
+                      backgroundColor: theme.colors.surface + '80',
+                      border: `1px solid ${theme.colors.border}`
+                    }}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                        color: 'white'
+                      }}
                     >
-                      Acceder
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
+                      {user?.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {user?.email?.split('@')[0]}
+                    </span>
+                  </button>
 
-        {/* Información específica de BRUMA */}
-        {project.project_slug === 'bruma-fightwear' && ecommerceConfig && (
-          <div className="mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Configuración de la Tienda</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg text-gray-900">Información de la Tienda</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Nombre:</span>
-                    <p className="text-gray-900">{ecommerceConfig.store_name}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Descripción:</span>
-                    <p className="text-gray-900">{ecommerceConfig.store_description}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Moneda:</span>
-                    <p className="text-gray-900">{ecommerceConfig.currency}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Tasa de Impuesto:</span>
-                    <p className="text-gray-900">{(ecommerceConfig.tax_rate * 100).toFixed(2)}%</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg text-gray-900">Configuración</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Gestión de Inventario:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${ecommerceConfig.manage_inventory ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {ecommerceConfig.manage_inventory ? 'Activado' : 'Desactivado'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Envíos:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${ecommerceConfig.shipping_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {ecommerceConfig.shipping_enabled ? 'Activado' : 'Desactivado'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Pedidos Pendientes:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${ecommerceConfig.allow_backorders ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {ecommerceConfig.allow_backorders ? 'Permitido' : 'No Permitido'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Seguimiento de Stock:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${ecommerceConfig.track_quantity ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {ecommerceConfig.track_quantity ? 'Activado' : 'Desactivado'}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                  {userDropdownOpen && (
+                    <>
+                      <div 
+                        className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border z-50"
+                        style={{ 
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border
+                        }}
+                      >
+                        <div className="p-2">
+                          <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                            style={{ color: theme.colors.textPrimary }}
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3" />
+                            </svg>
+                            <span>Dashboard Principal</span>
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              handleLogout()
+                              setUserDropdownOpen(false)
+                            }}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-red-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                            </svg>
+                            <span>Cerrar Sesión</span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setUserDropdownOpen(false)}
+                      ></div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </main>
+        </header>
+
+        <main className="p-6">
+          <Tabs tabs={analyticsTabs} defaultTab="overview" />
+        </main>
+      </div>
     </div>
   )
 }
