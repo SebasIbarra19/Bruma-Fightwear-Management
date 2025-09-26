@@ -1,43 +1,117 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/contexts/ThemeContext"
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'success' | 'warning'
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'success' | 'warning' | 'primary' | 'minimal'
   size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon'
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
-    const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95"
+  ({ className, variant = 'default', size = 'default', style, ...props }, ref) => {
+    const { theme } = useTheme()
+    const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
     
-    const variants = {
-      default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg",
-      destructive: "bg-red-600 text-white hover:bg-red-700 shadow-md hover:shadow-lg",
-      outline: "border-2 border-gray-300 bg-white hover:bg-gray-50 hover:border-indigo-500 text-gray-700 hover:text-indigo-600",
-      secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-sm hover:shadow-md",
-      ghost: "hover:bg-gray-100 text-gray-700 hover:text-gray-900",
-      link: "text-indigo-600 underline-offset-4 hover:underline hover:text-indigo-700",
-      success: "bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg",
-      warning: "bg-yellow-500 text-white hover:bg-yellow-600 shadow-md hover:shadow-lg",
+    const getVariantStyles = () => {
+      switch (variant) {
+        case 'default':
+        case 'primary':
+          return {
+            backgroundColor: theme.colors.primary,
+            color: theme.colors.textInverse,
+            hoverColor: theme.colors.primaryHover
+          }
+        case 'destructive':
+          return {
+            backgroundColor: theme.colors.error,
+            color: theme.colors.textInverse,
+            hoverColor: theme.colors.errorHover
+          }
+        case 'outline':
+          return {
+            border: `1px solid ${theme.colors.border}`,
+            backgroundColor: 'transparent',
+            color: theme.colors.textSecondary,
+            hoverBgColor: theme.colors.surfaceHover,
+            hoverTextColor: theme.colors.textPrimary
+          }
+        case 'secondary':
+          return {
+            backgroundColor: theme.colors.secondary,
+            color: theme.colors.textInverse,
+            hoverColor: theme.colors.secondaryHover || theme.colors.secondary
+          }
+        case 'ghost':
+          return {
+            backgroundColor: 'transparent',
+            color: theme.colors.textSecondary,
+            hoverBgColor: theme.colors.surfaceHover,
+            hoverTextColor: theme.colors.textPrimary
+          }
+        case 'link':
+          return {
+            backgroundColor: 'transparent',
+            color: theme.colors.primary,
+            textDecoration: 'underline',
+            hoverColor: theme.colors.primaryHover
+          }
+        case 'success':
+          return {
+            backgroundColor: theme.colors.success,
+            color: theme.colors.textInverse,
+            hoverColor: theme.colors.successHover || theme.colors.success
+          }
+        case 'warning':
+          return {
+            backgroundColor: theme.colors.warning,
+            color: theme.colors.textInverse,
+            hoverColor: theme.colors.warningHover || theme.colors.warning
+          }
+        case 'minimal':
+          return {
+            backgroundColor: 'transparent',
+            color: theme.colors.textTertiary,
+            hoverBgColor: theme.colors.surfaceHover,
+            hoverTextColor: theme.colors.textPrimary
+          }
+        default:
+          return {}
+      }
     }
     
     const sizes = {
-      default: "h-11 px-6 py-2",
-      sm: "h-9 rounded-md px-4 text-sm",
-      lg: "h-12 rounded-lg px-8 text-base",
-      xl: "h-14 rounded-lg px-10 text-lg",
-      icon: "h-10 w-10",
+      default: "h-9 px-4 py-2",
+      sm: "h-8 px-3 text-xs",
+      lg: "h-10 px-6",
+      xl: "h-12 px-8 text-base",
+      icon: "h-9 w-9",
     }
+
+    const variantStyles = getVariantStyles()
 
     return (
       <button
-        className={cn(
-          baseClasses,
-          variants[variant],
-          sizes[size],
-          className
-        )}
+        className={cn(baseClasses, sizes[size], className)}
+        style={{ ...variantStyles, ...style }}
+        onMouseEnter={(e) => {
+          if (variantStyles.hoverColor) {
+            e.currentTarget.style.backgroundColor = variantStyles.hoverColor
+          } else if (variantStyles.hoverBgColor) {
+            e.currentTarget.style.backgroundColor = variantStyles.hoverBgColor
+          }
+          if (variantStyles.hoverTextColor) {
+            e.currentTarget.style.color = variantStyles.hoverTextColor
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (variantStyles.backgroundColor) {
+            e.currentTarget.style.backgroundColor = variantStyles.backgroundColor
+          }
+          if (variantStyles.color) {
+            e.currentTarget.style.color = variantStyles.color
+          }
+        }}
         ref={ref}
         {...props}
       />

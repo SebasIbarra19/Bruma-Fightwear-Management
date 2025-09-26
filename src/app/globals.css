@@ -74,3 +74,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Estilos personalizados para carruseles */
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;     /* Firefox */
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;             /* Safari and Chrome */
+    width: 0;
+    height: 0;
+  }
+
+  /* Variables CSS dinámicas para temas */
+  :root {
+    --theme-background: #0f172a;
+    --theme-surface: #1e293b;
+    --theme-surface-hover: #334155;
+    --theme-text-primary: #f8fafc;
+    --theme-text-secondary: #e2e8f0;
+    --theme-border: #334155;
+    --theme-primary: #60a5fa;
+    --theme-primary-hover: #3b82f6;
+  }
+
+  /* Placeholder personalizado */
+  .theme-input::placeholder {
+    color: var(--theme-text-tertiary, #cbd5e1);
+  }
+}
