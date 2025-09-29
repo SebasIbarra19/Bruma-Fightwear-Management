@@ -46,9 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       setIsLoading(false)
 
-      // Refrescar la página en ciertos eventos
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        router.refresh()
+      // Solo redirigir en eventos específicos, no refrescar toda la página
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/login')
       }
     })
 
@@ -61,8 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true)
       await supabase.auth.signOut()
-      router.push('/auth/login')
-      router.refresh()
+      // La redirección se maneja en onAuthStateChange
     } catch (error) {
       console.error('Error al cerrar sesión:', error)
     } finally {

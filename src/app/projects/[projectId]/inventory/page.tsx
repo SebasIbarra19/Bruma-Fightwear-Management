@@ -497,8 +497,8 @@ export default function InventoryPage({ params }: { params: { projectId: string 
       ),
       content: (
         <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.accent + '20' }}>
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.accent || theme.colors.primary}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.primary + '20' }}>
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.primary}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>

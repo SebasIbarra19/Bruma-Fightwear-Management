@@ -24,7 +24,7 @@ interface ProjectDashboardData {
 }
 
 export default function ProjectDashboard({ params }: { params: { projectId: string } }) {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const { theme } = useTheme()
   const router = useRouter()
   const projectSlug = params.projectId
@@ -35,12 +35,16 @@ export default function ProjectDashboard({ params }: { params: { projectId: stri
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
-    const loadProjectData = async () => {
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
+    // Esperar a que se complete la carga inicial de autenticación
+    if (isLoading) return
+    
+    // Si no hay usuario después de cargar, redirigir a login
+    if (!user) {
+      router.push('/auth/login')
+      return
+    }
 
+    const loadProjectData = async () => {
       try {
         const { data: userProjects, error } = await supabase
           .rpc('get_user_projects', { user_uuid: user.id })
@@ -59,13 +63,13 @@ export default function ProjectDashboard({ params }: { params: { projectId: stri
       } catch (error) {
         console.error('Error cargando proyecto:', error)
         router.push('/dashboard')
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     loadProjectData()
-  }, [router, projectSlug, user])
+  }, [router, projectSlug, user, isLoading])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -280,6 +284,24 @@ export default function ProjectDashboard({ params }: { params: { projectId: stri
       )
     }
   ]
+
+  // Mostrar loading mientras se carga la autenticación
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
+
+  // Si no hay usuario después de cargar, ya se está redirigiendo
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
