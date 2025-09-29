@@ -40,7 +40,7 @@ interface ProjectData {
 }
 
 export default function CategoriesPage({ params }: { params: { projectId: string } }) {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const { theme } = useTheme()
   const router = useRouter()
   
@@ -52,12 +52,12 @@ export default function CategoriesPage({ params }: { params: { projectId: string
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Redireccionar si no está autenticado
+  // Redireccionar si no está autenticado (solo después de cargar)
   useEffect(() => {
-    if (!user) {
-      router.push('/auth')
+    if (!authLoading && !user) {
+      router.push('/auth/login')
     }
-  }, [user, router])
+  }, [user, authLoading, router])
 
   // Cargar datos del proyecto
   useEffect(() => {
@@ -149,12 +149,12 @@ export default function CategoriesPage({ params }: { params: { projectId: string
     )
   }
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 mx-auto mb-4" style={{ border: `2px solid ${theme.colors.border}`, borderTop: `2px solid ${theme.colors.primary}` }}></div>
-          <p style={{ color: theme.colors.textPrimary }}>Cargando categorías...</p>
+          <p style={{ color: theme.colors.textPrimary }}>{authLoading ? 'Verificando autenticación...' : 'Cargando categorías...'}</p>
         </div>
       </div>
     )
