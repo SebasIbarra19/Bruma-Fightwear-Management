@@ -25,6 +25,7 @@ function AuthPageInner() {
   }
 
   const handleSuccess = () => {
+    // Redirect to personal dashboard to see user's projects
     router.push('/dashboard')
   }
 

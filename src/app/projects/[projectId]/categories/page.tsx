@@ -52,19 +52,16 @@ export default function CategoriesPage({ params }: { params: { projectId: string
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
-  // Redireccionar si no está autenticado (solo después de cargar)
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/login')
-    }
-  }, [user, authLoading, router])
+  // El middleware maneja la autenticación automáticamente
+  // Solo necesitamos el usuario para mostrar datos personalizados
 
   // Cargar datos del proyecto
   useEffect(() => {
-    if (user && params.projectId) {
+    // Cargar datos incluso si authLoading aún está en proceso
+    if ((user || !authLoading) && params.projectId) {
       loadProjectData()
     }
-  }, [user, params.projectId])
+  }, [user, authLoading, params.projectId])
 
   const loadProjectData = async () => {
     try {
@@ -149,12 +146,13 @@ export default function CategoriesPage({ params }: { params: { projectId: string
     )
   }
 
+  // Mostrar loading si estamos cargando datos o verificando auth
   if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 mx-auto mb-4" style={{ border: `2px solid ${theme.colors.border}`, borderTop: `2px solid ${theme.colors.primary}` }}></div>
-          <p style={{ color: theme.colors.textPrimary }}>{authLoading ? 'Verificando autenticación...' : 'Cargando categorías...'}</p>
+          <p style={{ color: theme.colors.textPrimary }}>Cargando categorías...</p>
         </div>
       </div>
     )

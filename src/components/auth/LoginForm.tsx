@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/contexts/ThemeContext'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { 
@@ -45,15 +46,43 @@ export function LoginForm({ onSuccess, onToggleMode }: LoginFormProps) {
       return
     }
 
-    // Simulate API call
+    // Real Supabase authentication
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // For demo purposes, accept any email/password
-      console.log('Login attempt:', { email, password })
-      onSuccess()
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      })
+
+      if (error) {
+        console.error('Login error:', error)
+        setError(error.message || 'Error al iniciar sesión. Verifica tus credenciales.')
+        return
+      }
+
+      if (data.user) {
+        console.log('Login successful:', data.user.email)
+        
+        // Múltiples métodos de redirección para asegurar que funcione
+        console.log('Redirecting to dashboard...')
+        
+        // Método 1: Router push
+        router.push('/dashboard')
+        
+        // Método 2: Location change como fallback
+        setTimeout(() => {
+          if (window.location.pathname !== '/dashboard') {
+            console.log('Router redirect failed, using window.location')
+            window.location.href = '/dashboard'
+          }
+        }, 500)
+        
+        // Call parent success handler
+        onSuccess()
+      }
     } catch (err) {
-      setError('Error al iniciar sesión. Intenta nuevamente.')
+      console.error('Unexpected error:', err)
+      setError('Error inesperado. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }

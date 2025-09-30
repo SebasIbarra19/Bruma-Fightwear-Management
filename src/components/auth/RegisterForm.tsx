@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { 
   Text, 
@@ -73,14 +74,55 @@ export function RegisterForm({ onSuccess, onToggleMode }: RegisterFormProps) {
       return
     }
 
-    // Simulate API call
+    // Real Supabase registration
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      console.log('Register attempt:', formData)
-      onSuccess()
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            full_name: `${formData.firstName} ${formData.lastName}`
+          }
+        }
+      })
+
+      if (error) {
+        console.error('Registration error details:', {
+          message: error.message,
+          status: error.status,
+          details: error
+        })
+        
+        // Provide more specific error messages
+        let errorMessage = 'Error al crear la cuenta. Intenta nuevamente.'
+        
+        if (error.message.includes('already registered')) {
+          errorMessage = 'Este email ya está registrado. Intenta iniciar sesión.'
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = 'El formato del email no es válido.'
+        } else if (error.message.includes('Password')) {
+          errorMessage = 'La contraseña no cumple con los requisitos mínimos.'
+        } else if (error.message.includes('signup is disabled')) {
+          errorMessage = 'El registro está temporalmente deshabilitado.'
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        
+        setError(errorMessage)
+        return
+      }
+
+      if (data.user) {
+        console.log('Registration successful:', data.user.email)
+        // User will be redirected by AuthContext
+        onSuccess()
+      }
     } catch (err) {
-      setError('Error al crear la cuenta. Intenta nuevamente.')
+      console.error('Unexpected registration error:', err)
+      setError('Error inesperado. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
@@ -23,47 +23,110 @@ export default function DashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const router = useRouter()
   const { theme } = useTheme()
+  const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/auth/login')
-        return
-      }
-
-      setUser(session.user)
-      
-      // Obtener proyectos del usuario usando la función de la base de datos
+    console.log('🚀 Dashboard: Component mounted')
+    
+    const initializeDashboard = async () => {
       try {
-        const { data: userProjectsData, error } = await supabase
-          .rpc('get_user_projects', { user_uuid: session.user.id })
-
+        console.log('� Dashboard: Checking session...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
         if (error) {
-          console.error('Error obteniendo proyectos:', error)
-        } else if (userProjectsData) {
-          setUserProjects(userProjectsData)
-          
-          // Calcular estadísticas
-          setStats({
-            totalProjects: userProjectsData.length,
-            activeProjects: userProjectsData.length, // Asumimos que todos están activos
-            recentActivity: userProjectsData.length,
-            userRole: userProjectsData.length > 0 ? userProjectsData[0].user_role : 'user'
-          })
+          console.error('❌ Dashboard: Session error:', error)
+          setLoading(false)
+          router.push('/auth/login')
+          return
         }
+        
+        if (!session) {
+          console.log('❌ Dashboard: No session found, redirecting...')
+          setLoading(false)
+          router.push('/auth/login')
+          return
+        }
+        
+        console.log('✅ Dashboard: Session found for:', session.user.email)
+        setUser(session.user)
+        
+        // Cargar proyectos
+        await loadUserProjects(session.user.id)
+        
       } catch (error) {
-        console.error('Error:', error)
+        console.error('❌ Dashboard: Initialization error:', error)
+        setLoading(false)
       }
+    }
+    
+    initializeDashboard()
+    
+    // Listener simple para cambios de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      console.log('📡 Dashboard: Auth change:', event)
+      
+      if (event === 'SIGNED_OUT') {
+        console.log('👋 Dashboard: User signed out, redirecting...')
+        setUser(null)
+        setUserProjects([])
+        router.push('/auth/login')
+      }
+    })
 
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router])
+
+  const loadUserProjects = async (userId: string) => {
+    try {
+      console.log('📊 Dashboard: Fetching user projects for:', userId)
+      setLoading(true)
+      
+      const { data: userProjectsData, error } = await supabase
+        .rpc('get_user_projects', { user_uuid: userId })
+
+      if (error) {
+        console.error('❌ Dashboard: Error obteniendo proyectos:', error)
+        // En caso de error, establecer datos vacíos
+        setUserProjects([])
+        setStats({
+          totalProjects: 0,
+          activeProjects: 0,
+          recentActivity: 0,
+          userRole: 'user'
+        })
+      } else {
+        const projects = userProjectsData || []
+        console.log('✅ Dashboard: Projects loaded:', projects.length, 'projects')
+        setUserProjects(projects)
+        
+        // Calcular estadísticas
+        setStats({
+          totalProjects: projects.length,
+          activeProjects: projects.length,
+          recentActivity: projects.length,
+          userRole: projects.length > 0 ? projects[0].user_role : 'user'
+        })
+      }
+    } catch (error) {
+      console.error('❌ Dashboard: Error loading projects:', error)
+      // En caso de error, establecer datos vacíos
+      setUserProjects([])
+      setStats({
+        totalProjects: 0,
+        activeProjects: 0,
+        recentActivity: 0,
+        userRole: 'user'
+      })
+    } finally {
+      console.log('✅ Dashboard: Loading completed')
       setLoading(false)
     }
-
-    getUser()
-  }, [router])
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -74,40 +137,79 @@ export default function DashboardPage() {
     if (!user) return
 
     try {
-      // Crear proyecto BRUMA de ejemplo
+      console.log('🚀 Creando proyecto BRUMA Fightwear...')
+      
+      // IDs de usuarios
+      const brumaUserId = 'e435d7eb-a033-4bb0-b34c-2a040c5d2f36'
+      const sebastianUserId = '969e5a99-0448-44a4-b0d2-135c6ed32ae4'
+      
+      // Crear proyecto BRUMA Fightwear
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .insert({
           name: 'BRUMA Fightwear',
-          description: 'Proyecto de gestión para BRUMA Fightwear - Ropa deportiva de combate profesional',
-          status: 'active',
+          slug: 'bruma-fightwear',
+          description: 'Tienda especializada en ropa deportiva y equipamiento de combate',
           project_type: 'ecommerce',
-          settings: {
-            theme: 'bruma',
-            logo: '/images/bruma/logo-full.svg'
-          }
+          logo_url: '/images/bruma-logo.png',
+          color_scheme: {
+            primary: '#dc2626',
+            secondary: '#b91c1c',
+            accent: '#fbbf24'
+          },
+          config: {
+            features: [
+              'inventory_management',
+              'order_processing',
+              'customer_management',
+              'analytics'
+            ],
+            specialized: true,
+            combat_sports: true
+          },
+          is_active: true
         })
         .select()
         .single()
 
       if (projectError) {
-        console.error('Error creando proyecto:', projectError)
+        console.error('❌ Error creando proyecto:', projectError)
+        alert('Error creando proyecto: ' + projectError.message)
         return
       }
 
-      // Asignar al usuario como propietario
-      const { error: memberError } = await supabase
-        .from('project_members')
+      console.log('✅ Proyecto creado:', projectData.name)
+
+      // Asignar BrumaFightwear como owner
+      const { error: ownerError } = await supabase
+        .from('user_projects')
         .insert({
+          user_id: brumaUserId,
           project_id: projectData.id,
-          user_id: user.id,
           role: 'owner',
-          status: 'active'
+          is_active: true
         })
 
-      if (memberError) {
-        console.error('Error asignando usuario:', memberError)
-        return
+      if (ownerError) {
+        console.error('❌ Error asignando owner:', ownerError)
+      } else {
+        console.log('✅ BrumaFightwear asignado como owner')
+      }
+
+      // Asignar Sebastian como admin  
+      const { error: adminError } = await supabase
+        .from('user_projects')
+        .insert({
+          user_id: sebastianUserId,
+          project_id: projectData.id,
+          role: 'admin',
+          is_active: true
+        })
+
+      if (adminError) {
+        console.error('❌ Error asignando admin:', adminError)
+      } else {
+        console.log('✅ Sebastian asignado como admin')
       }
 
       // Recargar proyectos

@@ -36,7 +36,7 @@ export default function BrumaLogo({
   showText = false 
 }: BrumaLogoProps) {
   const logoSrc = variant === 'full' 
-    ? '/images/bruma/logo-full.svg'
+    ? '/images/bruma/logo-full.png'
     : '/images/bruma/logo-circle-original.png'
   
   const logoClasses = `${sizeClasses[size][variant]} ${className}`

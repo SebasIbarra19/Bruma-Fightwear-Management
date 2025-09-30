@@ -1,10 +1,10 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/types/database'
+import { createClient } from '@/lib/supabase/client'
 
 interface AuthContextType {
   user: User | null
@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
@@ -40,15 +40,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escuchar cambios de autenticación
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       console.log('Auth state change:', event, session?.user?.email)
       
       setUser(session?.user ?? null)
       setIsLoading(false)
 
-      // Solo redirigir en eventos específicos, no refrescar toda la página
+      // El middleware maneja las redirecciones automáticamente
+      // Solo redirigir en logout explícito
       if (event === 'SIGNED_OUT') {
-        router.push('/auth/login')
+        // Delay para permitir que las cookies se limpien
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 100)
       }
     })
 
