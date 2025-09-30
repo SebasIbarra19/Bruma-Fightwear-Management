@@ -257,7 +257,7 @@ export default function CategoriesPage({ params }: { params: { projectId: string
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
       ),
-      href: `/projects/${projectSlug}/movements`
+      href: `/projects/${projectSlug}/inventory-movements`
     }
   ]
 

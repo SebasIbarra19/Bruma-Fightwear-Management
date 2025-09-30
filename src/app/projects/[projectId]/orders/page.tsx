@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -112,9 +113,9 @@ interface CustomerWithStats extends Customer {
   last_order_date?: string
 }
 
-export default function OrdersPage() {
+export default function OrdersPage({ params }: { params: { projectId: string } }) {
   // Estados generales
-  const [user, setUser] = useState<User | null>(null)
+  const { user, isLoading: authLoading } = useAuth()
   const [project, setProject] = useState<UserProject | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pedidos' | 'facturacion' | 'estadisticas'>('pedidos')
@@ -147,12 +148,12 @@ export default function OrdersPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [paymentsLoading, setPaymentsLoading] = useState(false)
 
-
-
   const router = useRouter()
-  const params = useParams()
   const searchParams = useSearchParams()
   const projectSlug = params.projectId as string
+
+  // El middleware maneja la autenticación automáticamente
+  // Solo necesitamos el usuario para mostrar datos personalizados
 
   // Manejo de tabs con URL
   const handleTabChange = (tab: typeof activeTab) => {
@@ -162,7 +163,43 @@ export default function OrdersPage() {
     router.push(newUrl.pathname + newUrl.search, { scroll: false })
   }
 
-  // Funciones para cargar datos - simuladas por ahora
+  // Cargar datos del proyecto
+  useEffect(() => {
+    // Cargar datos incluso si authLoading aún está en proceso
+    if ((user || !authLoading) && params.projectId) {
+      loadProjectData()
+    }
+  }, [user, authLoading, params.projectId])
+
+  const loadProjectData = async () => {
+    try {
+      setLoading(true)
+      
+      // Mock data para demostración
+      setProject({ 
+        project_id: projectSlug, 
+        project_name: "BRUMA Fightwear", 
+        project_slug: "bruma-fightwear",
+        project_description: null,
+        project_type: 'ecommerce',
+        user_role: 'admin',
+        color_scheme: null,
+        config: null,
+        assigned_at: new Date().toISOString()
+      })
+      
+      await loadOrdersStats()
+      await loadOrders()
+      await loadPaymentMethods()
+      await loadPayments()
+      
+    } catch (error) {
+      console.error('Error loading project data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const loadOrdersStats = async () => {
     if (!project) return
     
@@ -467,59 +504,7 @@ export default function OrdersPage() {
   // Función para toggle del estado del pedido - si se requiere
   // Aquí podrían ir más funciones específicas de orders
 
-  // Efectos
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
-        router.push('/login')
-        return
-      }
-      
-      setUser(session.user)
-      
-      // Obtener datos del proyecto
-      const { data: userProjects, error } = await supabase
-        .from('user_projects')
-        .select(`
-          *,
-          projects (*)
-        `)
-        .eq('user_id', session.user.id)
-        .eq('projects.slug', projectSlug)
-        .single()
-
-      if (error || !userProjects) {
-        console.error('Error fetching project:', error)
-        router.push('/dashboard')
-        return
-      }
-
-      const projectData = Array.isArray(userProjects.projects) 
-        ? userProjects.projects[0] 
-        : userProjects.projects
-
-      if (!projectData) {
-        router.push('/dashboard')
-        return
-      }
-
-      setProject({
-        project_id: projectData.id,
-        project_name: projectData.name,
-        project_slug: projectData.slug,
-        project_description: projectData.description,
-        project_type: projectData.project_type || 'ecommerce',
-        color_scheme: projectData.color_scheme || { primary: '#3b82f6', secondary: '#1d4ed8' },
-        config: projectData.config || {},
-        user_role: userProjects.role,
-        assigned_at: projectData.created_at || new Date().toISOString()
-      })
-    }
-
-    getUser()
-  }, [projectSlug, router])
+  // El middleware y el primer useEffect ya manejan la autenticación y carga de datos
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -528,22 +513,7 @@ export default function OrdersPage() {
     }
   }, [searchParams])
 
-  useEffect(() => {
-    if (project) {
-      const loadData = async () => {
-        setLoading(true)
-        await Promise.all([
-          loadOrdersStats(),
-          loadPaymentMethods(),
-          loadOrders()
-        ])
-        // Cargar payments después de que se carguen las órdenes
-        await loadPayments()
-        setLoading(false)
-      }
-      loadData()
-    }
-  }, [project])
+  // Los datos se cargan en loadProjectData() - no necesitamos este useEffect duplicado
 
   if (loading) {
     return (

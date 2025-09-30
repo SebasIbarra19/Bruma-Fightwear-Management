@@ -899,4 +899,204 @@ SELECT * FROM get_inventory_valuation(
     'uuid-proyecto',
     p_valuation_method := 'average'
 );
+
+-- ================================================
+-- 📋 LIST INVENTORY ITEMS
+-- ================================================
+
+CREATE OR REPLACE FUNCTION list_inventory_items(
+    p_project_id UUID,
+    p_search_term TEXT DEFAULT NULL,
+    p_category_filter TEXT DEFAULT NULL,
+    p_status_filter TEXT DEFAULT NULL, -- 'in_stock', 'low_stock', 'out_of_stock', 'all'
+    p_location_filter TEXT DEFAULT NULL,
+    p_sort_by TEXT DEFAULT 'product_name',
+    p_sort_direction TEXT DEFAULT 'ASC',
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE(
+    inventory_id UUID,
+    variant_id UUID,
+    product_id UUID,
+    product_name TEXT,
+    product_sku TEXT,
+    variant_sku TEXT,
+    variant_description TEXT,
+    category_name TEXT,
+    quantity_available INTEGER,
+    quantity_reserved INTEGER,
+    quantity_on_order INTEGER,
+    reorder_level INTEGER,
+    reorder_quantity INTEGER,
+    unit_cost DECIMAL(10,2),
+    total_value DECIMAL(12,2),
+    location TEXT,
+    last_movement_date TIMESTAMPTZ,
+    stock_status TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    current_user_id UUID;
+    user_permissions_json JSONB;
+    base_query TEXT;
+    where_conditions TEXT[];
+    order_clause TEXT;
+    limit_clause TEXT;
+BEGIN
+    -- Obtener ID del usuario actual
+    current_user_id := auth.uid();
+    
+    -- Validar que el usuario esté autenticado
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'Usuario no autenticado';
+    END IF;
+    
+    -- Validar parámetros requeridos
+    IF p_project_id IS NULL THEN
+        RAISE EXCEPTION 'project_id es requerido';
+    END IF;
+    
+    -- Obtener permisos del usuario para este proyecto
+    SELECT up.permissions INTO user_permissions_json
+    FROM user_projects up
+    WHERE up.user_id = current_user_id 
+    AND up.project_id = p_project_id 
+    AND up.is_active = true;
+    
+    -- Verificar que el usuario tenga acceso
+    IF user_permissions_json IS NULL THEN
+        RAISE EXCEPTION 'No tienes acceso a este proyecto';
+    END IF;
+    
+    -- Construir condiciones WHERE
+    where_conditions := ARRAY['p.project_id = $1'];
+    
+    -- Filtro de búsqueda
+    IF p_search_term IS NOT NULL AND trim(p_search_term) != '' THEN
+        where_conditions := where_conditions || ARRAY[
+            '(p.name ILIKE $' || (array_length(where_conditions, 1) + 1) || 
+            ' OR p.sku ILIKE $' || (array_length(where_conditions, 1) + 1) ||
+            ' OR pv.sku ILIKE $' || (array_length(where_conditions, 1) + 1) ||
+            ' OR pv.variant_description ILIKE $' || (array_length(where_conditions, 1) + 1) || ')'
+        ];
+    END IF;
+    
+    -- Filtro de categoría
+    IF p_category_filter IS NOT NULL AND trim(p_category_filter) != '' THEN
+        where_conditions := where_conditions || ARRAY[
+            'c.name = $' || (array_length(where_conditions, 1) + 1)
+        ];
+    END IF;
+    
+    -- Filtro de estado de stock
+    IF p_status_filter IS NOT NULL AND p_status_filter != 'all' THEN
+        CASE p_status_filter
+            WHEN 'in_stock' THEN
+                where_conditions := where_conditions || ARRAY['COALESCE(i.quantity_available, 0) > 0'];
+            WHEN 'low_stock' THEN
+                where_conditions := where_conditions || ARRAY[
+                    'COALESCE(i.quantity_available, 0) > 0 AND COALESCE(i.quantity_available, 0) <= COALESCE(i.reorder_level, 0)'
+                ];
+            WHEN 'out_of_stock' THEN
+                where_conditions := where_conditions || ARRAY['COALESCE(i.quantity_available, 0) = 0'];
+        END CASE;
+    END IF;
+    
+    -- Filtro de ubicación
+    IF p_location_filter IS NOT NULL AND trim(p_location_filter) != '' THEN
+        where_conditions := where_conditions || ARRAY[
+            'i.location = $' || (array_length(where_conditions, 1) + 1)
+        ];
+    END IF;
+    
+    -- Construir ORDER BY
+    CASE p_sort_by
+        WHEN 'product_name' THEN order_clause := 'p.name';
+        WHEN 'sku' THEN order_clause := 'COALESCE(pv.sku, p.sku)';
+        WHEN 'category' THEN order_clause := 'c.name';
+        WHEN 'quantity' THEN order_clause := 'COALESCE(i.quantity_available, 0)';
+        WHEN 'value' THEN order_clause := 'COALESCE(i.quantity_available, 0) * COALESCE(i.unit_cost, 0)';
+        WHEN 'last_movement' THEN order_clause := 'i.last_movement_date';
+        ELSE order_clause := 'p.name';
+    END CASE;
+    
+    order_clause := order_clause || ' ' || CASE WHEN upper(p_sort_direction) = 'DESC' THEN 'DESC' ELSE 'ASC' END;
+    
+    -- Construir LIMIT y OFFSET
+    limit_clause := '';
+    IF p_limit > 0 THEN
+        limit_clause := ' LIMIT ' || p_limit;
+        IF p_offset > 0 THEN
+            limit_clause := limit_clause || ' OFFSET ' || p_offset;
+        END IF;
+    END IF;
+    
+    -- Ejecutar consulta
+    RETURN QUERY
+    SELECT 
+        i.id as inventory_id,
+        pv.id as variant_id,
+        p.id as product_id,
+        p.name as product_name,
+        p.sku as product_sku,
+        pv.sku as variant_sku,
+        pv.variant_description,
+        c.name as category_name,
+        COALESCE(i.quantity_available, 0) as quantity_available,
+        COALESCE(i.quantity_reserved, 0) as quantity_reserved,
+        COALESCE(i.quantity_on_order, 0) as quantity_on_order,
+        i.reorder_level,
+        i.reorder_quantity,
+        i.unit_cost,
+        COALESCE(i.quantity_available, 0) * COALESCE(i.unit_cost, 0) as total_value,
+        i.location,
+        i.last_movement_date,
+        CASE 
+            WHEN COALESCE(i.quantity_available, 0) = 0 THEN 'out_of_stock'
+            WHEN COALESCE(i.quantity_available, 0) <= COALESCE(i.reorder_level, 0) THEN 'low_stock'
+            ELSE 'in_stock'
+        END as stock_status,
+        i.created_at,
+        i.updated_at
+    FROM products p
+    JOIN product_variants pv ON p.id = pv.product_id
+    LEFT JOIN inventory i ON pv.id = i.variant_id
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.project_id = p_project_id
+        AND (p_search_term IS NULL OR trim(p_search_term) = '' OR (
+            p.name ILIKE '%' || p_search_term || '%' OR
+            p.sku ILIKE '%' || p_search_term || '%' OR
+            pv.sku ILIKE '%' || p_search_term || '%' OR
+            pv.variant_description ILIKE '%' || p_search_term || '%'
+        ))
+        AND (p_category_filter IS NULL OR trim(p_category_filter) = '' OR c.name = p_category_filter)
+        AND (p_status_filter IS NULL OR p_status_filter = 'all' OR (
+            CASE p_status_filter
+                WHEN 'in_stock' THEN COALESCE(i.quantity_available, 0) > 0
+                WHEN 'low_stock' THEN COALESCE(i.quantity_available, 0) > 0 AND COALESCE(i.quantity_available, 0) <= COALESCE(i.reorder_level, 0)
+                WHEN 'out_of_stock' THEN COALESCE(i.quantity_available, 0) = 0
+                ELSE true
+            END
+        ))
+        AND (p_location_filter IS NULL OR trim(p_location_filter) = '' OR i.location = p_location_filter)
+    ORDER BY 
+        CASE WHEN p_sort_by = 'product_name' THEN p.name END ASC,
+        CASE WHEN p_sort_by = 'sku' THEN COALESCE(pv.sku, p.sku) END ASC,
+        CASE WHEN p_sort_by = 'category' THEN c.name END ASC,
+        CASE WHEN p_sort_by = 'quantity' THEN COALESCE(i.quantity_available, 0) END DESC,
+        CASE WHEN p_sort_by = 'value' THEN COALESCE(i.quantity_available, 0) * COALESCE(i.unit_cost, 0) END DESC,
+        CASE WHEN p_sort_by = 'last_movement' THEN i.last_movement_date END DESC
+    LIMIT COALESCE(p_limit, 50)
+    OFFSET COALESCE(p_offset, 0);
+END;
+$$;
+
+-- Comentarios y permisos
+COMMENT ON FUNCTION list_inventory_items IS 'Lista todos los items de inventario con filtros avanzados';
+GRANT EXECUTE ON FUNCTION list_inventory_items TO authenticated;
 */

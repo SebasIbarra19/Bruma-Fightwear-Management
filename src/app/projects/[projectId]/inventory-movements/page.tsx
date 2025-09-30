@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +39,7 @@ interface InventoryMovementPhase2 {
 }
 
 export default function InventoryMovementsPage() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user, isLoading: authLoading } = useAuth()
   const [project, setProject] = useState<UserProject | null>(null)
   const [movements, setMovements] = useState<InventoryMovementPhase2[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,28 +61,24 @@ export default function InventoryMovementsPage() {
   const params = useParams()
   const projectSlug = params.projectId as string
 
+  // El middleware maneja la autenticación automáticamente
   useEffect(() => {
-    loadProjectAndAuth()
-  }, [])
+    // Cargar datos incluso si authLoading aún está en proceso
+    if ((user || !authLoading) && projectSlug) {
+      loadProjectData()
+    }
+  }, [user, authLoading, projectSlug])
 
-  const loadProjectAndAuth = async () => {
+  const loadProjectData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/auth/login')
-        return
-      }
-
-      setUser(session.user)
+      setLoading(true)
 
       // Obtener proyectos del usuario
       const { data: userProjects, error } = await supabase
-        .rpc('get_user_projects', { user_uuid: session.user.id })
+        .rpc('get_user_projects', { user_uuid: user?.id })
 
       if (error) {
         console.error('Error obteniendo proyectos:', error)
-        router.push('/dashboard')
         return
       }
 
@@ -89,7 +86,6 @@ export default function InventoryMovementsPage() {
       
       if (!currentProject) {
         console.error('Proyecto no encontrado o sin acceso')
-        router.push('/dashboard')
         return
       }
 
@@ -274,7 +270,7 @@ export default function InventoryMovementsPage() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <img 
-                src="/images/bruma/logo-circle.svg" 
+                src="/public/images/bruma/logo-circle.png" 
                 alt="BRUMA Fightwear" 
                 className="w-12 h-12"
               />

@@ -527,7 +527,7 @@ export default function PurchaseOrderDetailPage() {
                 <div className="text-gray-500 text-lg mb-4">📦</div>
                 <p className="text-gray-600">No hay items en esta orden</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Agrega productos usando el botón "Agregar Item"
+                  Agrega productos usando el botón &quot;Agregar Item&quot;
                 </p>
               </div>
             ) : (

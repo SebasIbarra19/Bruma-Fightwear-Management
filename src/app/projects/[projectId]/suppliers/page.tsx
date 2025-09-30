@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -28,9 +29,9 @@ interface PurchaseOrderWithSupplier extends PurchaseOrder {
   supplier_name?: string
 }
 
-export default function SuppliersPage() {
+export default function SuppliersPage({ params }: { params: { projectId: string } }) {
   // Estados generales
-  const [user, setUser] = useState<User | null>(null)
+  const { user, isLoading: authLoading } = useAuth()
   const [project, setProject] = useState<UserProject | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'proveedores' | 'ordenes' | 'pagos' | 'estadisticas'>('proveedores')
@@ -59,9 +60,11 @@ export default function SuppliersPage() {
   const [ordersSupplier, setOrdersSupplier] = useState<string>('all')
 
   const router = useRouter()
-  const params = useParams()
   const searchParams = useSearchParams()
   const projectSlug = params.projectId as string
+
+  // El middleware maneja la autenticación automáticamente
+  // Solo necesitamos el usuario para mostrar datos personalizados
 
   useEffect(() => {
     // Verificar si se debe mostrar un tab específico desde URL
@@ -69,28 +72,24 @@ export default function SuppliersPage() {
     if (tab && ['proveedores', 'ordenes', 'pagos', 'estadisticas'].includes(tab)) {
       setActiveTab(tab as any)
     }
-    loadProjectAndAuth()
-  }, [])
+    
+    // Cargar datos incluso si authLoading aún está en proceso
+    if ((user || !authLoading) && params.projectId) {
+      loadProjectData()
+    }
+  }, [user, authLoading, params.projectId])
 
-  const loadProjectAndAuth = async () => {
+  const loadProjectData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/auth/login')
-        return
-      }
-
-      setUser(session.user)
+      setLoading(true)
 
       // Obtener proyectos del usuario
       const { data: userProjects, error } = await supabase.rpc('get_user_projects', {
-        user_uuid: session.user.id
+        user_uuid: user?.id
       })
 
       if (error) {
         console.error('Error obteniendo proyectos:', error)
-        router.push('/dashboard')
         return
       }
 
@@ -98,7 +97,6 @@ export default function SuppliersPage() {
       
       if (!currentProject) {
         console.error('Proyecto no encontrado o sin acceso')
-        router.push('/dashboard')
         return
       }
 

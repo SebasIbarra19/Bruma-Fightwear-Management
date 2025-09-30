@@ -57,7 +57,7 @@ export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
       <div className="py-6">
         {activeTabData?.content || (
           <div className="text-center py-12" style={{ color: theme.colors.textSecondary }}>
-            <p>Contenido de "{activeTabData?.label}" próximamente...</p>
+            <p>Contenido de &quot;{activeTabData?.label}&quot; próximamente...</p>
           </div>
         )}
       </div>

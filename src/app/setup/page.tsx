@@ -20,7 +20,7 @@ export default function DatabaseSetupPage() {
         <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="font-semibold text-blue-800 mb-2">📋 Instrucciones:</h3>
           <ol className="list-decimal list-inside text-blue-700 space-y-1">
-            <li>Haz clic en "Verificar Tablas" para comprobar el estado actual</li>
+            <li>Haz clic en &quot;Verificar Tablas&quot; para comprobar el estado actual</li>
             <li>Si faltan tablas, ve a Supabase Dashboard → SQL Editor</li>
             <li>Copia el contenido del archivo <code className="bg-blue-100 px-1 rounded">/database/phase2-tables.sql</code></li>
             <li>Ejecuta el script en Supabase (ignora errores de tablas faltantes)</li>
