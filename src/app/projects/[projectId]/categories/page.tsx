@@ -9,6 +9,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { ProjectPageLayout } from '@/components/layout/ProjectPageLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ModernTable } from '@/components/ui/modern-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Category {
@@ -254,7 +255,10 @@ export default function CategoriesPage({ params }: { params: { projectId: string
                     Gestión completa de categorías y subcategorías
                   </CardDescription>
                 </div>
-                <Button className="shadow-lg">
+                <Button 
+                  className="shadow-lg"
+                  onClick={() => console.log('Crear nueva categoría')}
+                >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -263,132 +267,135 @@ export default function CategoriesPage({ params }: { params: { projectId: string
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                  <div className="relative">
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <Input
-                      placeholder="Buscar categorías..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+              {/* Tabla de categorías usando ModernTable */}
+              <ModernTable
+                data={filteredCategories()}
+                columns={[
+                  {
+                    key: 'name',
+                    title: 'Categoría',
+                    sortable: true,
+                    render: (value, row) => (
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 rounded-lg mr-4 flex items-center justify-center text-white font-bold" 
+                             style={{ backgroundColor: row.color }}>
+                          {row.parent_id ? "📂" : "📁"}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {row.parent_id && "└─ "}{value}
+                          </div>
+                          <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                            {row.parent_id ? "Subcategoría" : "Categoría principal"}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'description',
+                    title: 'Descripción',
+                    sortable: false,
+                    render: (value) => value || "Sin descripción"
+                  },
+                  {
+                    key: 'products_count',
+                    title: 'Productos',
+                    sortable: true,
+                    render: (value) => (
+                      <span 
+                        className="px-2 py-1 text-xs font-medium rounded-full"
+                        style={{ 
+                          backgroundColor: theme.colors.primary + '20',
+                          color: theme.colors.primary
+                        }}
+                      >
+                        {value} productos
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'subcategories_count',
+                    title: 'Subcategorías',
+                    sortable: true,
+                    render: (value) => (
+                      <span 
+                        className="px-2 py-1 text-xs font-medium rounded-full"
+                        style={{ 
+                          backgroundColor: theme.colors.secondary + '20',
+                          color: theme.colors.secondary
+                        }}
+                      >
+                        {value} subcategorías
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'is_active',
+                    title: 'Estado',
+                    render: (value) => (
+                      <span 
+                        className="px-2 py-1 text-xs font-medium rounded-full"
+                        style={{ 
+                          backgroundColor: value ? theme.colors.success + '20' : theme.colors.border + '20',
+                          color: value ? theme.colors.success : theme.colors.textSecondary
+                        }}
+                      >
+                        {value ? 'Activa' : 'Inactiva'}
+                      </span>
+                    )
+                  }
+                ]}
+                renderExpandedRow={(row) => (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información de Categoría</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Tipo:</span> {row.parent_id ? 'Subcategoría' : 'Categoría principal'}</p>
+                        <p><span className="text-gray-400">Color:</span> 
+                          <span className="inline-block w-4 h-4 rounded ml-2" style={{ backgroundColor: row.color }}></span>
+                        </p>
+                        <p><span className="text-gray-400">Creada:</span> {row.created_at}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Estadísticas</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Productos:</span> {row.products_count}</p>
+                        <p><span className="text-gray-400">Subcategorías:</span> {row.subcategories_count}</p>
+                        <p><span className="text-gray-400">Estado:</span> {row.is_active ? 'Activa' : 'Inactiva'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                      <div className="space-y-2">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Editar Categoría
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Ver Productos
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Agregar Subcategoría
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead style={{ backgroundColor: theme.colors.background }}>
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Categoría
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Descripción
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Productos
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Subcategorías
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Estado
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-                    {filteredCategories().length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center">
-                          <div className="text-gray-400 text-4xl mb-4">📁</div>
-                          <p style={{ color: theme.colors.textSecondary }}>No se encontraron categorías</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredCategories().map((category) => (
-                        <tr key={category.id} className="hover:bg-opacity-5">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="w-12 h-12 rounded-lg mr-4 flex items-center justify-center text-white font-bold" 
-                                   style={{ backgroundColor: category.color }}>
-                                {category.parent_id ? "📂" : "📁"}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                                  {category.parent_id && "└─ "}{category.name}
-                                </div>
-                                <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
-                                  {category.parent_id ? "Subcategoría" : "Categoría principal"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {category.description || "Sin descripción"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                              className="px-2 py-1 text-xs font-medium rounded-full"
-                              style={{ 
-                                backgroundColor: theme.colors.primary + '20',
-                                color: theme.colors.primary
-                              }}
-                            >
-                              {category.products_count} productos
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                              className="px-2 py-1 text-xs font-medium rounded-full"
-                              style={{ 
-                                backgroundColor: theme.colors.secondary + '20',
-                                color: theme.colors.secondary
-                              }}
-                            >
-                              {category.subcategories_count} subcategorías
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                              className="px-2 py-1 text-xs font-medium rounded-full"
-                              style={{ 
-                                backgroundColor: category.is_active ? theme.colors.success + '20' : theme.colors.border + '20',
-                                color: category.is_active ? theme.colors.success : theme.colors.textSecondary
-                              }}
-                            >
-                              {category.is_active ? 'Activa' : 'Inactiva'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <div className="flex space-x-2">
-                              <Button size="sm" variant="outline">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                )}
+                onEdit={(category) => console.log('Editar:', category)}
+                onDelete={(category) => console.log('Eliminar:', category)}
+                onRefresh={() => console.log('Refrescar categorías')}
+              />
             </CardContent>
           </Card>
         </div>

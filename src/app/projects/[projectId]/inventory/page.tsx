@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
+import { ModernTable } from '@/components/ui/modern-table'
 import { ProjectPageLayout } from '@/components/layout/ProjectPageLayout'
 
 interface UserProject {
@@ -262,6 +263,7 @@ export default function InventoryPage({ params }: { params: { projectId: string 
             </div>
             <Button 
               className="shadow-lg"
+              onClick={() => console.log('Agregar producto al inventario')}
               style={{ 
                 background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
                 border: 'none'
@@ -274,101 +276,94 @@ export default function InventoryPage({ params }: { params: { projectId: string 
             </Button>
           </div>
 
-          {/* Tabla de productos */}
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead style={{ backgroundColor: theme.colors.background }}>
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Producto
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        SKU
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Stock Actual
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Stock Mínimo
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Estado
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: theme.colors.textSecondary }}>
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-                    {[
-                      { name: 'Guantes BRUMA Pro', sku: 'GBP-001', current: 5, min: 20, status: 'critical' },
-                      { name: 'Shorts MMA Elite', sku: 'SME-002', current: 45, min: 25, status: 'good' },
-                      { name: 'Vendas Elásticas', sku: 'VE-003', current: 8, min: 30, status: 'critical' },
-                      { name: 'Protector Bucal', sku: 'PB-004', current: 18, min: 50, status: 'warning' },
-                      { name: 'Camiseta Training', sku: 'CT-005', current: 85, min: 40, status: 'good' }
-                    ].map((product, index) => (
-                      <tr key={index} className="hover:bg-opacity-5" style={{ backgroundColor: theme.colors.surfaceHover + '10' }}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                            {product.name}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                            {product.sku}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                            {product.current}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                            {product.min}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span 
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              product.status === 'critical' ? 'text-red-700' :
-                              product.status === 'warning' ? 'text-yellow-700' : 'text-green-700'
-                            }`}
-                            style={{ 
-                              backgroundColor: 
-                                product.status === 'critical' ? theme.colors.error + '20' :
-                                product.status === 'warning' ? theme.colors.warning + '20' : theme.colors.success + '20',
-                              border: `1px solid ${
-                                product.status === 'critical' ? theme.colors.error :
-                                product.status === 'warning' ? theme.colors.warning : theme.colors.success
-                              }30`
-                            }}
-                          >
-                            {product.status === 'critical' ? 'Crítico' :
-                             product.status === 'warning' ? 'Bajo' : 'Bueno'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
-                              Editar
-                            </Button>
-                            {product.status !== 'good' && (
-                              <Button size="sm" style={{ backgroundColor: theme.colors.primary }}>
-                                Reponer
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* Tabla de productos usando ModernTable */}
+          <ModernTable
+            data={[
+              { id: 1, name: 'Guantes BRUMA Pro', sku: 'GBP-001', current: 5, min: 20, status: 'critical' },
+              { id: 2, name: 'Shorts MMA Elite', sku: 'SME-002', current: 45, min: 25, status: 'good' },
+              { id: 3, name: 'Vendas Elásticas', sku: 'VE-003', current: 8, min: 30, status: 'critical' },
+              { id: 4, name: 'Protector Bucal', sku: 'PB-004', current: 18, min: 50, status: 'warning' },
+              { id: 5, name: 'Camiseta Training', sku: 'CT-005', current: 85, min: 40, status: 'good' }
+            ]}
+            columns={[
+              { key: 'name', title: 'Producto', sortable: true },
+              { key: 'sku', title: 'SKU', sortable: true },
+              { key: 'current', title: 'Stock Actual', sortable: true },
+              { key: 'min', title: 'Stock Mínimo', sortable: true },
+              {
+                key: 'status',
+                title: 'Estado',
+                render: (value) => (
+                  <span 
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      value === 'critical' ? 'text-red-700' :
+                      value === 'warning' ? 'text-yellow-700' : 'text-green-700'
+                    }`}
+                    style={{ 
+                      backgroundColor: 
+                        value === 'critical' ? theme.colors.error + '20' :
+                        value === 'warning' ? theme.colors.warning + '20' : theme.colors.success + '20',
+                      border: `1px solid ${
+                        value === 'critical' ? theme.colors.error :
+                        value === 'warning' ? theme.colors.warning : theme.colors.success
+                      }30`
+                    }}
+                  >
+                    {value === 'critical' ? 'Crítico' :
+                     value === 'warning' ? 'Bajo' : 'Bueno'}
+                  </span>
+                )
+              }
+            ]}
+            renderExpandedRow={(row) => (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                <div>
+                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Detalles del Producto</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-400">SKU:</span> {row.sku}</p>
+                    <p><span className="text-gray-400">Stock actual:</span> {row.current} unidades</p>
+                    <p><span className="text-gray-400">Stock mínimo:</span> {row.min} unidades</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Alerta de Stock</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-400">Diferencia:</span> {row.current - row.min} unidades</p>
+                    <p><span className="text-gray-400">Sugerido reponer:</span> {Math.max(0, row.min - row.current + 20)} unidades</p>
+                    <p><span className="text-gray-400">Última reposición:</span> Hace 15 días</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Acciones</h4>
+                  <div className="space-y-2">
+                    <Button variant="outline" size="sm" className="w-full">
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Editar Stock
+                    </Button>
+                    {row.status !== 'good' && (
+                      <Button size="sm" className="w-full" style={{ backgroundColor: theme.colors.primary }}>
+                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Reponer Stock
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="w-full">
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2z" />
+                      </svg>
+                      Ver Historial
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            )}
+            onEdit={(product) => console.log('Editar:', product)}
+            onDelete={(product) => console.log('Eliminar:', product)}
+            onRefresh={() => console.log('Refrescar inventario')}
+          />
         </div>
       )
     },

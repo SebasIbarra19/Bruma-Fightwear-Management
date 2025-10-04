@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
+import { ModernTable } from '@/components/ui/modern-table'
+import { SteppedProgress } from '@/components/ui/progress'
 import Link from 'next/link'
 
 interface UserProject {
@@ -98,11 +100,7 @@ export default function ShippingPage({ params }: { params: { projectId: string }
   const [methods, setMethods] = useState<ShippingMethod[]>([])
   const [methodsLoading, setMethodsLoading] = useState(false)
 
-  // Estados para filtros
-  const [shipmentsSearch, setShipmentsSearch] = useState('')
-  const [shipmentsStatus, setShipmentsStatus] = useState<'all' | 'pending' | 'in_transit' | 'delivered' | 'cancelled'>('all')
-  const [methodsSearch, setMethodsSearch] = useState('')
-  const [methodsStatus, setMethodsStatus] = useState<'all' | 'active' | 'inactive'>('all')
+
 
   useEffect(() => {
     if (isLoading) return
@@ -311,31 +309,23 @@ export default function ShippingPage({ params }: { params: { projectId: string }
     }
   }
 
-  // Funciones de filtrado
-  const getFilteredShipments = () => {
-    return shipments.filter(shipment => {
-      const matchesSearch = shipment.order_number.toLowerCase().includes(shipmentsSearch.toLowerCase()) ||
-                          shipment.customer_name.toLowerCase().includes(shipmentsSearch.toLowerCase()) ||
-                          shipment.tracking_code.toLowerCase().includes(shipmentsSearch.toLowerCase())
-      const matchesStatus = shipmentsStatus === 'all' || shipment.status === shipmentsStatus
-      return matchesSearch && matchesStatus
-    })
-  }
 
-  const getFilteredMethods = () => {
-    return methods.filter(method => {
-      const matchesSearch = method.name.toLowerCase().includes(methodsSearch.toLowerCase()) ||
-                          method.type.toLowerCase().includes(methodsSearch.toLowerCase())
-      const matchesStatus = methodsStatus === 'all' || 
-                          (methodsStatus === 'active' ? method.is_active : !method.is_active)
-      return matchesSearch && matchesStatus
-    })
+
+  // Función para obtener el progreso del envío
+  const getShippingProgress = (status: Shipment['status']) => {
+    const progressMap = {
+      pending: { currentStep: 1, variant: 'warning' as const },
+      in_transit: { currentStep: 2, variant: 'default' as const },
+      delivered: { currentStep: 3, variant: 'success' as const },
+      cancelled: { currentStep: 1, variant: 'danger' as const }
+    }
+    return progressMap[status]
   }
 
   const getStatusBadge = (status: Shipment['status']) => {
     const statusConfig = {
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
-      in_transit: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'En Tránsito' },
+      in_transit: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Tránsito' },
       delivered: { bg: 'bg-green-100', text: 'text-green-800', label: 'Entregado' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelado' }
     }
@@ -635,69 +625,20 @@ export default function ShippingPage({ params }: { params: { projectId: string }
         <div className="space-y-6">
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Buscar envíos
-                  </label>
-                  <Input
-                    placeholder="Orden, cliente, tracking..."
-                    value={shipmentsSearch}
-                    onChange={(e) => setShipmentsSearch(e.target.value)}
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Estado
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={shipmentsStatus}
-                    onChange={(e) => setShipmentsStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendiente</option>
-                    <option value="in_transit">En Tránsito</option>
-                    <option value="delivered">Entregado</option>
-                    <option value="cancelled">Cancelado</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Link href={`/projects/${projectSlug}/shipping/new`}>
-                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                      + Nuevo Envío
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.textPrimary }}>
                     Lista de Envíos
                   </h3>
                   <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
-                    Mostrando {getFilteredShipments().length} envíos
+                    Gestiona todos los envíos de productos
                   </p>
                 </div>
+                <Link href={`/projects/${projectSlug}/shipping/new`}>
+                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                    + Nuevo Envío
+                  </Button>
+                </Link>
               </div>
 
               {shipmentsLoading ? (
@@ -708,7 +649,7 @@ export default function ShippingPage({ params }: { params: { projectId: string }
                     Cargando envíos...
                   </p>
                 </div>
-              ) : getFilteredShipments().length === 0 ? (
+              ) : shipments.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-4">📦</div>
                   <p className="mb-2" style={{ color: theme.colors.textSecondary }}>
@@ -719,99 +660,208 @@ export default function ShippingPage({ params }: { params: { projectId: string }
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead style={{ backgroundColor: theme.colors.surface }}>
-                      <tr style={{ borderBottomColor: theme.colors.border, borderBottomWidth: '1px' }}>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Orden
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Cliente
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Tracking
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Método
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Destino
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Costo
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Estado
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredShipments().map((shipment) => (
-                        <tr key={shipment.id} className="border-b" 
-                            style={{ borderColor: theme.colors.border }}>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {shipment.order_number}
+                <ModernTable
+                  data={shipments}
+                  columns={[
+                    {
+                      key: 'order_number',
+                      title: 'Orden',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'customer_name',
+                      title: 'Cliente',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'tracking_code',
+                      title: 'Tracking',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-mono text-sm" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'shipping_method',
+                      title: 'Método',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'destination',
+                      title: 'Destino',
+                      sortable: false,
+                      render: (value) => (
+                        <div>
+                          <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                            {value.city}
+                          </div>
+                          <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                            {value.province}
+                          </div>
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'shipping_cost',
+                      title: 'Costo',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          ${value.toLocaleString()}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'status',
+                      title: 'Estado',
+                      sortable: true,
+                      render: (value) => {
+                        return getStatusBadge(value)
+                      }
+                    }
+                  ]}
+                  renderExpandedRow={(shipment) => (
+                    <div className="space-y-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                      {/* Primera fila: Información del envío, detalles, acciones */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información del Envío</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Orden:</span> {shipment.order_number}</p>
+                            <p><span className="text-gray-400">Cliente:</span> {shipment.customer_name}</p>
+                            <p><span className="text-gray-400">Tracking:</span> <code>{shipment.tracking_code}</code></p>
+                            <p><span className="text-gray-400">Método:</span> {shipment.shipping_method}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Detalles de Entrega</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Destino:</span> {shipment.destination.city}, {shipment.destination.province}</p>
+                            <p><span className="text-gray-400">Dirección:</span> {shipment.destination.address}</p>
+                            <p><span className="text-gray-400">Código Postal:</span> {shipment.destination.postal_code}</p>
+                            {shipment.destination.phone && (
+                              <p><span className="text-gray-400">Teléfono:</span> {shipment.destination.phone}</p>
+                            )}
+                            <p><span className="text-gray-400">Costo:</span> ${shipment.shipping_cost.toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                          <div className="space-y-2">
+                            <Link href={`/projects/${projectSlug}/shipping/${shipment.id}`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Ver Detalles
+                              </Button>
+                            </Link>
+                            <Link href={`/projects/${projectSlug}/shipping/${shipment.id}/edit`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Editar Envío
+                              </Button>
+                            </Link>
+                            <Button variant="outline" size="sm" className="w-full">
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Actualizar Estado
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Segunda fila: Progreso detallado del envío */}
+                      <div>
+                        <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
+                          � Seguimiento del Envío
+                        </h4>
+                        <div className="space-y-4">
+                          {/* Stepped Progress Grande */}
+                          <div className="p-4 rounded-lg border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                            <div className="flex justify-between items-center mb-4">
+                              <span className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                                Estado actual: {getStatusBadge(shipment.status)}
+                              </span>
+                              <span className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                                Actualizado: {new Date(shipment.updated_at).toLocaleDateString()}
+                              </span>
                             </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {shipment.customer_name}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-mono text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {shipment.tracking_code}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {shipment.shipping_method}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div>
-                              <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                                {shipment.destination.city}
+                            
+                            {shipment.status === 'cancelled' ? (
+                              <div className="text-center py-4">
+                                <SteppedProgress 
+                                  steps={3} 
+                                  currentStep={1}
+                                  variant="danger"
+                                  className="mb-3"
+                                />
+                                <div className="text-red-600 font-medium">❌ Envío Cancelado</div>
+                                <p className="text-sm text-gray-500 mt-1">Este envío ha sido cancelado</p>
                               </div>
-                              <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
-                                {shipment.destination.province}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              ${shipment.shipping_cost.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            {getStatusBadge(shipment.status)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center space-x-2">
-                              <Link
-                                href={`/projects/${projectSlug}/shipping/${shipment.id}`}
-                                className="text-blue-600 hover:text-blue-900 text-sm"
-                              >
-                                Ver
-                              </Link>
-                              <Link
-                                href={`/projects/${projectSlug}/shipping/${shipment.id}/edit`}
-                                className="text-indigo-600 hover:text-indigo-900 text-sm"
-                              >
-                                Editar
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            ) : (
+                              <>
+                                <SteppedProgress 
+                                  steps={3} 
+                                  currentStep={getShippingProgress(shipment.status).currentStep}
+                                  variant={getShippingProgress(shipment.status).variant}
+                                  showNumbers
+                                  className="mb-4"
+                                />
+                                
+                                {/* Etiquetas de los pasos */}
+                                <div className="grid grid-cols-3 gap-4 text-sm text-center">
+                                  <div className={getShippingProgress(shipment.status).currentStep >= 1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                                    <div className="mb-1">📦</div>
+                                    <div>Preparación</div>
+                                  </div>
+                                  <div className={getShippingProgress(shipment.status).currentStep >= 2 ? 'text-blue-600 font-medium' : 'text-gray-400'}>
+                                    <div className="mb-1">�</div>
+                                    <div>En Camino</div>
+                                  </div>
+                                  <div className={getShippingProgress(shipment.status).currentStep >= 3 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                                    <div className="mb-1">📍</div>
+                                    <div>Entregado</div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                                
+                  )}
+                  onEdit={(shipment) => console.log('Editar envío:', shipment)}
+                  onDelete={(shipment) => console.log('Eliminar envío:', shipment)}
+                  onRefresh={() => {
+                    if (projectData?.project) {
+                      loadShipments(projectData.project.project_id)
+                    }
+                  }}
+                />
               )}
             </CardContent>
           </Card>
@@ -829,57 +879,7 @@ export default function ShippingPage({ params }: { params: { projectId: string }
       ),
       content: (
         <div className="space-y-6">
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Buscar métodos
-                  </label>
-                  <Input
-                    placeholder="Nombre, tipo..."
-                    value={methodsSearch}
-                    onChange={(e) => setMethodsSearch(e.target.value)}
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Estado
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={methodsStatus}
-                    onChange={(e) => setMethodsStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="active">Activos</option>
-                    <option value="inactive">Inactivos</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Link href={`/projects/${projectSlug}/shipping/methods/new`}>
-                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                      + Nuevo Método
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
 
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardContent className="p-6">
@@ -889,9 +889,14 @@ export default function ShippingPage({ params }: { params: { projectId: string }
                     Métodos de Envío
                   </h3>
                   <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
-                    Mostrando {getFilteredMethods().length} métodos
+                    Configura los métodos disponibles para envío
                   </p>
                 </div>
+                <Link href={`/projects/${projectSlug}/shipping/methods/new`}>
+                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                    + Nuevo Método
+                  </Button>
+                </Link>
               </div>
 
               {methodsLoading ? (
@@ -902,7 +907,7 @@ export default function ShippingPage({ params }: { params: { projectId: string }
                     Cargando métodos...
                   </p>
                 </div>
-              ) : getFilteredMethods().length === 0 ? (
+              ) : methods.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-4">⚙️</div>
                   <p className="mb-2" style={{ color: theme.colors.textSecondary }}>
@@ -913,91 +918,127 @@ export default function ShippingPage({ params }: { params: { projectId: string }
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead style={{ backgroundColor: theme.colors.surface }}>
-                      <tr style={{ borderBottomColor: theme.colors.border, borderBottomWidth: '1px' }}>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Método
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Tipo
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Costo Base
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Tiempo Estimado
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Estado
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredMethods().map((method) => (
-                        <tr key={method.id} className="border-b" 
-                            style={{ borderColor: theme.colors.border }}>
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                                {method.name}
-                              </div>
-                              <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                                {method.description}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            {getMethodTypeBadge(method.type)}
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              ${method.base_cost.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {method.estimated_days}
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              method.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {method.is_active ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center space-x-2">
-                              <Link
-                                href={`/projects/${projectSlug}/shipping/methods/${method.id}/edit`}
-                                className="text-indigo-600 hover:text-indigo-900 text-sm"
-                              >
-                                Editar
-                              </Link>
-                              <button
-                                onClick={() => toggleMethodStatus(method)}
-                                className={`text-sm ${
-                                  method.is_active 
-                                    ? 'text-red-600 hover:text-red-900' 
-                                    : 'text-green-600 hover:text-green-900'
-                                }`}
-                              >
-                                {method.is_active ? 'Desactivar' : 'Activar'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ModernTable
+                  data={methods}
+                  columns={[
+                    {
+                      key: 'name',
+                      title: 'Método',
+                      sortable: true,
+                      render: (value, row) => (
+                        <div>
+                          <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {value}
+                          </div>
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {row.description}
+                          </div>
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'type',
+                      title: 'Tipo',
+                      sortable: true,
+                      render: (value) => getMethodTypeBadge(value)
+                    },
+                    {
+                      key: 'base_cost',
+                      title: 'Costo Base',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          ${value.toLocaleString()}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'estimated_days',
+                      title: 'Tiempo Estimado',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'is_active',
+                      title: 'Estado',
+                      sortable: true,
+                      render: (value) => (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          value 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {value ? 'Activo' : 'Inactivo'}
+                        </span>
+                      )
+                    }
+                  ]}
+                  renderExpandedRow={(method) => (
+                    <div className="space-y-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información del Método</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Nombre:</span> {method.name}</p>
+                            <p><span className="text-gray-400">Tipo:</span> {getMethodTypeBadge(method.type)}</p>
+                            <p><span className="text-gray-400">Descripción:</span> {method.description || 'No disponible'}</p>
+                            <p><span className="text-gray-400">Estado:</span> {method.is_active ? '🟢 Activo' : '🔴 Inactivo'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Detalles de Costo y Tiempo</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Costo Base:</span> ${method.base_cost.toLocaleString()}</p>
+                            <p><span className="text-gray-400">Tiempo Estimado:</span> {method.estimated_days}</p>
+                            <p><span className="text-gray-400">Fecha Creación:</span> {new Date(method.created_at).toLocaleDateString()}</p>
+                            <p><span className="text-gray-400">Última Actualización:</span> {new Date(method.updated_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                          <div className="space-y-2">
+                            <Link href={`/projects/${projectSlug}/shipping/methods/${method.id}/edit`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Editar Método
+                              </Button>
+                            </Link>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full"
+                              onClick={() => toggleMethodStatus(method)}
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                              </svg>
+                              {method.is_active ? 'Desactivar' : 'Activar'}
+                            </Button>
+                            <Button variant="outline" size="sm" className="w-full">
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                              Ver Estadísticas
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  onEdit={(method) => console.log('Editar método:', method)}
+                  onDelete={(method) => console.log('Eliminar método:', method)}
+                  onRefresh={() => {
+                    if (projectData?.project) {
+                      loadMethods(projectData.project.project_id)
+                    }
+                  }}
+                />
               )}
             </CardContent>
           </Card>

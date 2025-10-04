@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
+import { ModernTable } from '@/components/ui/modern-table'
 import { ProjectPageLayout } from '@/components/layout/ProjectPageLayout'
 
 interface UserProject {
@@ -234,7 +235,10 @@ export default function CustomersPage({ params }: { params: { projectId: string 
                     Gestiona y administra todos tus clientes
                   </CardDescription>
                 </div>
-                <Button style={{ backgroundColor: theme.colors.primary }}>
+                <Button 
+                  style={{ backgroundColor: theme.colors.primary }}
+                  onClick={() => console.log('Crear nuevo cliente')}
+                >
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -243,140 +247,154 @@ export default function CustomersPage({ params }: { params: { projectId: string 
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                  <Input 
-                    placeholder="Buscar por nombre, email o teléfono..." 
-                    className="w-full"
-                    style={{ borderColor: theme.colors.border }}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" style={{ borderColor: theme.colors.border }}>
-                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z" />
-                    </svg>
-                    Filtros
-                  </Button>
-                  <Button variant="outline" style={{ borderColor: theme.colors.border }}>
-                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                    </svg>
-                    Exportar
-                  </Button>
-                </div>
-              </div>
-
-              {/* Lista de Clientes */}  
-              <div className="border rounded-lg" style={{ borderColor: theme.colors.border }}>
-                <div className="grid grid-cols-6 gap-4 p-4 font-medium text-sm border-b" 
-                     style={{ borderColor: theme.colors.border, color: theme.colors.textSecondary }}>
-                  <div>Cliente</div>
-                  <div>Email</div>
-                  <div>Teléfono</div>
-                  <div>Pedidos</div>
-                  <div>Total Gastado</div>
-                  <div>Estado</div>
-                </div>
-                
-                {[
+              {/* Tabla de Clientes usando ModernTable */}
+              <ModernTable
+                data={[
                   {
+                    id: 1,
                     name: "Carlos Mendoza",
                     email: "carlos.mendoza@email.com",
                     phone: "+52 55 1234-5678",
                     orders: 45,
-                    total: "$12,450",
+                    totalSpent: 12450,
                     status: "VIP",
-                    lastOrder: "2024-10-01"
+                    lastOrder: "2024-10-01",
+                    avatar: "CM"
                   },
                   {
+                    id: 2,
                     name: "Ana García",
                     email: "ana.garcia@email.com", 
                     phone: "+52 55 2345-6789",
                     orders: 38,
-                    total: "$9,830",
+                    totalSpent: 9830,
                     status: "Premium",
-                    lastOrder: "2024-09-28"
+                    lastOrder: "2024-09-28",
+                    avatar: "AG"
                   },
                   {
+                    id: 3,
                     name: "Diego Silva",
                     email: "diego.silva@email.com",
                     phone: "+52 55 3456-7890", 
                     orders: 32,
-                    total: "$8,720",
+                    totalSpent: 8720,
                     status: "Premium",
-                    lastOrder: "2024-09-30"
+                    lastOrder: "2024-09-30",
+                    avatar: "DS"
                   },
                   {
+                    id: 4,
                     name: "María López",
                     email: "maria.lopez@email.com",
                     phone: "+52 55 4567-8901",
                     orders: 28,
-                    total: "$7,560", 
+                    totalSpent: 7560, 
                     status: "Regular",
-                    lastOrder: "2024-09-25"
+                    lastOrder: "2024-09-25",
+                    avatar: "ML"
                   },
                   {
+                    id: 5,
                     name: "Roberto Chen",
                     email: "roberto.chen@email.com",
                     phone: "+52 55 5678-9012",
                     orders: 25,
-                    total: "$6,890",
+                    totalSpent: 6890,
                     status: "Regular", 
-                    lastOrder: "2024-09-29"
+                    lastOrder: "2024-09-29",
+                    avatar: "RC"
                   }
-                ].map((customer, index) => (
-                  <div key={index} className="grid grid-cols-6 gap-4 p-4 border-b" 
-                       style={{ borderColor: theme.colors.border }}>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-                           style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                        {customer.name.charAt(0)}
+                ]}
+                columns={[
+                  { 
+                    key: 'name', 
+                    title: 'Cliente', 
+                    sortable: true,
+                    render: (value, row) => (
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                             style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                          {row.avatar}
+                        </div>
+                        <div>
+                          <p className="font-medium" style={{ color: theme.colors.textPrimary }}>{value}</p>
+                          <p className="text-xs" style={{ color: theme.colors.textSecondary }}>Último: {row.lastOrder}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium" style={{ color: theme.colors.textPrimary }}>{customer.name}</p>
-                        <p className="text-xs" style={{ color: theme.colors.textSecondary }}>Último: {customer.lastOrder}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ color: theme.colors.textPrimary }}>{customer.email}</p>
-                    </div>
-                    <div>
-                      <p style={{ color: theme.colors.textPrimary }}>{customer.phone}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold" style={{ color: theme.colors.textPrimary }}>{customer.orders}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold" style={{ color: theme.colors.textPrimary }}>{customer.total}</p>
-                    </div>
-                    <div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        customer.status === 'VIP' ? 'bg-purple-100 text-purple-800' :
-                        customer.status === 'Premium' ? 'bg-yellow-100 text-yellow-800' :
+                    )
+                  },
+                  { key: 'email', title: 'Email', sortable: true },
+                  { key: 'phone', title: 'Teléfono', sortable: false },
+                  { key: 'orders', title: 'Pedidos', sortable: true },
+                  { 
+                    key: 'totalSpent', 
+                    title: 'Total Gastado',
+                    sortable: true,
+                    render: (value) => `$${value.toLocaleString()}`
+                  },
+                  {
+                    key: 'status',
+                    title: 'Estado',
+                    render: (value) => (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        value === 'VIP' ? 'bg-purple-100 text-purple-800' :
+                        value === 'Premium' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {customer.status}
+                        {value}
                       </span>
+                    )
+                  }
+                ]}
+                renderExpandedRow={(row) => (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información Personal</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Email:</span> {row.email}</p>
+                        <p><span className="text-gray-400">Teléfono:</span> {row.phone}</p>
+                        <p><span className="text-gray-400">Cliente desde:</span> Enero 2023</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Historial de Compras</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Total pedidos:</span> {row.orders}</p>
+                        <p><span className="text-gray-400">Total gastado:</span> ${row.totalSpent.toLocaleString()}</p>
+                        <p><span className="text-gray-400">Último pedido:</span> {row.lastOrder}</p>
+                        <p><span className="text-gray-400">Promedio por pedido:</span> ${Math.round(row.totalSpent / row.orders).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                      <div className="space-y-2">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Editar Cliente
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Ver Historial
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Enviar Email
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              
-              {/* Paginación */}
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                  Mostrando 1-5 de 2,847 clientes
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" style={{ borderColor: theme.colors.border }}>
-                    Anterior
-                  </Button>
-                  <Button variant="outline" size="sm" style={{ borderColor: theme.colors.border }}>
-                    Siguiente
-                  </Button>
-                </div>
-              </div>
+                )}
+                onEdit={(customer) => console.log('Editar:', customer)}
+                onDelete={(customer) => console.log('Eliminar:', customer)}
+                onRefresh={() => console.log('Refrescar clientes')}
+              />
             </CardContent>
           </Card>
         </div>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
+import { ModernTable } from '@/components/ui/modern-table'
 import Link from 'next/link'
 
 interface UserProject {
@@ -466,13 +467,21 @@ export default function SuppliersPage({ params }: { params: { projectId: string 
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Link href={`/projects/${projectSlug}/suppliers/new`}>
-                  <Button className="w-full" style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                  <Button 
+                    className="w-full" 
+                    style={{ backgroundColor: theme.colors.primary, color: 'white' }}
+                    onClick={() => console.log('Crear nuevo proveedor')}
+                  >
                     + Nuevo Proveedor
                   </Button>
                 </Link>
                 <Link href={`/projects/${projectSlug}/suppliers/orders/new`}>
-                  <Button className="w-full" variant="outline" 
-                          style={{ borderColor: theme.colors.border, color: theme.colors.textPrimary }}>
+                  <Button 
+                    className="w-full" 
+                    variant="outline" 
+                    style={{ borderColor: theme.colors.border, color: theme.colors.textPrimary }}
+                    onClick={() => console.log('Crear nueva orden de compra')}
+                  >
                     + Nueva Orden de Compra
                   </Button>
                 </Link>
@@ -498,176 +507,114 @@ export default function SuppliersPage({ params }: { params: { projectId: string 
         <div className="space-y-6">
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Buscar proveedores
-                  </label>
-                  <Input
-                    placeholder="Nombre, contacto, email..."
-                    value={suppliersSearch}
-                    onChange={(e) => setSuppliersSearch(e.target.value)}
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Estado
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={suppliersStatus}
-                    onChange={(e) => setSuppliersStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="active">Activos</option>
-                    <option value="inactive">Inactivos</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Link href={`/projects/${projectSlug}/suppliers/new`}>
-                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                      + Nuevo Proveedor
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.textPrimary }}>
                     Lista de Proveedores
                   </h3>
                   <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
-                    Mostrando {getFilteredSuppliers().length} proveedores
+                    Gestiona todos tus proveedores
                   </p>
                 </div>
+                <Link href={`/projects/${projectSlug}/suppliers/new`}>
+                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                    + Nuevo Proveedor
+                  </Button>
+                </Link>
               </div>
 
-              {suppliersLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" 
-                       style={{ borderColor: theme.colors.primary }}></div>
-                  <p className="mt-4" style={{ color: theme.colors.textSecondary }}>
-                    Cargando proveedores...
-                  </p>
-                </div>
-              ) : getFilteredSuppliers().length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">🏢</div>
-                  <p className="mb-2" style={{ color: theme.colors.textSecondary }}>
-                    No hay proveedores
-                  </p>
-                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                    Los proveedores aparecerán aquí
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead style={{ backgroundColor: theme.colors.surface }}>
-                      <tr style={{ borderBottomColor: theme.colors.border, borderBottomWidth: '1px' }}>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Proveedor
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Contacto
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Email/Teléfono
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Estado
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredSuppliers().map((supplier) => (
-                        <tr key={supplier.id} className="border-b" 
-                            style={{ borderColor: theme.colors.border }}>
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                                {supplier.name}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {supplier.contact_person || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div>
-                              <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                                {supplier.email || 'N/A'}
-                              </div>
-                              <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                                {supplier.phone || 'N/A'}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              supplier.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {supplier.is_active ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center space-x-2">
-                              <Link
-                                href={`/projects/${projectSlug}/suppliers/${supplier.id}`}
-                                className="text-blue-600 hover:text-blue-900 text-sm"
-                              >
-                                Ver
-                              </Link>
-                              <Link
-                                href={`/projects/${projectSlug}/suppliers/${supplier.id}/edit`}
-                                className="text-indigo-600 hover:text-indigo-900 text-sm"
-                              >
-                                Editar
-                              </Link>
-                              <button
-                                onClick={() => toggleSupplierStatus(supplier)}
-                                className={`text-sm ${
-                                  supplier.is_active 
-                                    ? 'text-red-600 hover:text-red-900' 
-                                    : 'text-green-600 hover:text-green-900'
-                                }`}
-                              >
-                                {supplier.is_active ? 'Desactivar' : 'Activar'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {/* Tabla de Proveedores usando ModernTable */}
+              <ModernTable
+                data={getFilteredSuppliers()}
+                columns={[
+                  { key: 'name', title: 'Proveedor', sortable: true },
+                  { key: 'contact_person', title: 'Contacto', sortable: true, render: (value) => value || 'N/A' },
+                  {
+                    key: 'email',
+                    title: 'Email/Teléfono',
+                    sortable: false,
+                    render: (value, row) => (
+                      <div>
+                        <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                          {value || 'N/A'}
+                        </div>
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {row.phone || 'N/A'}
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'is_active',
+                    title: 'Estado',
+                    render: (value) => (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        value 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {value ? 'Activo' : 'Inactivo'}
+                      </span>
+                    )
+                  }
+                ]}
+                renderExpandedRow={(row) => (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información de Contacto</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Contacto:</span> {row.contact_person || 'N/A'}</p>
+                        <p><span className="text-gray-400">Email:</span> {row.email || 'N/A'}</p>
+                        <p><span className="text-gray-400">Teléfono:</span> {row.phone || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Ubicación</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Dirección:</span> {row.address || 'N/A'}</p>
+                        <p><span className="text-gray-400">Ciudad:</span> {row.city || 'N/A'}</p>
+                        <p><span className="text-gray-400">País:</span> {row.country || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                      <div className="space-y-2">
+                        <Link href={`/projects/${projectSlug}/suppliers/${row.id}`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Ver Detalles
+                          </Button>
+                        </Link>
+                        <Link href={`/projects/${projectSlug}/suppliers/${row.id}/edit`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => toggleSupplierStatus(row)}
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                          </svg>
+                          {row.is_active ? 'Desactivar' : 'Activar'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                onEdit={(supplier) => router.push(`/projects/${projectSlug}/suppliers/${supplier.id}/edit`)}
+                onDelete={(supplier) => console.log('Eliminar:', supplier)}
+                onRefresh={() => console.log('Refrescar proveedores')}
+              />
             </CardContent>
           </Card>
         </div>
@@ -685,171 +632,109 @@ export default function SuppliersPage({ params }: { params: { projectId: string 
         <div className="space-y-6">
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Buscar órdenes
-                  </label>
-                  <Input
-                    placeholder="Número, proveedor..."
-                    value={ordersSearch}
-                    onChange={(e) => setOrdersSearch(e.target.value)}
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" 
-                         style={{ color: theme.colors.textPrimary }}>
-                    Estado
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={ordersStatus}
-                    onChange={(e) => setOrdersStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendiente</option>
-                    <option value="completed">Completado</option>
-                    <option value="cancelled">Cancelado</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Link href={`/projects/${projectSlug}/suppliers/orders/new`}>
-                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                      + Nueva Orden
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.textPrimary }}>
                     Órdenes de Compra
                   </h3>
                   <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
-                    Mostrando {getFilteredOrders().length} órdenes
+                    Gestiona todas las órdenes de compra
                   </p>
                 </div>
+                <Link href={`/projects/${projectSlug}/suppliers/orders/new`}>
+                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                    + Nueva Orden
+                  </Button>
+                </Link>
               </div>
 
-              {ordersLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" 
-                       style={{ borderColor: theme.colors.primary }}></div>
-                  <p className="mt-4" style={{ color: theme.colors.textSecondary }}>
-                    Cargando órdenes...
-                  </p>
-                </div>
-              ) : getFilteredOrders().length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">📦</div>
-                  <p className="mb-2" style={{ color: theme.colors.textSecondary }}>
-                    No hay órdenes de compra
-                  </p>
-                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                    Las órdenes aparecerán aquí
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead style={{ backgroundColor: theme.colors.surface }}>
-                      <tr style={{ borderBottomColor: theme.colors.border, borderBottomWidth: '1px' }}>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Orden
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Proveedor
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Fecha
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Total
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Estado
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredOrders().map((order) => (
-                        <tr key={order.id} className="border-b" 
-                            style={{ borderColor: theme.colors.border }}>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {order.order_number}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {order.supplier_name || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {new Date(order.order_date).toLocaleDateString()}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              ${order.total_amount?.toLocaleString() || '0'}
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              order.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : order.status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {order.status === 'pending' ? 'Pendiente' :
-                               order.status === 'completed' ? 'Completado' : 'Cancelado'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center space-x-2">
-                              <Link
-                                href={`/projects/${projectSlug}/suppliers/orders/${order.id}`}
-                                className="text-blue-600 hover:text-blue-900 text-sm"
-                              >
-                                Ver
-                              </Link>
-                              <Link
-                                href={`/projects/${projectSlug}/suppliers/orders/${order.id}/edit`}
-                                className="text-indigo-600 hover:text-indigo-900 text-sm"
-                              >
-                                Editar
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {/* Tabla de Órdenes usando ModernTable */}
+              <ModernTable
+                data={getFilteredOrders()}
+                columns={[
+                  { key: 'order_number', title: 'Orden', sortable: true },
+                  { key: 'supplier_name', title: 'Proveedor', sortable: true, render: (value) => value || 'N/A' },
+                  {
+                    key: 'order_date',
+                    title: 'Fecha',
+                    sortable: true,
+                    render: (value) => new Date(value).toLocaleDateString()
+                  },
+                  {
+                    key: 'total_amount',
+                    title: 'Total',
+                    sortable: true,
+                    render: (value) => `$${value?.toLocaleString() || '0'}`
+                  },
+                  {
+                    key: 'status',
+                    title: 'Estado',
+                    render: (value) => (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        value === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : value === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {value === 'pending' ? 'Pendiente' :
+                         value === 'completed' ? 'Completado' : 'Cancelado'}
+                      </span>
+                    )
+                  }
+                ]}
+                renderExpandedRow={(row) => (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Detalles de la Orden</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Número:</span> {row.order_number}</p>
+                        <p><span className="text-gray-400">Fecha de orden:</span> {new Date(row.order_date).toLocaleDateString()}</p>
+                        <p><span className="text-gray-400">Fecha de entrega:</span> {row.delivery_date ? new Date(row.delivery_date).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Información Financiera</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-400">Total:</span> ${row.total_amount?.toLocaleString() || '0'}</p>
+                        <p><span className="text-gray-400">Moneda:</span> {row.currency || 'USD'}</p>
+                        <p><span className="text-gray-400">Estado:</span> {row.status === 'pending' ? 'Pendiente' : row.status === 'completed' ? 'Completado' : 'Cancelado'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                      <div className="space-y-2">
+                        <Link href={`/projects/${projectSlug}/suppliers/orders/${row.id}`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Ver Detalles
+                          </Button>
+                        </Link>
+                        <Link href={`/projects/${projectSlug}/suppliers/orders/${row.id}/edit`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar Orden
+                          </Button>
+                        </Link>
+                        <Button variant="outline" size="sm" className="w-full">
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                          </svg>
+                          Descargar PDF
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                onEdit={(order) => router.push(`/projects/${projectSlug}/suppliers/orders/${order.id}/edit`)}
+                onDelete={(order) => console.log('Eliminar:', order)}
+                onRefresh={() => console.log('Refrescar órdenes')}
+              />
             </CardContent>
           </Card>
         </div>

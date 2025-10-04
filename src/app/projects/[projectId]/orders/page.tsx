@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs } from '@/components/ui/tabs'
+import { ModernTable } from '@/components/ui/modern-table'
 import Link from 'next/link'
 
 interface UserProject {
@@ -145,10 +146,7 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
 
-  // Estados para filtros
-  const [ordersSearch, setOrdersSearch] = useState('')
-  const [ordersStatus, setOrdersStatus] = useState<'all' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>('all')
-  const [ordersPaymentStatus, setOrdersPaymentStatus] = useState<'all' | 'pending' | 'paid' | 'partial' | 'failed'>('all')
+
 
   useEffect(() => {
     if (isLoading) return
@@ -419,18 +417,7 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
   }
 
   // Funciones de filtrado
-  const getFilteredOrders = () => {
-    return orders.filter(order => {
-      const matchesSearch = ordersSearch === '' || 
-        order.order_number.toLowerCase().includes(ordersSearch.toLowerCase()) ||
-        (order.customer_name && order.customer_name.toLowerCase().includes(ordersSearch.toLowerCase()))
-      
-      const matchesStatus = ordersStatus === 'all' || order.status === ordersStatus
-      const matchesPaymentStatus = ordersPaymentStatus === 'all' || order.payment_status === ordersPaymentStatus
 
-      return matchesSearch && matchesStatus && matchesPaymentStatus
-    })
-  }
 
   const getStatusBadge = (status: Order['status']) => {
     const statusConfig = {
@@ -607,203 +594,237 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
       ),
       content: (
         <div className="space-y-6">
-          {/* Filters */}
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                    Buscar pedidos
-                  </label>
-                  <Input
-                    placeholder="Número, cliente..."
-                    value={ordersSearch}
-                    onChange={(e) => setOrdersSearch(e.target.value)}
-                    style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border }}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                    Estado del Pedido
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.background, 
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={ordersStatus}
-                    onChange={(e) => setOrdersStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendiente</option>
-                    <option value="confirmed">Confirmado</option>
-                    <option value="processing">Procesando</option>
-                    <option value="shipped">Enviado</option>
-                    <option value="delivered">Entregado</option>
-                    <option value="cancelled">Cancelado</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                    Estado de Pago
-                  </label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    style={{ 
-                      backgroundColor: theme.colors.background, 
-                      borderColor: theme.colors.border,
-                      color: theme.colors.textPrimary
-                    }}
-                    value={ordersPaymentStatus}
-                    onChange={(e) => setOrdersPaymentStatus(e.target.value as any)}
-                  >
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendiente</option>
-                    <option value="paid">Pagado</option>
-                    <option value="partial">Parcial</option>
-                    <option value="failed">Fallido</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Link href={`/projects/${projectSlug}/orders/new`}>
-                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                      + Nuevo Pedido
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Orders Table */}
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardHeader>
-              <CardTitle style={{ color: theme.colors.textPrimary }}>
-                Lista de Pedidos
-              </CardTitle>
-              <CardDescription style={{ color: theme.colors.textSecondary }}>
-                Mostrando {getFilteredOrders().length} pedidos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold" style={{ color: theme.colors.textPrimary }}>
+                    Lista de Pedidos
+                  </h3>
+                  <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
+                    Gestiona todos los pedidos de ventas
+                  </p>
+                </div>
+                <Link href={`/projects/${projectSlug}/orders/new`}>
+                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                    + Nuevo Pedido
+                  </Button>
+                </Link>
+              </div>
               {ordersLoading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" 
                        style={{ borderColor: theme.colors.primary }}></div>
                   <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
                 </div>
-              ) : getFilteredOrders().length === 0 ? (
+              ) : orders.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-4">📦</div>
                   <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
                     No se encontraron pedidos
                   </h3>
                   <p style={{ color: theme.colors.textSecondary }}>
-                    {ordersSearch || ordersStatus !== 'all' || ordersPaymentStatus !== 'all'
-                      ? 'Intenta ajustar los filtros de búsqueda'
-                      : 'Los pedidos aparecerán aquí cuando se registren'}
+                    Los pedidos aparecerán aquí cuando se registren
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b" style={{ borderColor: theme.colors.border }}>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Pedido
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Cliente
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Items
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Total
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Estado
-                        </th>
-                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Pago
-                        </th>
-                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getFilteredOrders().map((order) => (
-                        <tr key={order.id} className="border-b" 
-                            style={{ borderColor: theme.colors.border }}>
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                                {order.order_number}
-                              </div>
-                              <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                                {new Date(order.order_date).toLocaleDateString()}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {order.customer_name}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                              {order.items?.length || 0} productos
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              ${order.total_amount.toLocaleString()}
-                            </div>
-                            <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                              {order.currency}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            {getStatusBadge(order.status)}
-                          </td>
-                          <td className="p-3">
-                            {getPaymentStatusBadge(order.payment_status)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
+                <ModernTable
+                  data={orders}
+                  columns={[
+                    {
+                      key: 'order_number',
+                      title: 'Pedido',
+                      sortable: true,
+                      render: (value, row) => (
+                        <div>
+                          <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {value}
+                          </div>
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {new Date(row.order_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'customer_name',
+                      title: 'Cliente',
+                      sortable: true,
+                      render: (value) => (
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {value}
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'items',
+                      title: 'Items',
+                      sortable: false,
+                      render: (value) => (
+                        <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                          {value?.length || 0} productos
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'total_amount',
+                      title: 'Total',
+                      sortable: true,
+                      render: (value, row) => (
+                        <div>
+                          <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                            ${value.toLocaleString()}
+                          </div>
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {row.currency}
+                          </div>
+                        </div>
+                      )
+                    },
+                    {
+                      key: 'status',
+                      title: 'Estado',
+                      sortable: true,
+                      render: (value) => getStatusBadge(value)
+                    },
+                    {
+                      key: 'payment_status',
+                      title: 'Pago',
+                      sortable: true,
+                      render: (value) => getPaymentStatusBadge(value)
+                    }
+                  ]}
+                  renderExpandedRow={(order) => (
+                    <div className="space-y-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                      {/* Primera fila: Información del pedido, Detalles financieros y Acciones */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información del Pedido</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Número:</span> {order.order_number}</p>
+                            <p><span className="text-gray-400">Fecha:</span> {new Date(order.order_date).toLocaleString()}</p>
+                            <p><span className="text-gray-400">Cliente:</span> {order.customer_name}</p>
+                            <p><span className="text-gray-400">Items:</span> {order.items?.length || 0} productos</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Detalles Financieros</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="text-gray-400">Total:</span> ${order.total_amount.toLocaleString()}</p>
+                            <p><span className="text-gray-400">Moneda:</span> {order.currency}</p>
+                            <p><span className="text-gray-400">Estado Pago:</span> {getPaymentStatusBadge(order.payment_status)}</p>
+                            <p><span className="text-gray-400">Estado:</span> {getStatusBadge(order.status)}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
+                          <div className="space-y-2">
+                            <Button variant="outline" size="sm" className="w-full">
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Ver Detalles
+                            </Button>
+                            <Button variant="outline" size="sm" className="w-full">
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Editar Pedido
+                            </Button>
+                            <Button variant="outline" size="sm" className="w-full">
+                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H9.5a2 2 0 01-2-2V5a2 2 0 00-2-2H3a2 2 0 00-2 2v4a2 2 0 002 2h2.5a2 2 0 012 2v2a2 2 0 002 2z" />
+                              </svg>
+                              Cambiar Estado
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Segunda fila: Productos del pedido */}
+                      <div>
+                        <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
+                          📦 Productos del Pedido ({order.items?.length || 0})
+                        </h4>
+                        {order.items && order.items.length > 0 ? (
+                          <div className="space-y-3">
+                            {order.items.map((item, index) => (
+                              <div 
+                                key={item.id || index}
+                                className="flex items-center justify-between p-3 rounded-lg border"
                                 style={{ 
                                   borderColor: theme.colors.border,
-                                  color: theme.colors.textPrimary 
+                                  backgroundColor: theme.colors.surface 
                                 }}
                               >
-                                Ver
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                style={{ 
-                                  borderColor: theme.colors.border,
-                                  color: theme.colors.textPrimary 
-                                }}
-                              >
-                                Editar
-                              </Button>
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                                         style={{ backgroundColor: theme.colors.primary + '20', color: theme.colors.primary }}>
+                                      🏷️
+                                    </div>
+                                    <div>
+                                      <h5 className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                                        {item.product_name}
+                                      </h5>
+                                      {item.variant_description && (
+                                        <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                                          {item.variant_description}
+                                        </p>
+                                      )}
+                                      <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                                        SKU: {item.sku}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                                    {item.quantity} x ${item.unit_price.toLocaleString()}
+                                  </div>
+                                  <div className="text-sm font-semibold" style={{ color: theme.colors.success }}>
+                                    Total: ${item.total_price.toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {/* Resumen total */}
+                            <div 
+                              className="flex justify-between items-center p-3 rounded-lg border-2"
+                              style={{ 
+                                borderColor: theme.colors.primary,
+                                backgroundColor: theme.colors.primary + '10'
+                              }}
+                            >
+                              <span className="font-semibold" style={{ color: theme.colors.textPrimary }}>
+                                Total del Pedido:
+                              </span>
+                              <span className="text-xl font-bold" style={{ color: theme.colors.primary }}>
+                                ${order.total_amount.toLocaleString()} {order.currency}
+                              </span>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6" style={{ color: theme.colors.textSecondary }}>
+                            <div className="text-3xl mb-2">📦</div>
+                            <p>No hay productos asociados a este pedido</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  onEdit={(order) => console.log('Editar pedido:', order)}
+                  onDelete={(order) => console.log('Eliminar pedido:', order)}
+                  onRefresh={() => {
+                    if (projectData?.project) {
+                      loadOrdersData(projectData.project)
+                    }
+                  }}
+                />
               )}
             </CardContent>
           </Card>

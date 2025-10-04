@@ -104,47 +104,10 @@ export function ModernSidebar({ items, className = '', projectName, onCollapseCh
           return (
             <div key={item.id}>
               {/* Main Item */}
-              {item.href ? (
-                <Link href={item.href}>
-                  <div
-                    className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 group ${
-                      itemIsActive ? 'shadow-lg' : 'hover:shadow-md'
-                    }`}
-                    style={{ 
-                      backgroundColor: itemIsActive 
-                        ? theme.colors.primary + '20' 
-                        : 'transparent',
-                      color: itemIsActive 
-                        ? theme.colors.primary 
-                        : theme.colors.textSecondary
-                    }}
-                  >
-                    <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>
-                    {!collapsed && (
-                      <>
-                        <span className="ml-3 font-medium">{item.label}</span>
-                        {hasSubItems && (
-                          <svg 
-                            className={`ml-auto w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                            fill="none" 
-                            viewBox="0 0 24 24" 
-                            stroke="currentColor"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </Link>
-              ) : (
+              {hasSubItems ? (
+                // Si tiene subitems, es un botón que expande/contrae
                 <button
-                  onClick={() => {
-                    if (hasSubItems) {
-                      toggleExpanded(item.id)
-                    }
-                    item.onClick?.()
-                  }}
+                  onClick={() => toggleExpanded(item.id)}
                   className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 group ${
                     itemIsActive ? 'shadow-lg' : 'hover:shadow-md'
                   }`}
@@ -161,17 +124,58 @@ export function ModernSidebar({ items, className = '', projectName, onCollapseCh
                   {!collapsed && (
                     <>
                       <span className="ml-3 font-medium">{item.label}</span>
-                      {hasSubItems && (
-                        <svg 
-                          className={`ml-auto w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      )}
+                      <svg 
+                        className={`ml-auto w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </>
+                  )}
+                </button>
+              ) : item.href ? (
+                // Si no tiene subitems pero tiene href, es un link
+                <Link href={item.href}>
+                  <div
+                    className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 group ${
+                      itemIsActive ? 'shadow-lg' : 'hover:shadow-md'
+                    }`}
+                    style={{ 
+                      backgroundColor: itemIsActive 
+                        ? theme.colors.primary + '20' 
+                        : 'transparent',
+                      color: itemIsActive 
+                        ? theme.colors.primary 
+                        : theme.colors.textSecondary
+                    }}
+                  >
+                    <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>
+                    {!collapsed && (
+                      <span className="ml-3 font-medium">{item.label}</span>
+                    )}
+                  </div>
+                </Link>
+              ) : (
+                // Si no tiene href ni subitems, es un botón con onClick
+                <button
+                  onClick={() => item.onClick?.()}
+                  className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 group ${
+                    itemIsActive ? 'shadow-lg' : 'hover:shadow-md'
+                  }`}
+                  style={{ 
+                    backgroundColor: itemIsActive 
+                      ? theme.colors.primary + '20' 
+                      : 'transparent',
+                    color: itemIsActive 
+                      ? theme.colors.primary 
+                      : theme.colors.textSecondary
+                  }}
+                >
+                  <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>
+                  {!collapsed && (
+                    <span className="ml-3 font-medium">{item.label}</span>
                   )}
                 </button>
               )}
