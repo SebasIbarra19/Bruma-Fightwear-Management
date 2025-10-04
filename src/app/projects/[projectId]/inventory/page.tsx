@@ -7,9 +7,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ModernSidebar } from '@/components/ui/modern-sidebar'
 import { Tabs } from '@/components/ui/tabs'
-import { ThemeSelector } from '@/components/ui/theme-selector'
+import { ProjectPageLayout } from '@/components/layout/ProjectPageLayout'
 
 interface UserProject {
   project_id: string
@@ -30,8 +29,6 @@ export default function InventoryPage({ params }: { params: { projectId: string 
   
   const [projectData, setProjectData] = useState<ProjectInventoryData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -66,97 +63,9 @@ export default function InventoryPage({ params }: { params: { projectId: string 
     loadProjectData()
   }, [router, projectSlug, user])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
-  }
 
-  const sidebarItems = [
-    {
-      id: 'analytics',
-      label: 'Estadísticas y Métricas',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/dashboard`
-    },
-    {
-      id: 'inventory',
-      label: 'Gestión de Inventario',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/inventory`,
-      isActive: true
-    },
-    {
-      id: 'products',
-      label: 'Productos y Categorías',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
-      subItems: [
-        { id: 'products-list', label: 'Lista de Productos', href: `/projects/${projectSlug}/products` },
-        { id: 'categories', label: 'Categorías', href: `/projects/${projectSlug}/categories` }
-      ]
-    },
-    {
-      id: 'orders',
-      label: 'Gestión de Pedidos',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/orders`
-    },
-    {
-      id: 'customers',
-      label: 'Gestión de Clientes',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/customers`
-    },
-    {
-      id: 'suppliers',
-      label: 'Gestión de Proveedores',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/suppliers`
-    },
-    {
-      id: 'shipping',
-      label: 'Gestión de Envíos',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/shipping`
-    },
-    {
-      id: 'movements',
-      label: 'Movimientos de Stock',
-      icon: (
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      ),
-      href: `/projects/${projectSlug}/movements`
-    }
-  ]
+
+
 
   const inventoryTabs = [
     {
@@ -538,117 +447,12 @@ export default function InventoryPage({ params }: { params: { projectId: string 
   }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: theme.colors.background }}>
-      <ModernSidebar 
-        items={sidebarItems}
-        projectName={projectData.project.project_name}
-        onCollapseChange={setSidebarCollapsed}
-      />
-
-      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <header className="sticky top-0 z-30 backdrop-blur-md border-b" style={{ backgroundColor: theme.colors.surface + '90', borderColor: theme.colors.border }}>
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="flex items-center space-x-2 p-2 rounded-lg transition-colors hover:bg-opacity-10"
-                  style={{ color: theme.colors.textSecondary }}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  <span className="text-sm">Dashboard Personal</span>
-                </button>
-                <div className="h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
-                <div>
-                  <h1 className="text-xl font-bold" style={{ color: theme.colors.textPrimary }}>
-                    {projectData.project.project_name}
-                  </h1>
-                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                    Gestión de Inventario
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <ThemeSelector />
-                
-                <div className="relative">
-                  <button
-                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center space-x-3 p-2 rounded-xl transition-all duration-200"
-                    style={{ 
-                      backgroundColor: theme.colors.surface + '80',
-                      border: `1px solid ${theme.colors.border}`
-                    }}
-                  >
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-                        color: 'white'
-                      }}
-                    >
-                      {user?.email?.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="hidden sm:block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                      {user?.email?.split('@')[0]}
-                    </span>
-                  </button>
-
-                  {userDropdownOpen && (
-                    <>
-                      <div 
-                        className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border z-50"
-                        style={{ 
-                          backgroundColor: theme.colors.surface,
-                          borderColor: theme.colors.border
-                        }}
-                      >
-                        <div className="p-2">
-                          <button
-                            onClick={() => router.push('/dashboard')}
-                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
-                            style={{ color: theme.colors.textPrimary }}
-                          >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3" />
-                            </svg>
-                            <span>Dashboard Principal</span>
-                          </button>
-                          
-                          <button 
-                            onClick={() => {
-                              handleLogout()
-                              setUserDropdownOpen(false)
-                            }}
-                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-red-600"
-                          >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                            </svg>
-                            <span>Cerrar Sesión</span>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div 
-                        className="fixed inset-0 z-40" 
-                        onClick={() => setUserDropdownOpen(false)}
-                      ></div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-6">
-          <Tabs tabs={inventoryTabs} defaultTab="overview" />
-        </main>
-      </div>
-    </div>
+    <ProjectPageLayout
+      projectData={projectData}
+      loading={loading}
+      pageTitle="Gestión de Inventario"
+    >
+      <Tabs tabs={inventoryTabs} defaultTab="overview" />
+    </ProjectPageLayout>
   )
 }
