@@ -1,15 +1,29 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/button'
+import { useTheme } from '@/contexts/ThemeContext'
+import { SmartLogoNavbar } from '@/components/common/SmartLogo'
+import { ThemeSelector } from '@/components/ui/theme-selector'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ModernSidebar } from '@/components/ui/modern-sidebar'
+import { Tabs } from '@/components/ui/tabs'
 import Link from 'next/link'
-import type { User } from '@supabase/auth-helpers-nextjs'
-import type { UserProject } from '@/types/database'
+
+interface UserProject {
+  project_id: string
+  project_name: string
+  project_slug: string
+  project_type: string
+}
+
+interface ProjectOrdersData {
+  project: UserProject
+}
 
 // Tipos simulados para Orders (Pedidos de Venta) - cuando existan las tablas reales
 interface Customer {
@@ -53,7 +67,7 @@ interface OrderItem {
   product_id?: string
   product_variant_id?: string
   product_name: string
-  variant_description?: string  // e.g., "Talla L, Color Rojo"
+  variant_description?: string
   sku: string
   quantity: number
   unit_price: number
@@ -107,20 +121,17 @@ interface OrderStats {
   averageOrderValue: number
 }
 
-interface CustomerWithStats extends Customer {
-  total_orders?: number
-  total_spent?: number
-  last_order_date?: string
-}
-
-export default function OrdersPage({ params }: { params: { projectId: string } }) {
-  // Estados generales
-  const { user, isLoading: authLoading } = useAuth()
-  const [project, setProject] = useState<UserProject | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'pedidos' | 'facturacion' | 'estadisticas'>('pedidos')
+export default function ModernOrdersPage({ params }: { params: { projectId: string } }) {
+  const { user, isLoading } = useAuth()
+  const { theme } = useTheme()
+  const router = useRouter()
+  const projectSlug = params.projectId
   
-  // Estados para estadísticas generales
+  const [projectData, setProjectData] = useState<ProjectOrdersData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+
+  // Estados para datos de orders
   const [stats, setStats] = useState<OrderStats>({
     totalOrders: 0,
     pendingOrders: 0,
@@ -132,96 +143,67 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
     averageOrderValue: 0
   })
 
-  // Estados para Pedidos
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
+
+  // Estados para filtros
   const [ordersSearch, setOrdersSearch] = useState('')
   const [ordersStatus, setOrdersStatus] = useState<'all' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>('all')
-  const [ordersCustomer, setOrdersCustomer] = useState<string>('all')
   const [ordersPaymentStatus, setOrdersPaymentStatus] = useState<'all' | 'pending' | 'paid' | 'partial' | 'failed'>('all')
-  
-  // Estados para Payment Methods
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false)
-  
-  // Estados para Payments
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [paymentsLoading, setPaymentsLoading] = useState(false)
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const projectSlug = params.projectId as string
-
-  // El middleware maneja la autenticación automáticamente
-  // Solo necesitamos el usuario para mostrar datos personalizados
-
-  // Manejo de tabs con URL
-  const handleTabChange = (tab: typeof activeTab) => {
-    setActiveTab(tab)
-    const newUrl = new URL(window.location.href)
-    newUrl.searchParams.set('tab', tab)
-    router.push(newUrl.pathname + newUrl.search, { scroll: false })
-  }
-
-  // Cargar datos del proyecto
   useEffect(() => {
-    // Cargar datos incluso si authLoading aún está en proceso
-    if ((user || !authLoading) && params.projectId) {
-      loadProjectData()
-    }
-  }, [user, authLoading, params.projectId])
-
-  const loadProjectData = async () => {
-    try {
-      setLoading(true)
-      
-      // Mock data para demostración
-      setProject({ 
-        project_id: projectSlug, 
-        project_name: "BRUMA Fightwear", 
-        project_slug: "bruma-fightwear",
-        project_description: null,
-        project_type: 'ecommerce',
-        user_role: 'admin',
-        color_scheme: null,
-        config: null,
-        assigned_at: new Date().toISOString()
-      })
-      
-      await loadOrdersStats()
-      await loadOrders()
-      await loadPaymentMethods()
-      await loadPayments()
-      
-    } catch (error) {
-      console.error('Error loading project data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadOrdersStats = async () => {
-    if (!project) return
+    if (isLoading) return
     
-    // Simulación de datos hasta que existan las tablas reales
-    setStats({
-      totalOrders: 3,
-      pendingOrders: 1,
-      confirmedOrders: 1,
-      shippedOrders: 1,
-      totalRevenue: 672200,
-      totalCustomers: 3,
-      activeCustomers: 3,
-      averageOrderValue: 224066
-    })
-  }
+    if (!user) {
+      router.push('/auth/login')
+      return
+    }
 
-  const loadOrders = async () => {
-    if (!project) return
-    setOrdersLoading(true)
+    const loadProjectData = async () => {
+      try {
+        const { data: userProjects, error } = await supabase
+          .rpc('get_user_projects', { user_uuid: user.id })
 
+        if (error) throw error
+
+        const project = userProjects?.find((p: UserProject) => p.project_slug === projectSlug)
+        
+        if (!project) {
+          console.error('Proyecto no encontrado')
+          router.push('/dashboard')
+          return
+        }
+
+        setProjectData({ project })
+        await loadOrdersData(project)
+      } catch (error) {
+        console.error('Error cargando proyecto:', error)
+        router.push('/dashboard')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProjectData()
+  }, [router, projectSlug, user, isLoading])
+
+  const loadOrdersData = async (project: UserProject) => {
     try {
-      // Simulación de datos - reemplazar cuando existan las tablas
+      // Simulación de datos hasta que existan las tablas reales
+      setStats({
+        totalOrders: 3,
+        pendingOrders: 1,
+        confirmedOrders: 1,
+        shippedOrders: 1,
+        totalRevenue: 672200,
+        totalCustomers: 3,
+        activeCustomers: 3,
+        averageOrderValue: 224066
+      })
+
+      // Mock orders data
       const mockOrders: OrderWithItems[] = [
         {
           id: '1',
@@ -300,19 +282,6 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
               total_price: 176000,
               created_at: '2024-09-21T14:30:00Z',
               updated_at: '2024-09-21T14:30:00Z'
-            },
-            {
-              id: 'item4',
-              order_id: '2',
-              product_id: 'prod1',
-              product_name: 'Rashguard BRUMA Pro',
-              variant_description: 'Talla M, Color Rojo',
-              sku: 'RG-BRUMA-PRO-M-RED',
-              quantity: 6,
-              unit_price: 25000,
-              total_price: 150000,
-              created_at: '2024-09-21T14:30:00Z',
-              updated_at: '2024-09-21T14:30:00Z'
             }
           ],
           payments: [
@@ -363,19 +332,6 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
               total_price: 36000,
               created_at: '2024-09-22T09:15:00Z',
               updated_at: '2024-09-22T09:15:00Z'
-            },
-            {
-              id: 'item6',
-              order_id: '3',
-              product_id: 'prod4',
-              product_name: 'Guantes MMA Pro',
-              variant_description: 'Talla M, Color Negro/Rojo',
-              sku: 'GL-MMA-PRO-M-BLKRED',
-              quantity: 1,
-              unit_price: 65000,
-              total_price: 65000,
-              created_at: '2024-09-22T09:15:00Z',
-              updated_at: '2024-09-22T09:15:00Z'
             }
           ],
           payments: [
@@ -399,20 +355,7 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
         }
       ]
 
-      setOrders(mockOrders)
-    } catch (err) {
-      console.error('Error loading orders:', err)
-    } finally {
-      setOrdersLoading(false)
-    }
-  }
-
-  const loadPaymentMethods = async () => {
-    if (!project) return
-    setPaymentMethodsLoading(true)
-
-    try {
-      // Datos de Payment Methods según Fase 3
+      // Mock payment methods
       const mockPaymentMethods: PaymentMethod[] = [
         {
           id: 'pm1',
@@ -456,35 +399,26 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
         }
       ]
 
+      setOrders(mockOrders)
       setPaymentMethods(mockPaymentMethods)
-    } catch (err) {
-      console.error('Error loading payment methods:', err)
-    } finally {
-      setPaymentMethodsLoading(false)
-    }
-  }
 
-  const loadPayments = async () => {
-    if (!project) return
-    setPaymentsLoading(true)
-
-    try {
-      // Cargar todos los pagos del proyecto
+      // Extract payments from orders
       const allPayments: Payment[] = []
-      
-      // Extraer pagos de las órdenes (en un caso real vendrían de una tabla separada)
-      orders.forEach(order => {
+      mockOrders.forEach(order => {
         if (order.payments) {
           allPayments.push(...order.payments)
         }
       })
-
       setPayments(allPayments)
-    } catch (err) {
-      console.error('Error loading payments:', err)
-    } finally {
-      setPaymentsLoading(false)
+
+    } catch (error) {
+      console.error('Error cargando datos de pedidos:', error)
     }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
   }
 
   // Funciones de filtrado
@@ -501,34 +435,693 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
     })
   }
 
-  // Función para toggle del estado del pedido - si se requiere
-  // Aquí podrían ir más funciones específicas de orders
-
-  // El middleware y el primer useEffect ya manejan la autenticación y carga de datos
-
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab && ['pedidos', 'facturacion', 'estadisticas'].includes(tab)) {
-      setActiveTab(tab as typeof activeTab)
+  const getStatusBadge = (status: Order['status']) => {
+    const statusConfig = {
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
+      confirmed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Confirmado' },
+      processing: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Procesando' },
+      shipped: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Enviado' },
+      delivered: { bg: 'bg-green-100', text: 'text-green-800', label: 'Entregado' },
+      cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelado' }
     }
-  }, [searchParams])
 
-  // Los datos se cargan en loadProjectData() - no necesitamos este useEffect duplicado
-
-  if (loading) {
+    const config = statusConfig[status]
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    )
+  }
+
+  const getPaymentStatusBadge = (status: Order['payment_status']) => {
+    const statusConfig = {
+      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
+      paid: { bg: 'bg-green-100', text: 'text-green-800', label: 'Pagado' },
+      partial: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Parcial' },
+      failed: { bg: 'bg-red-100', text: 'text-red-800', label: 'Fallido' }
+    }
+
+    const config = statusConfig[status]
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    )
+  }
+
+  const sidebarItems = [
+    {
+      id: 'analytics',
+      label: 'Estadísticas y Métricas',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/dashboard`
+    },
+    {
+      id: 'inventory',
+      label: 'Gestión de Inventario',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/inventory`
+    },
+    {
+      id: 'products',
+      label: 'Productos y Categorías',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      ),
+      subItems: [
+        { id: 'products-list', label: 'Lista de Productos', href: `/projects/${projectSlug}/products` },
+        { id: 'categories', label: 'Categorías', href: `/projects/${projectSlug}/categories` }
+      ]
+    },
+    {
+      id: 'orders',
+      label: 'Gestión de Pedidos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/orders`,
+      isActive: true
+    },
+    {
+      id: 'customers',
+      label: 'Gestión de Clientes',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/customers`
+    },
+    {
+      id: 'suppliers',
+      label: 'Gestión de Proveedores',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/suppliers`
+    },
+    {
+      id: 'shipping',
+      label: 'Gestión de Envíos',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/shipping`
+    }
+  ]
+
+  const ordersTabs = [
+    {
+      id: 'overview',
+      label: 'Resumen de Pedidos',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Total Pedidos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                  {stats.totalOrders}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>
+                  Todos los pedidos
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Pedidos Pendientes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.warning }}>
+                  {stats.pendingOrders}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                  Requieren atención
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Ingresos Totales
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.success }}>
+                  ${stats.totalRevenue.toLocaleString()}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                  COP en ventas
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Valor Promedio
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
+                  ${stats.averageOrderValue.toLocaleString()}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                  Por pedido
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Orders */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardHeader>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>
+                Pedidos Recientes
+              </CardTitle>
+              <CardDescription style={{ color: theme.colors.textSecondary }}>
+                Últimos pedidos registrados en el sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {orders.slice(0, 5).map((order) => (
+                  <div 
+                    key={order.id}
+                    className="flex items-center justify-between p-4 rounded-lg border"
+                    style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background + '50' }}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
+                           style={{ backgroundColor: theme.colors.primary + '20', color: theme.colors.primary }}>
+                        {order.order_number.slice(-2)}
+                      </div>
+                      <div>
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {order.order_number}
+                        </div>
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {order.customer_name}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      {getStatusBadge(order.status)}
+                      <div className="text-right">
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          ${order.total_amount.toLocaleString()}
+                        </div>
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {new Date(order.order_date).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    },
+    {
+      id: 'pedidos',
+      label: 'Gestión de Pedidos',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          {/* Filters */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                    Buscar pedidos
+                  </label>
+                  <Input
+                    placeholder="Número, cliente..."
+                    value={ordersSearch}
+                    onChange={(e) => setOrdersSearch(e.target.value)}
+                    style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                    Estado del Pedido
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded-md"
+                    style={{ 
+                      backgroundColor: theme.colors.background, 
+                      borderColor: theme.colors.border,
+                      color: theme.colors.textPrimary
+                    }}
+                    value={ordersStatus}
+                    onChange={(e) => setOrdersStatus(e.target.value as any)}
+                  >
+                    <option value="all">Todos</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="confirmed">Confirmado</option>
+                    <option value="processing">Procesando</option>
+                    <option value="shipped">Enviado</option>
+                    <option value="delivered">Entregado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                    Estado de Pago
+                  </label>
+                  <select
+                    className="w-full p-2 border rounded-md"
+                    style={{ 
+                      backgroundColor: theme.colors.background, 
+                      borderColor: theme.colors.border,
+                      color: theme.colors.textPrimary
+                    }}
+                    value={ordersPaymentStatus}
+                    onChange={(e) => setOrdersPaymentStatus(e.target.value as any)}
+                  >
+                    <option value="all">Todos</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="paid">Pagado</option>
+                    <option value="partial">Parcial</option>
+                    <option value="failed">Fallido</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-end">
+                  <Link href={`/projects/${projectSlug}/orders/new`}>
+                    <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
+                      + Nuevo Pedido
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Orders Table */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardHeader>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>
+                Lista de Pedidos
+              </CardTitle>
+              <CardDescription style={{ color: theme.colors.textSecondary }}>
+                Mostrando {getFilteredOrders().length} pedidos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ordersLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" 
+                       style={{ borderColor: theme.colors.primary }}></div>
+                  <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
+                </div>
+              ) : getFilteredOrders().length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">📦</div>
+                  <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                    No se encontraron pedidos
+                  </h3>
+                  <p style={{ color: theme.colors.textSecondary }}>
+                    {ordersSearch || ordersStatus !== 'all' || ordersPaymentStatus !== 'all'
+                      ? 'Intenta ajustar los filtros de búsqueda'
+                      : 'Los pedidos aparecerán aquí cuando se registren'}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: theme.colors.border }}>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Pedido
+                        </th>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Cliente
+                        </th>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Items
+                        </th>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Total
+                        </th>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Estado
+                        </th>
+                        <th className="text-left p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Pago
+                        </th>
+                        <th className="text-center p-3 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getFilteredOrders().map((order) => (
+                        <tr key={order.id} className="border-b" 
+                            style={{ borderColor: theme.colors.border }}>
+                          <td className="p-3">
+                            <div>
+                              <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                                {order.order_number}
+                              </div>
+                              <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                                {new Date(order.order_date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                              {order.customer_name}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                              {order.items?.length || 0} productos
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                              ${order.total_amount.toLocaleString()}
+                            </div>
+                            <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                              {order.currency}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            {getStatusBadge(order.status)}
+                          </td>
+                          <td className="p-3">
+                            {getPaymentStatusBadge(order.payment_status)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex justify-center space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                style={{ 
+                                  borderColor: theme.colors.border,
+                                  color: theme.colors.textPrimary 
+                                }}
+                              >
+                                Ver
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                style={{ 
+                                  borderColor: theme.colors.border,
+                                  color: theme.colors.textPrimary 
+                                }}
+                              >
+                                Editar
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    },
+    {
+      id: 'facturacion',
+      label: 'Facturación y Pagos',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          {/* Payment Methods */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardHeader>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>
+                Métodos de Pago
+              </CardTitle>
+              <CardDescription style={{ color: theme.colors.textSecondary }}>
+                Métodos de pago disponibles para los pedidos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {paymentMethods.map((method) => (
+                  <div 
+                    key={method.id}
+                    className="p-4 rounded-lg border"
+                    style={{ 
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.background + '50'
+                    }}
+                  >
+                    <div className="font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                      {method.name}
+                    </div>
+                    <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                      {method.description}
+                    </div>
+                    <div className={`inline-block px-2 py-1 rounded-full text-xs mt-2 ${
+                      method.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {method.is_active ? 'Activo' : 'Inactivo'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Payments */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardHeader>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>
+                Pagos Recientes
+              </CardTitle>
+              <CardDescription style={{ color: theme.colors.textSecondary }}>
+                Últimos pagos registrados en el sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">💳</div>
+                  <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                    No hay pagos registrados
+                  </h3>
+                  <p style={{ color: theme.colors.textSecondary }}>
+                    Los pagos aparecerán aquí cuando se registren
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {payments.slice(0, 10).map((payment) => {
+                    const order = orders.find(o => o.id === payment.order_id)
+                    return (
+                      <div 
+                        key={payment.id}
+                        className="flex items-center justify-between p-4 rounded-lg border"
+                        style={{ 
+                          borderColor: theme.colors.border,
+                          backgroundColor: theme.colors.background + '50'
+                        }}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                            💳
+                          </div>
+                          <div>
+                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                              {order?.order_number || 'Pedido desconocido'}
+                            </div>
+                            <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                              {payment.payment_method_name} • {order?.customer_name}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium text-green-600">
+                            ${payment.amount.toLocaleString()}
+                          </div>
+                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                            {new Date(payment.payment_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    },
+    {
+      id: 'estadisticas',
+      label: 'Estadísticas y Reportes',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      content: (
+        <div className="space-y-6">
+          {/* Stats Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader>
+                <CardTitle style={{ color: theme.colors.textPrimary }}>
+                  Resumen de Ventas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Total de Pedidos</span>
+                    <span className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {stats.totalOrders}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Ingresos Totales</span>
+                    <span className="font-medium" style={{ color: theme.colors.success }}>
+                      ${stats.totalRevenue.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Valor Promedio</span>
+                    <span className="font-medium" style={{ color: theme.colors.primary }}>
+                      ${stats.averageOrderValue.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Clientes Activos</span>
+                    <span className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {stats.activeCustomers}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader>
+                <CardTitle style={{ color: theme.colors.textPrimary }}>
+                  Estado de Pedidos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Pendientes</span>
+                    <span className="font-medium" style={{ color: theme.colors.warning }}>
+                      {stats.pendingOrders}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Confirmados</span>
+                    <span className="font-medium" style={{ color: theme.colors.primary }}>
+                      {stats.confirmedOrders}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: theme.colors.textSecondary }}>Enviados</span>
+                    <span className="font-medium" style={{ color: theme.colors.success }}>
+                      {stats.shippedOrders}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Placeholder */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardHeader>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>
+                Tendencias de Ventas
+              </CardTitle>
+              <CardDescription style={{ color: theme.colors.textSecondary }}>
+                Gráficos y análisis detallados próximamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">📈</div>
+                <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                  Gráficos en Desarrollo
+                </h3>
+                <p style={{ color: theme.colors.textSecondary }}>
+                  Los gráficos de tendencias y análisis detallados estarán disponibles próximamente
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+  ]
+
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando pedidos...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
+               style={{ borderColor: theme.colors.primary }}></div>
+          <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
         </div>
       </div>
     )
   }
 
-  if (!project) {
+  if (!projectData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
           <p className="text-red-600">Proyecto no encontrado</p>
         </div>
@@ -537,785 +1130,118 @@ export default function OrdersPage({ params }: { params: { projectId: string } }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-            <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
-            <span>→</span>
-            <Link href={`/projects/${projectSlug}/dashboard`} className="hover:text-blue-600">
-              {project?.project_name}
-            </Link>
-            <span>→</span>
-            <span className="text-gray-900">Pedidos</span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/images/bruma/logo-circle.svg" 
-                alt="BRUMA Fightwear" 
-                className="w-12 h-12"
-              />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestión de Pedidos</h1>
-                <p className="text-gray-600 mt-2">
-                  Administra las ventas y clientes de {project.project_name}
-                </p>
+    <div className="min-h-screen flex" style={{ backgroundColor: theme.colors.background }}>
+      <ModernSidebar 
+        items={sidebarItems}
+        projectName={projectData.project.project_name}
+      />
+      
+      <div className="flex-1 ml-64">
+        <header className="border-b" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    color: theme.colors.textSecondary
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  <span className="text-sm">Dashboard Personal</span>
+                </button>
+                <div className="h-6 w-px" style={{ backgroundColor: theme.colors.border }}></div>
+                <div>
+                  <h1 className="text-xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                    {projectData.project.project_name}
+                  </h1>
+                  <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                    Gestión de Pedidos
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <ThemeSelector />
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-3 p-2 rounded-xl transition-all duration-200"
+                    style={{ 
+                      backgroundColor: theme.colors.surface + '80',
+                      border: `1px solid ${theme.colors.border}`
+                    }}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                        color: 'white'
+                      }}
+                    >
+                      {user?.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {user?.email?.split('@')[0]}
+                    </span>
+                  </button>
+
+                  {userDropdownOpen && (
+                    <>
+                      <div 
+                        className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border z-50"
+                        style={{ 
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border
+                        }}
+                      >
+                        <div className="p-2">
+                          <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors"
+                            style={{ color: theme.colors.textPrimary }}
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3" />
+                            </svg>
+                            <span>Dashboard Principal</span>
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              handleLogout()
+                              setUserDropdownOpen(false)
+                            }}
+                            className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-red-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                            </svg>
+                            <span>Cerrar Sesión</span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setUserDropdownOpen(false)}
+                      ></div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Estadísticas Generales */}
-        <div className="grid grid-cols-1 md:grid-cols-8 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-blue-600">{stats.totalOrders}</div>
-              <div className="text-sm text-gray-600">Total Pedidos</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
-              <div className="text-sm text-gray-600">Pendientes</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-green-600">{stats.confirmedOrders}</div>
-              <div className="text-sm text-gray-600">Confirmados</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-purple-600">{stats.shippedOrders}</div>
-              <div className="text-sm text-gray-600">Enviados</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-emerald-600">${stats.totalRevenue.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Ingresos</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-indigo-600">{stats.totalCustomers}</div>
-              <div className="text-sm text-gray-600">Clientes</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-cyan-600">{stats.activeCustomers}</div>
-              <div className="text-sm text-gray-600">Activos</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-orange-600">${stats.averageOrderValue.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Promedio</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs Navigation */}
-        <div className="mb-8">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => handleTabChange('pedidos')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'pedidos'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              📦 Pedidos
-            </button>
-            <button
-              onClick={() => handleTabChange('facturacion')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'facturacion'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              💳 Facturación
-            </button>
-            <button
-              onClick={() => handleTabChange('estadisticas')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'estadisticas'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              📊 Estadísticas
-            </button>
-          </div>
-        </div>
-
-        {/* Contenido del Tab de Pedidos */}
-        {activeTab === 'pedidos' && (
-          <>
-            <Card className="mb-8">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Buscar pedidos
-                    </label>
-                    <Input
-                      placeholder="Número, cliente..."
-                      value={ordersSearch}
-                      onChange={(e) => setOrdersSearch(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado
-                    </label>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={ordersStatus}
-                      onChange={(e) => setOrdersStatus(e.target.value as any)}
-                    >
-                      <option value="all">Todos</option>
-                      <option value="pending">Pendiente</option>
-                      <option value="confirmed">Confirmado</option>
-                      <option value="processing">Procesando</option>
-                      <option value="shipped">Enviado</option>
-                      <option value="delivered">Entregado</option>
-                      <option value="cancelled">Cancelado</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado de Pago
-                    </label>
-                    <select
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={ordersPaymentStatus}
-                      onChange={(e) => setOrdersPaymentStatus(e.target.value as any)}
-                    >
-                      <option value="all">Todos</option>
-                      <option value="pending">Pendiente</option>
-                      <option value="paid">Pagado</option>
-                      <option value="partial">Parcial</option>
-                      <option value="failed">Fallido</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Método de Pago
-                    </label>
-                    <select className="w-full p-2 border border-gray-300 rounded-md">
-                      <option value="all">Todos</option>
-                      {paymentMethods.map((method) => (
-                        <option key={method.id} value={method.id}>
-                          {method.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <Link href={`/projects/${projectSlug}/orders/new`}>
-                      <Button className="bg-blue-600 hover:bg-blue-700">
-                        + Nuevo Pedido
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Pedidos
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Mostrando {getFilteredOrders().length} pedidos
-                    </p>
-                  </div>
-                </div>
-
-                {ordersLoading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Cargando pedidos...</p>
-                  </div>
-                ) : getFilteredOrders().length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 text-4xl mb-4">📦</div>
-                    <p className="text-gray-600 mb-2">No hay pedidos</p>
-                    <p className="text-sm text-gray-500">
-                      Los pedidos aparecerán aquí
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full divide-y divide-gray-200 table-auto">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Pedido
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cliente
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Items
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total / Pagado
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Método Pago
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Estado
-                          </th>
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Acciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {getFilteredOrders().map((order) => (
-                          <tr key={order.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-3 whitespace-nowrap w-28">
-                              <div className="text-xs font-medium text-gray-900">
-                                {order.order_number}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(order.order_date).toLocaleDateString('es-ES', { 
-                                  day: '2-digit', 
-                                  month: '2-digit' 
-                                })}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap w-28">
-                              <div className="text-xs text-gray-900 truncate" title={order.customer_name || 'Cliente desconocido'}>
-                                {order.customer_name || 'Cliente desconocido'}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 w-80">
-                              <div className="text-xs text-gray-900">
-                                <div className="font-medium mb-1">{order.items?.length || 0} productos</div>
-                                {order.items && order.items.length > 0 && (
-                                  <div className="space-y-1">
-                                    {order.items.slice(0, 2).map((item) => (
-                                      <div key={item.id} className="bg-gray-50 rounded p-2 text-xs">
-                                        <div className="font-medium text-gray-900 mb-1">
-                                          {item.quantity}x {item.product_name}
-                                        </div>
-                                        {item.variant_description && (
-                                          <div className="text-gray-500 text-xs mb-1">{item.variant_description}</div>
-                                        )}
-                                        <div className="text-gray-600 text-xs">
-                                          {item.sku}
-                                        </div>
-                                      </div>
-                                    ))}
-                                    {order.items.length > 2 && (
-                                      <div className="text-center py-1 bg-gray-100 rounded text-xs text-gray-600">
-                                        + {order.items.length - 2} más
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap w-28">
-                              <div className="text-xs text-gray-900">
-                                <div className="font-medium">${order.total_amount.toLocaleString()}</div>
-                                <div className={`text-xs mt-1 ${
-                                  order.payment_status === 'paid' 
-                                    ? 'text-green-600'
-                                    : order.payment_status === 'partial'
-                                    ? 'text-yellow-600'
-                                    : 'text-gray-500'
-                                }`}>
-                                  ${(order.total_paid || 0).toLocaleString()}
-                                  {order.pending_amount && order.pending_amount > 0 && (
-                                    <div className="text-red-600 text-xs">
-                                      ${order.pending_amount.toLocaleString()}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap w-28">
-                              {order.payments && order.payments.length > 0 ? (
-                                <div className="text-xs">
-                                  {order.payments.slice(0, 1).map((payment) => (
-                                    <div key={payment.id}>
-                                      <div className="font-medium text-gray-900 truncate" title={payment.payment_method_name}>
-                                        {payment.payment_method_name}
-                                      </div>
-                                      {payment.reference_number && (
-                                        <div className="text-xs text-gray-500 truncate" title={payment.reference_number}>
-                                          {payment.reference_number}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                  {order.payments.length > 1 && (
-                                    <div className="text-xs text-gray-500 mt-1">+{order.payments.length - 1} más</div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-500">Sin pagos</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap w-28">
-                              <div className="flex flex-col space-y-1">
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium text-center ${
-                                  order.status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : order.status === 'confirmed'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : order.status === 'processing'
-                                    ? 'bg-purple-100 text-purple-800'
-                                    : order.status === 'shipped'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : order.status === 'delivered'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {order.status === 'pending' ? 'Pend.' : 
-                                   order.status === 'confirmed' ? 'Conf.' :
-                                   order.status === 'processing' ? 'Proc.' :
-                                   order.status === 'shipped' ? 'Env.' :
-                                   order.status === 'delivered' ? 'Ent.' : 'Canc.'}
-                                </span>
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium text-center ${
-                                  order.payment_status === 'paid'
-                                    ? 'bg-green-100 text-green-800'
-                                    : order.payment_status === 'partial'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : order.payment_status === 'failed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {order.payment_status === 'paid' ? 'Pag.' :
-                                   order.payment_status === 'partial' ? 'Parc.' :
-                                   order.payment_status === 'failed' ? 'Fall.' : 'S/P'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap text-center text-xs font-medium w-20">
-                              <div className="flex flex-col space-y-1">
-                                <Link
-                                  href={`/projects/${projectSlug}/orders/${order.id}`}
-                                  className="text-blue-600 hover:text-blue-900"
-                                >
-                                  Ver
-                                </Link>
-                                <Link
-                                  href={`/projects/${projectSlug}/orders/${order.id}/edit`}
-                                  className="text-indigo-600 hover:text-indigo-900"
-                                >
-                                  Edit
-                                </Link>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* Contenido del Tab de Facturación */}
-        {activeTab === 'facturacion' && (
-          <>
-            {/* Resumen de Pagos */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-green-600">
-                    ${payments.reduce((sum, payment) => sum + payment.amount, 0).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Recaudado</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-blue-600">{payments.length}</div>
-                  <div className="text-sm text-gray-600">Pagos Registrados</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    ${orders.reduce((sum, order) => sum + (order.pending_amount || 0), 0).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600">Pendiente Cobro</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-2xl font-bold text-purple-600">{paymentMethods.filter(pm => pm.is_active).length}</div>
-                  <div className="text-sm text-gray-600">Métodos Activos</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Historial de Pagos */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Historial de Pagos</CardTitle>
-                  <CardDescription>
-                    Últimos pagos registrados en el sistema
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {paymentsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600">Cargando pagos...</p>
-                    </div>
-                  ) : payments.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="text-gray-400 text-4xl mb-4">💳</div>
-                      <p className="text-gray-600 mb-2">No hay pagos registrados</p>
-                      <p className="text-sm text-gray-500">
-                        Los pagos aparecerán aquí cuando se registren
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {payments.slice(0, 5).map((payment) => {
-                        const order = orders.find(o => o.id === payment.order_id)
-                        return (
-                          <div key={payment.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <div className="font-medium text-gray-900">
-                                  {order?.order_number || 'Pedido desconocido'}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {order?.customer_name}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-bold text-green-600">
-                                  ${payment.amount.toLocaleString()}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {new Date(payment.payment_date).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center space-x-2">
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                  {payment.payment_method_name}
-                                </span>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  payment.status === 'completed' 
-                                    ? 'bg-green-100 text-green-800'
-                                    : payment.status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {payment.status === 'completed' ? 'Completado' :
-                                   payment.status === 'pending' ? 'Pendiente' : 'Fallido'}
-                                </span>
-                              </div>
-                              
-                              {payment.reference_number && (
-                                <div className="text-xs text-gray-500">
-                                  Ref: {payment.reference_number}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      
-                      {payments.length > 5 && (
-                        <div className="text-center pt-4">
-                          <Button variant="outline" size="sm">
-                            Ver todos los pagos ({payments.length})
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Métodos de Pago */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Métodos de Pago</CardTitle>
-                  <CardDescription>
-                    Configuración de métodos de pago disponibles
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {paymentMethodsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600">Cargando métodos...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {paymentMethods.map((method) => (
-                        <div key={method.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-3 h-3 rounded-full ${
-                                method.is_active ? 'bg-green-500' : 'bg-gray-400'
-                              }`}></div>
-                              <div>
-                                <div className="font-medium text-gray-900">
-                                  {method.name}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {method.description}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                method.type === 'cash' 
-                                  ? 'bg-green-100 text-green-800'
-                                  : method.type === 'transfer'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : method.type === 'sinpe_movil'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : method.type === 'courtesy'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {method.type === 'cash' ? '💵 Efectivo' :
-                                 method.type === 'transfer' ? '🏦 Transferencia' :
-                                 method.type === 'sinpe_movil' ? '📱 Sinpe' :
-                                 method.type === 'courtesy' ? '🎁 Cortesía' : method.type}
-                              </span>
-                              
-                              <button 
-                                className={`text-xs px-2 py-1 rounded ${
-                                  method.is_active 
-                                    ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                                    : 'bg-green-100 text-green-800 hover:bg-green-200'
-                                }`}
-                              >
-                                {method.is_active ? 'Desactivar' : 'Activar'}
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right text-sm text-gray-500 mt-2">
-                            {/* Aquí podríamos mostrar estadísticas de uso del método */}
-                            Usado en {payments.filter(p => p.payment_method_id === method.id).length} pagos
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="text-center pt-4 border-t">
-                        <Button variant="outline" size="sm" className="w-full">
-                          + Agregar Método de Pago
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pedidos Pendientes de Pago */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Pedidos Pendientes de Pago</CardTitle>
-                <CardDescription>
-                  Pedidos que requieren seguimiento de pagos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const pendingOrders = orders.filter(order => 
-                    order.payment_status === 'pending' || order.payment_status === 'partial'
-                  )
-                  
-                  return pendingOrders.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="text-gray-400 text-4xl mb-4">✅</div>
-                      <p className="text-gray-600 mb-2">¡Todos los pagos al día!</p>
-                      <p className="text-sm text-gray-500">
-                        No hay pedidos pendientes de pago
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Pedido
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Cliente
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Total
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Pagado
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Pendiente
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Acciones
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {pendingOrders.map((order) => (
-                            <tr key={order.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {order.order_number}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {new Date(order.order_date).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {order.customer_name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                ${order.total_amount.toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                                ${(order.total_paid || 0).toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                                ${(order.pending_amount || 0).toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                                  Registrar Pago
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                })()}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* Contenido del Tab de Estadísticas */}
-        {activeTab === 'estadisticas' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen de Ventas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total de Pedidos</span>
-                    <span className="font-semibold">{stats.totalOrders}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pedidos Pendientes</span>
-                    <span className="font-semibold text-yellow-600">{stats.pendingOrders}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pedidos Confirmados</span>
-                    <span className="font-semibold text-green-600">{stats.confirmedOrders}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pedidos Enviados</span>
-                    <span className="font-semibold text-purple-600">{stats.shippedOrders}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Métricas Financieras</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Ingresos Totales</span>
-                    <span className="font-semibold text-green-600">${stats.totalRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Valor Promedio por Pedido</span>
-                    <span className="font-semibold text-blue-600">${stats.averageOrderValue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total de Clientes</span>
-                    <span className="font-semibold">{stats.totalCustomers}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Clientes Activos</span>
-                    <span className="font-semibold text-indigo-600">{stats.activeCustomers}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Análisis de Rendimiento</CardTitle>
-                <CardDescription>
-                  Gráficos y métricas avanzadas de ventas (próximamente)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <div className="text-gray-400 text-4xl mb-4">📈</div>
-                  <p className="text-gray-600 mb-2">Análisis Avanzado</p>
-                  <p className="text-sm text-gray-500">
-                    Gráficos de tendencias, análisis de productos más vendidos,<br />
-                    métricas de crecimiento y proyecciones
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
+        <main className="p-6">
+          <Tabs tabs={ordersTabs} defaultTab="overview" />
+        </main>
       </div>
     </div>
   )
