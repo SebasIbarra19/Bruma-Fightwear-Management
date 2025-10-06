@@ -127,21 +127,21 @@ export class SupabaseDataAccess {
         p_search: searchQuery
       }
       
-      const { data, count } = await executeStoredProcedureWithCount<Product>(
-        'get_products',
-        'count_products',
+      const data = await executeStoredProcedure<Product & { total_count: number }>(
+        'list_products',
         params,
-        countParams,
         'getProducts'
       )
       
+      const totalCount = data.length > 0 ? data[0].total_count : 0
+      
       return {
         data: {
-          data: data.map(transformDatabaseRecord<Product>),
-          total: count,
+          data: data.map((item) => transformDatabaseRecord<Product>(item)),
+          total: totalCount,
           page: paginationParams.page,
           limit: paginationParams.limit,
-          totalPages: paginationParams.totalPages(count)
+          totalPages: paginationParams.totalPages(totalCount)
         },
         error: null,
         success: true

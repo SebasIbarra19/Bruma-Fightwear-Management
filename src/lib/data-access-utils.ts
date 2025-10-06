@@ -3,7 +3,6 @@
 // Funciones helper para manejo de errores y transformaciones
 // ================================================
 
-import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
 // ================================================
@@ -25,14 +24,13 @@ export interface StoredProcedureCountResult {
 // 🔧 CLIENTE SUPABASE HELPER
 // ================================================
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-let supabaseClient: ReturnType<typeof createClient<Database>> | null = null
+let supabaseClient: any = null
 
 export function getSupabaseClient() {
   if (!supabaseClient) {
-    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey)
+    // Usar el mismo cliente que AuthContext para consistencia
+    const { createClient } = require('@/lib/supabase/client')
+    supabaseClient = createClient()
   }
   return supabaseClient
 }
@@ -42,18 +40,43 @@ export function getSupabaseClient() {
 // ================================================
 
 export async function ensureAuthenticated(): Promise<string> {
-  const client = getSupabaseClient()
-  const { data: { session }, error } = await client.auth.getSession()
-  
-  if (error) {
-    throw new Error(`Error de autenticación: ${error.message}`)
+  try {
+    console.log('🔐 Verificando autenticación...')
+    
+    const client = getSupabaseClient()
+    
+    // Intentar obtener la sesión actual
+    const { data: { session }, error: sessionError } = await client.auth.getSession()
+    
+    if (sessionError) {
+      console.warn('⚠️ Error obteniendo sesión:', sessionError.message)
+    }
+    
+    // Si hay sesión, usar el usuario de la sesión
+    if (session?.user) {
+      console.log('✅ Usuario autenticado desde sesión:', session.user.id)
+      return session.user.id
+    }
+    
+    // Si no hay sesión, intentar obtener usuario actual
+    const { data: { user }, error: userError } = await client.auth.getUser()
+    
+    if (userError) {
+      console.warn('⚠️ Error obteniendo usuario:', userError.message)
+    }
+    
+    if (user) {
+      console.log('✅ Usuario autenticado desde getUser:', user.id)
+      return user.id
+    }
+    
+    // Si llegamos aquí, no hay usuario autenticado
+    throw new Error('No hay usuario autenticado')
+    
+  } catch (error) {
+    console.error('❌ Error en ensureAuthenticated:', error)
+    throw new Error(`Error de autenticación: ${error instanceof Error ? error.message : 'Error desconocido'}`)
   }
-  
-  if (!session?.user?.id) {
-    throw new Error('Usuario no autenticado')
-  }
-  
-  return session.user.id
 }
 
 // ================================================
@@ -112,19 +135,28 @@ export async function executeStoredProcedure<T = any>(
   operation: string = procedureName
 ): Promise<T[]> {
   try {
-    await ensureAuthenticated()
+    console.log(`🔍 Ejecutando SP: ${procedureName}`, params)
     
+    // Verificar autenticación
+    const userId = await ensureAuthenticated()
+    console.log(`✅ Usuario autenticado: ${userId}`)
+    
+    // Usar el cliente estándar
     const client = getSupabaseClient()
     
-    // Usar any para evitar problemas de tipado con RPC no declarados
+    // Ejecutar stored procedure
+    console.log(`📡 Llamando RPC: ${procedureName}`)
     const { data, error } = await (client as any).rpc(procedureName, params)
     
     if (error) {
+      console.error(`❌ Error en SP ${procedureName}:`, error)
       handleDatabaseError(error, operation)
     }
     
+    console.log(`✅ SP ${procedureName} exitoso:`, data?.length || 0, 'registros')
     return data || []
   } catch (error) {
+    console.error(`💥 Error ejecutando SP ${procedureName}:`, error)
     handleDatabaseError(error, operation)
   }
 }

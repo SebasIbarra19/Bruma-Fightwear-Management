@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/contexts/ThemeContext'
+import { dataAccess } from '@/lib/unified-data-access'
+import type { Product, ApiResponse, PaginatedResponse } from '@/types/data-access'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +25,17 @@ interface ProjectProductsData {
   project: UserProject
 }
 
+interface ProductTableRow {
+  id: string
+  name: string
+  sku: string
+  category: string
+  price: number
+  stock: number
+  status: 'active' | 'outofstock' | 'lowstock'
+  sales: number
+}
+
 export default function ProductsPage({ params }: { params: { projectId: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const { theme } = useTheme()
@@ -30,6 +43,9 @@ export default function ProductsPage({ params }: { params: { projectId: string }
   const projectSlug = params.projectId
   
   const [projectData, setProjectData] = useState<ProjectProductsData | null>(null)
+  const [products, setProducts] = useState<ProductTableRow[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [productsError, setProductsError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   // El middleware maneja la autenticación automáticamente
@@ -40,11 +56,43 @@ export default function ProductsPage({ params }: { params: { projectId: string }
     }
   }, [user, authLoading, params.projectId])
 
+  // Función auxiliar para calcular estadísticas de productos
+  const getProductStats = () => {
+    const totalProducts = products.length
+    const activeProducts = products.filter(p => p.status === 'active').length
+    const outOfStockProducts = products.filter(p => p.status === 'outofstock').length
+    const lowStockProducts = products.filter(p => p.status === 'lowstock').length
+    
+    return {
+      total: totalProducts,
+      active: activeProducts,
+      outOfStock: outOfStockProducts,
+      lowStock: lowStockProducts
+    }
+  }
+
   const loadProjectData = async () => {
     try {
       setLoading(true)
       
-      // Mock data para demostración
+      // 🎯 DIRECTO: Usar datos conocidos del proyecto BRUMA
+      console.log('🏗️ Cargando datos del proyecto BRUMA')
+      
+      setProjectData({ 
+        project: { 
+          project_id: '4cffbb29-0a5b-414c-86c0-9509a19485d3', 
+          project_name: 'BRUMA Fightwear', 
+          project_slug: 'bruma-fightwear',
+          project_type: 'ecommerce'
+        } 
+      })
+      
+      // Cargar productos del proyecto
+      await loadProducts()
+      
+    } catch (error) {
+      console.error('Error loading project data:', error)
+      // En caso de error, usar datos básicos y intentar cargar productos
       setProjectData({ 
         project: { 
           project_id: params.projectId, 
@@ -53,11 +101,72 @@ export default function ProductsPage({ params }: { params: { projectId: string }
           project_type: "ecommerce"
         } 
       })
-      
-    } catch (error) {
-      console.error('Error loading project data:', error)
+      await loadProducts()
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadProducts = async () => {
+    try {
+      setProductsLoading(true)
+      setProductsError(null)
+      
+      // 🎯 USAR PROJECT RESOLVER CON AUTH CORREGIDA
+      let resolvedProjectId = params.projectId
+      
+      // Si no es un UUID, convertir slug a project ID
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(params.projectId)) {
+        console.log('🔍 Resolviendo slug a project ID:', params.projectId)
+        
+        // Importar dinámicamente para evitar problemas de SSR
+        const { getProjectIdFromSlug } = await import('@/lib/project-resolver')
+        const projectId = await getProjectIdFromSlug(params.projectId)
+        
+        if (!projectId) {
+          throw new Error(`No se encontró proyecto con slug: ${params.projectId}`)
+        }
+        
+        resolvedProjectId = projectId
+        console.log('✅ Project ID resuelto:', resolvedProjectId)
+      }
+      
+      console.log('🔍 Cargando productos del proyecto:', resolvedProjectId)
+      
+      // Usar API route temporalmente hasta resolver el problema del stored procedure
+      const apiUrl = `/api/products?project_id=${resolvedProjectId}&page=1&limit=50`
+      console.log('📤 Llamando API:', apiUrl)
+      
+      const response = await fetch(apiUrl)
+      console.log('📊 Response status:', response.status)
+      
+      const result = await response.json()
+      console.log('📋 Response data:', JSON.stringify(result, null, 2))
+      
+      if (result.success && result.data) {
+        // Transformar datos de la BD al formato esperado por la tabla
+        const transformedProducts: ProductTableRow[] = result.data.data.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          category: 'Producto', // Placeholder - podríamos hacer join con categories
+          price: Number(product.base_price) || 0,
+          stock: 0, // Placeholder - necesitaríamos datos de inventory
+          status: product.is_active ? 'active' : 'outofstock' as const,
+          sales: 0 // Placeholder - necesitaríamos datos de orders
+        }))
+        
+        setProducts(transformedProducts)
+      } else {
+        setProductsError(result.error || 'Error al cargar productos')
+        console.error('Error loading products:', result.error)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      setProductsError(errorMessage)
+      console.error('Error loading products:', error)
+    } finally {
+      setProductsLoading(false)
     }
   }
 
@@ -87,6 +196,9 @@ export default function ProductsPage({ params }: { params: { projectId: string }
     )
   }
 
+  const stats = getProductStats()
+  const totalValue = products.reduce((sum, product) => sum + (product.price * Math.max(product.stock, 1)), 0)
+
   const productsTabs = [
     {
       id: 'overview',
@@ -98,7 +210,7 @@ export default function ProductsPage({ params }: { params: { projectId: string }
       ),
       content: (
         <div className="space-y-6">
-          {/* KPIs de Productos */}
+          {/* KPIs de Productos - Datos Reales */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
@@ -107,8 +219,12 @@ export default function ProductsPage({ params }: { params: { projectId: string }
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>156</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+12 este mes</p>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                  {productsLoading ? '...' : stats.total}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>
+                  Desde la base de datos
+                </p>
               </CardContent>
             </Card>
 
@@ -119,32 +235,44 @@ export default function ProductsPage({ params }: { params: { projectId: string }
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>142</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>91% del total</p>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                  {productsLoading ? '...' : stats.active}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>
+                  {stats.total > 0 ? `${Math.round((stats.active / stats.total) * 100)}% del total` : '0% del total'}
+                </p>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
-                  Valor del Inventario
+                  Sin Stock
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>$892K</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.warning }}>-3% vs anterior</p>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                  {productsLoading ? '...' : stats.outOfStock}
+                </div>
+                <p className="text-xs mt-1" style={{ color: stats.outOfStock > 0 ? theme.colors.warning : theme.colors.textSecondary }}>
+                  {stats.outOfStock > 0 ? 'Requieren atención' : 'Todo en stock'}
+                </p>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
-                  Categorías Activas
+                  Valor Estimado
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>8</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>6 principales</p>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                  {productsLoading ? '...' : `$${(totalValue / 1000).toFixed(0)}K`}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                  Valor de productos
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -247,7 +375,7 @@ export default function ProductsPage({ params }: { params: { projectId: string }
                   Catálogo de Productos
                 </h3>
                 <p style={{ color: theme.colors.textSecondary }}>
-                  Gestiona tu inventario de productos de MMA y fightwear
+                  Gestiona tu inventario de productos fightwear
                 </p>
               </div>
               <Button 
@@ -265,90 +393,66 @@ export default function ProductsPage({ params }: { params: { projectId: string }
               </Button>
             </div>
 
-            {/* Tabla de Productos usando ModernTable */}
-            <ModernTable
-              data={[
-                {
-                  id: 1,
-                  name: "Guantes de Boxeo Pro",
-                  sku: "GBP-001",
-                  category: "Guantes",
-                  price: 2450,
-                  stock: 45,
-                  status: "active",
-                  sales: 127
-                },
-                {
-                  id: 2,
-                  name: "Shorts MMA Competition",
-                  sku: "SMC-002", 
-                  category: "Shorts",
-                  price: 1890,
-                  stock: 23,
-                  status: "active",
-                  sales: 89
-                },
-                {
-                  id: 3,
-                  name: "Protector Bucal Pro",
-                  sku: "PBP-003",
-                  category: "Protecciones",
-                  price: 450,
-                  stock: 0,
-                  status: "outofstock",
-                  sales: 203
-                },
-                {
-                  id: 4,
-                  name: "Rashguard Compression",
-                  sku: "RC-004",
-                  category: "Rashguards",
-                  price: 1650,
-                  stock: 67,
-                  status: "active",
-                  sales: 156
-                },
-                {
-                  id: 5,
-                  name: "Vendas de Boxeo",
-                  sku: "VB-005",
-                  category: "Accesorios",
-                  price: 290,
-                  stock: 145,
-                  status: "active",
-                  sales: 312
-                },
-                {
-                  id: 6,
-                  name: "Casco de Sparring",
-                  sku: "CS-006",
-                  category: "Protecciones",
-                  price: 3200,
-                  stock: 12,
-                  status: "lowstock",
-                  sales: 34
-                },
-                {
-                  id: 7,
-                  name: "Espinilleras MMA",
-                  sku: "EMM-007",
-                  category: "Protecciones",
-                  price: 1850,
-                  stock: 28,
-                  status: "active",
-                  sales: 76
-                },
-                {
-                  id: 8,
-                  name: "Camiseta Training",
-                  sku: "CT-008",
-                  category: "Ropa",
-                  price: 650,
-                  stock: 89,
-                  status: "active",
-                  sales: 234
-                }
-              ]}
+            {/* Mostrar estado de carga o error */}
+            {productsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 mr-3" style={{ borderColor: theme.colors.primary }}></div>
+                <span style={{ color: theme.colors.textSecondary }}>Cargando productos...</span>
+              </div>
+            )}
+            
+            {productsError && (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <p style={{ color: theme.colors.error }} className="mb-2">Error al cargar productos: {productsError}</p>
+                  <Button 
+                    onClick={() => loadProducts()}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Intentar nuevamente
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!productsLoading && !productsError && (
+              <>
+                {products.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p style={{ color: theme.colors.textSecondary }}>No hay productos en este proyecto</p>
+                    <Button 
+                      className="mt-4"
+                      onClick={() => console.log('Crear primer producto')}
+                      style={{ 
+                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                        border: 'none'
+                      }}
+                    >
+                      Crear primer producto
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <p style={{ color: theme.colors.textSecondary }}>
+                        {products.length} producto{products.length !== 1 ? 's' : ''} encontrado{products.length !== 1 ? 's' : ''}
+                      </p>
+                      <Button 
+                        onClick={() => loadProducts()}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Actualizar
+                      </Button>
+                    </div>
+                    
+                    {/* Tabla de Productos usando ModernTable con datos reales */}
+                    <ModernTable
+                      data={products}
               columns={[
                 { 
                   key: 'name', 
@@ -428,6 +532,10 @@ export default function ProductsPage({ params }: { params: { projectId: string }
               onDelete={(product) => console.log('Eliminar:', product)}
               onRefresh={() => console.log('Refrescar productos')}
             />
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )
