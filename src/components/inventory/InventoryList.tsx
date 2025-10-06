@@ -30,6 +30,33 @@ export default function InventoryList({ projectId }: InventoryListProps) {
   const [adjustingStock, setAdjustingStock] = useState<string | null>(null)
   const [newQuantity, setNewQuantity] = useState<number>(0)
 
+  // Filtrar inventario
+  useEffect(() => {
+    let filtered = inventory
+
+    // Filtrar por búsqueda
+    if (searchTerm.trim()) {
+      filtered = inventory.filter(item =>
+        item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.variant_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.location?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Filtrar por stock bajo
+    if (showLowStock) {
+      filtered = filtered.filter(item => item.low_stock)
+    }
+
+    // Filtrar por estado activo/inactivo
+    if (!showInactive) {
+      filtered = filtered.filter(item => item.is_active)
+    }
+
+    setFilteredInventory(filtered)
+  }, [inventory, searchTerm, showLowStock, showInactive])
+
   // Si hay error de tabla no existe, mostrar guía de configuración
   if (error && (error.includes('relation "inventory" does not exist') || error.includes('relation') || error.includes('does not exist'))) {
     return (
@@ -75,33 +102,6 @@ export default function InventoryList({ projectId }: InventoryListProps) {
       </div>
     )
   }
-
-  // Filtrar inventario
-  useEffect(() => {
-    let filtered = inventory
-
-    // Filtrar por búsqueda
-    if (searchTerm.trim()) {
-      filtered = inventory.filter(item =>
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.variant_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.location?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Filtrar por stock bajo
-    if (showLowStock) {
-      filtered = filtered.filter(item => item.low_stock)
-    }
-
-    // Filtrar por estado activo/inactivo
-    if (!showInactive) {
-      filtered = filtered.filter(item => item.is_active)
-    }
-
-    setFilteredInventory(filtered)
-  }, [inventory, searchTerm, showLowStock, showInactive])
 
   const handleEdit = (item: Inventory) => {
     setSelectedInventory(item)

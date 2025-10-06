@@ -25,6 +25,32 @@ export default function SuppliersList({ projectId }: SuppliersListProps) {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
 
+  useEffect(() => {
+    // El hook useSuppliers ya maneja la carga automática
+  }, [])
+
+  // Filtrar proveedores
+  useEffect(() => {
+    let filtered = suppliers
+
+    // Filtrar por búsqueda
+    if (searchTerm.trim()) {
+      filtered = suppliers.filter(supplier =>
+        supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.tax_id?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Filtrar por estado activo/inactivo
+    if (!showInactive) {
+      filtered = filtered.filter(supplier => supplier.is_active)
+    }
+
+    setFilteredSuppliers(filtered)
+  }, [suppliers, searchTerm, showInactive])
+
   // Si hay error (posiblemente tablas no existen), mostrar guía de configuración
   if (error && error.includes('relation "suppliers" does not exist')) {
     return (
@@ -73,28 +99,6 @@ export default function SuppliersList({ projectId }: SuppliersListProps) {
       </div>
     )
   }
-
-  // Filtrar proveedores
-  useEffect(() => {
-    let filtered = suppliers
-
-    // Filtrar por búsqueda
-    if (searchTerm.trim()) {
-      filtered = suppliers.filter(supplier =>
-        supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.tax_id?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Filtrar por estado activo/inactivo
-    if (!showInactive) {
-      filtered = filtered.filter(supplier => supplier.is_active)
-    }
-
-    setFilteredSuppliers(filtered)
-  }, [suppliers, searchTerm, showInactive])
 
   const handleEdit = (supplier: Supplier) => {
     setSelectedSupplier(supplier)

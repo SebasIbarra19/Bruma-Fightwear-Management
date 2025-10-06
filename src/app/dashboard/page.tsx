@@ -385,8 +385,9 @@ export default function DashboardPage() {
                           <span 
                             className="inline-block px-2 py-1 text-xs rounded-full mt-1"
                             style={{ 
-                              backgroundColor: theme.colors.primary + '20',
-                              color: theme.colors.primary
+                              backgroundColor: theme.colors.surface,
+                              color: theme.colors.textPrimary,
+                              border: `1px solid ${theme.colors.border}`
                             }}
                           >
                             {stats.userRole === 'owner' ? 'Propietario' : 
@@ -681,9 +682,9 @@ export default function DashboardPage() {
                         <span 
                           className="px-3 py-1 text-sm rounded-full backdrop-blur-sm font-medium"
                           style={{ 
-                            backgroundColor: theme.colors.primary + '20',
-                            color: theme.colors.primary,
-                            border: `1px solid ${theme.colors.primary}30`
+                            backgroundColor: theme.colors.surface,
+                            color: theme.colors.textPrimary,
+                            border: `1px solid ${theme.colors.border}`
                           }}
                         >
                           {userProject.project_type === 'ecommerce' ? 'E-commerce' : 

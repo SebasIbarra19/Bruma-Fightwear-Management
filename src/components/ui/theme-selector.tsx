@@ -19,21 +19,20 @@ export function ThemeSelector({ className = '' }: ThemeSelectorProps) {
 
   return (
     <div className={`relative ${className}`}>
-      <Button
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        variant="ghost"
-        className="flex items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200"
+        className="p-2 rounded-lg transition-all duration-200 hover:bg-opacity-10"
         style={{
           color: themes[currentTheme].colors.textSecondary,
-          backgroundColor: isOpen ? themes[currentTheme].colors.surfaceHover : 'transparent'
+          backgroundColor: isOpen ? themes[currentTheme].colors.surfaceHover + '20' : 'transparent'
         }}
+        title="Cambiar tema"
       >
-        <span className="text-lg">🎨</span>
-        <span className="hidden md:inline">Tema</span>
-        <span className="text-xs opacity-60">
-          {isOpen ? '▲' : '▼'}
-        </span>
-      </Button>
+        {/* Icono de tema simple */}
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+        </svg>
+      </button>
 
       {isOpen && (
         <>
@@ -41,104 +40,32 @@ export function ThemeSelector({ className = '' }: ThemeSelectorProps) {
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
-            style={{ backgroundColor: themes[currentTheme].colors.overlay }}
           />
           
-          {/* Dropdown */}
+          {/* Dropdown simple */}
           <div
-            className="absolute top-full right-0 mt-2 w-64 rounded-lg shadow-lg z-50 border"
+            className="absolute top-full right-0 mt-2 w-48 rounded-lg shadow-lg z-50 border p-2"
             style={{
               backgroundColor: themes[currentTheme].colors.surface,
-              borderColor: themes[currentTheme].colors.border,
-              boxShadow: themes[currentTheme].colors.shadow
+              borderColor: themes[currentTheme].colors.border
             }}
           >
-            <div
-              className="p-3 border-b"
-              style={{ borderColor: themes[currentTheme].colors.border }}
-            >
-              <h3
-                className="text-sm font-semibold"
-                style={{ color: themes[currentTheme].colors.textPrimary }}
-              >
-                Seleccionar Tema
-              </h3>
-              <p
-                className="text-xs mt-1"
-                style={{ color: themes[currentTheme].colors.textTertiary }}
-              >
-                Elige el tema que más te guste
-              </p>
-            </div>
-            
-            <div className="p-2 space-y-1">
+            <div className="space-y-1">
               {Object.entries(themes).map(([key, theme]) => (
                 <button
                   key={key}
                   onClick={() => handleThemeSelect(key as ThemeName)}
-                  className={`
-                    w-full flex items-center gap-3 p-3 rounded-md transition-all duration-200 text-left
-                    ${currentTheme === key ? 'ring-2' : ''}
-                  `}
+                  className="w-full flex items-center justify-between p-2 rounded text-sm transition-colors hover:bg-opacity-10"
                   style={{
                     backgroundColor: currentTheme === key 
-                      ? theme.colors.primary + '20' 
+                      ? themes[currentTheme].colors.primary + '20' 
                       : 'transparent',
-                    outline: currentTheme === key ? `2px solid ${theme.colors.primary}` : 'none',
-                    color: theme.colors.textPrimary
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentTheme !== key) {
-                      e.currentTarget.style.backgroundColor = theme.colors.surfaceHover
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentTheme !== key) {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }
+                    color: themes[currentTheme].colors.textPrimary
                   }}
                 >
-                  {/* Preview de colores */}
-                  <div className="flex gap-1">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: theme.colors.primary }}
-                    />
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: theme.colors.secondary }}
-                    />
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: theme.colors.success }}
-                    />
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div
-                      className="text-sm font-medium"
-                      style={{ color: theme.colors.textPrimary }}
-                    >
-                      {theme.displayName}
-                    </div>
-                    <div
-                      className="text-xs"
-                      style={{ color: theme.colors.textTertiary }}
-                    >
-                      {key === 'light' && 'Perfecta para trabajar durante el día'}
-                      {key === 'dark' && 'Ideal para sesiones nocturnas'}
-                      {key === 'forest' && 'Relajante y natural'}
-                      {key === 'ocean' && 'Calmante y profesional'}
-                    </div>
-                  </div>
-                  
+                  <span>{theme.displayName}</span>
                   {currentTheme === key && (
-                    <div
-                      className="text-sm"
-                      style={{ color: theme.colors.primary }}
-                    >
-                      ✓
-                    </div>
+                    <span style={{ color: themes[currentTheme].colors.primary }}>✓</span>
                   )}
                 </button>
               ))}

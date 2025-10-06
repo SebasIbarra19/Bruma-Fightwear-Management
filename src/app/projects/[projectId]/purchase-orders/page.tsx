@@ -1,17 +1,23 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { formatCurrency } from '@/lib/utils'
+import { ModernTable } from '@/components/ui/modern-table'
+import { useTheme } from '@/contexts/ThemeContext'
+import Link from 'next/link'
 import type { User } from '@supabase/auth-helpers-nextjs'
-import type { UserProject } from '@/types/database'
 
-// Tipos específicos para purchase_orders de Phase 2
+interface UserProject {
+  project_id: string
+  project_name: string
+  project_slug: string
+  project_type: string
+}
+
 interface PurchaseOrderPhase2 {
   id: string
   project_id: string
@@ -40,6 +46,7 @@ interface PurchaseOrderPhase2 {
 }
 
 export default function ProjectPurchaseOrdersPage() {
+  const { theme } = useTheme()
   const [user, setUser] = useState<User | null>(null)
   const [project, setProject] = useState<UserProject | null>(null)
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderPhase2[]>([])
@@ -77,27 +84,16 @@ export default function ProjectPurchaseOrdersPage() {
 
       setUser(session.user)
 
-      // Obtener proyectos del usuario
-      const { data: userProjects, error } = await supabase
-        .rpc('get_user_projects', { user_uuid: session.user.id })
+      // Mock project data
+      setProject({
+        project_id: projectSlug,
+        project_name: "BRUMA Fightwear",
+        project_slug: projectSlug,
+        project_type: "ecommerce"
+      })
 
-      if (error) {
-        console.error('Error obteniendo proyectos:', error)
-        router.push('/dashboard')
-        return
-      }
-
-      const currentProject = userProjects?.find((p: UserProject) => p.project_slug === projectSlug)
-      
-      if (!currentProject) {
-        console.error('Proyecto no encontrado o sin acceso')
-        router.push('/dashboard')
-        return
-      }
-
-      setProject(currentProject)
-      await loadPurchaseOrdersData(currentProject.project_id)
-      await loadSuppliersData(currentProject.project_id)
+      await loadPurchaseOrdersData(projectSlug)
+      await loadSuppliersData(projectSlug)
       
     } catch (error) {
       console.error('Error:', error)
@@ -109,26 +105,60 @@ export default function ProjectPurchaseOrdersPage() {
 
   const loadPurchaseOrdersData = async (projectId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('purchase_orders')
-        .select(`
-          *,
-          suppliers (
-            id,
-            name,
-            contact_person,
-            email
-          )
-        `)
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
+      // Mock data
+      const orderData: PurchaseOrderPhase2[] = [
+        {
+          id: "1",
+          project_id: projectId,
+          supplier_id: "1",
+          order_number: "PO-2024-001",
+          status: "received",
+          order_date: "2024-01-15T10:00:00Z",
+          expected_date: "2024-01-25T10:00:00Z",
+          received_date: "2024-01-24T10:00:00Z",
+          subtotal: 4500.00,
+          tax_amount: 450.00,
+          shipping_cost: 100.00,
+          total_amount: 5050.00,
+          currency: "USD",
+          payment_terms: "Net 30",
+          notes: "Pedido urgente para restock",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-24T10:00:00Z",
+          suppliers: {
+            id: "1",
+            name: "Textiles MMA Pro",
+            contact_person: "Carlos Rodriguez",
+            email: "ventas@mmapro.com"
+          }
+        },
+        {
+          id: "2",
+          project_id: projectId,
+          supplier_id: "2",
+          order_number: "PO-2024-002",
+          status: "pending",
+          order_date: "2024-02-01T10:00:00Z",
+          expected_date: "2024-02-15T10:00:00Z",
+          received_date: null,
+          subtotal: 3200.00,
+          tax_amount: 320.00,
+          shipping_cost: 80.00,
+          total_amount: 3600.00,
+          currency: "USD",
+          payment_terms: "Net 15",
+          notes: null,
+          created_at: "2024-02-01T10:00:00Z",
+          updated_at: "2024-02-01T10:00:00Z",
+          suppliers: {
+            id: "2",
+            name: "Leather Goods Co.",
+            contact_person: "Maria Santos",
+            email: "info@leathergoods.com"
+          }
+        }
+      ]
 
-      if (error) {
-        console.error('Error loading purchase orders:', error)
-        return
-      }
-
-      const orderData = (data as PurchaseOrderPhase2[]) || []
       setPurchaseOrders(orderData)
 
       // Calcular estadísticas
@@ -155,19 +185,11 @@ export default function ProjectPurchaseOrdersPage() {
 
   const loadSuppliersData = async (projectId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name')
-        .eq('project_id', projectId)
-        .eq('is_active', true)
-        .order('name')
-
-      if (error) {
-        console.error('Error loading suppliers:', error)
-        return
-      }
-
-      setSuppliers(data || [])
+      // Mock suppliers
+      setSuppliers([
+        { id: "1", name: "Textiles MMA Pro" },
+        { id: "2", name: "Leather Goods Co." }
+      ])
     } catch (error) {
       console.error('Error:', error)
     }
@@ -205,6 +227,20 @@ export default function ProjectPurchaseOrdersPage() {
     return matchesSearch && matchesSupplier && matchesStatus && matchesDate
   })
 
+  const handleEdit = (order: PurchaseOrderPhase2) => {
+    router.push(`/projects/${projectSlug}/purchase-orders/${order.id}/edit`)
+  }
+
+  const handleDelete = (order: PurchaseOrderPhase2) => {
+    console.log('Eliminar orden:', order.id)
+  }
+
+  const handleRefresh = () => {
+    if (project) {
+      loadPurchaseOrdersData(project.project_id)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       'draft': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Borrador' },
@@ -222,6 +258,13 @@ export default function ProjectPurchaseOrdersPage() {
         {config.label}
       </span>
     )
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
   }
 
   if (loading) {
@@ -398,113 +441,128 @@ export default function ProjectPurchaseOrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Lista de órdenes de compra */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Órdenes de Compra ({filteredOrders.length})</CardTitle>
-            <CardDescription>
-              Lista de todas las órdenes de compra
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">📋</div>
-                <p className="text-gray-600">No se encontraron órdenes de compra</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  {searchTerm || selectedSupplier !== 'all' || selectedStatus !== 'all' 
-                    ? 'Intenta ajustar los filtros'
-                    : 'Crea tu primera orden de compra'
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium text-gray-900">N° Orden</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Proveedor</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Fecha</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Estado</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Total</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {order.order_number || `PO-${order.id.slice(0, 8)}`}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {order.suppliers?.name || 'Sin proveedor'}
-                            </div>
-                            {order.suppliers?.contact_person && (
-                              <div className="text-sm text-gray-500">
-                                {order.suppliers.contact_person}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            {order.order_date && (
-                              <div className="text-sm text-gray-900">
-                                {new Date(order.order_date).toLocaleDateString()}
-                              </div>
-                            )}
-                            {order.expected_date && (
-                              <div className="text-sm text-gray-500">
-                                Esperado: {new Date(order.expected_date).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          {getStatusBadge(order.status)}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium text-gray-900">
-                            {formatCurrency(order.total_amount)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {order.currency}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex space-x-2">
-                            <Link 
-                              href={`/projects/${projectSlug}/purchase-orders/${order.id}`}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              Ver
-                            </Link>
-                            <Link 
-                              href={`/projects/${projectSlug}/purchase-orders/${order.id}/edit`}
-                              className="text-green-600 hover:text-green-800 text-sm"
-                            >
-                              Editar
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* ESTRUCTURA PERFECTA - Como Control de Stock */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                Órdenes de Compra
+              </h3>
+              <p style={{ color: theme.colors.textSecondary }}>
+                Gestiona todas las órdenes de compra
+              </p>
+            </div>
+          </div>
+
+          {/* Lista de órdenes de compra */}
+          <ModernTable
+            data={filteredOrders}
+            columns={[
+              {
+                key: 'order_number',
+                title: 'N° Orden',
+                sortable: true,
+                render: (value, row) => (
+                  <div>
+                    <div className="font-medium">{value || `PO-${row.id.slice(0, 8)}`}</div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(row.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'suppliers',
+                title: 'Proveedor',
+                sortable: true,
+                render: (value, row) => (
+                  <div>
+                    <div className="font-medium">{value?.name || 'Sin proveedor'}</div>
+                    {value?.contact_person && (
+                      <div className="text-sm text-gray-500">{value.contact_person}</div>
+                    )}
+                  </div>
+                )
+              },
+              {
+                key: 'status',
+                title: 'Estado',
+                sortable: true,
+                render: (value) => getStatusBadge(value)
+              },
+              {
+                key: 'expected_date',
+                title: 'Fecha Esperada',
+                sortable: true,
+                render: (value) => (
+                  <div className="text-sm">
+                    {value ? new Date(value).toLocaleDateString() : 'No definida'}
+                  </div>
+                )
+              },
+              {
+                key: 'total_amount',
+                title: 'Total',
+                sortable: true,
+                render: (value) => (
+                  <div className="font-medium text-green-600">
+                    {formatCurrency(value)}
+                  </div>
+                )
+              }
+            ]}
+            renderExpandedRow={(row) => (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Detalles de la Orden</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500">N° Orden:</span> {row.order_number}</p>
+                    <p><span className="text-gray-500">Estado:</span> {getStatusBadge(row.status)}</p>
+                    <p><span className="text-gray-500">Fecha de Orden:</span> {row.order_date ? new Date(row.order_date).toLocaleDateString() : 'No definida'}</p>
+                    <p><span className="text-gray-500">Fecha Esperada:</span> {row.expected_date ? new Date(row.expected_date).toLocaleDateString() : 'No definida'}</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Proveedor</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500">Nombre:</span> {row.suppliers?.name || 'No asignado'}</p>
+                    <p><span className="text-gray-500">Contacto:</span> {row.suppliers?.contact_person || 'No especificado'}</p>
+                    <p><span className="text-gray-500">Email:</span> {row.suppliers?.email || 'No disponible'}</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Montos</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-gray-500">Subtotal:</span> {formatCurrency(row.subtotal)}</p>
+                    <p><span className="text-gray-500">Impuestos:</span> {formatCurrency(row.tax_amount)}</p>
+                    <p><span className="text-gray-500">Envío:</span> {formatCurrency(row.shipping_cost)}</p>
+                    <p><span className="text-gray-500 font-bold">Total:</span> <span className="font-bold text-green-600">{formatCurrency(row.total_amount)}</span></p>
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <div className="flex gap-2 pt-4">
+                    <Link
+                      href={`/projects/${projectSlug}/purchase-orders/${row.id}`}
+                      className="block px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                    >
+                      Ver Detalles
+                    </Link>
+                    <Link
+                      href={`/projects/${projectSlug}/purchase-orders/${row.id}/edit`}
+                      className="block px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                    >
+                      Editar Orden
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRefresh={handleRefresh}
+          />
+        </div>
+        
       </div>
     </div>
   )

@@ -29,6 +29,10 @@ export default function PurchaseOrdersList({ projectId }: PurchaseOrdersListProp
   const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | 'all'>('all')
   const [supplierFilter, setSupplierFilter] = useState('all')
 
+  useEffect(() => {
+    fetchPurchaseOrders()
+  }, [fetchPurchaseOrders])
+
   // Si hay error de tabla no existe, mostrar guía de configuración
   if (error && (error.includes('relation') || error.includes('does not exist'))) {
     return (
@@ -74,10 +78,6 @@ export default function PurchaseOrdersList({ projectId }: PurchaseOrdersListProp
       </div>
     )
   }
-
-  useEffect(() => {
-    fetchPurchaseOrders()
-  }, [fetchPurchaseOrders])
 
   const handleEdit = (order: PurchaseOrder) => {
     setEditingOrder(order)

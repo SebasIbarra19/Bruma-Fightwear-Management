@@ -38,7 +38,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // Si estamos en una ruta protegida y no hay sesión, redirigir a login
-    const protectedPaths = ['/projects', '/dashboard']
+    const protectedPaths = ['/projects', '/dashboard', '/profile']
     const isProtectedPath = protectedPaths.some(path => req.nextUrl.pathname.startsWith(path))
     
     console.log('🔍 Middleware - Protected path:', isProtectedPath)

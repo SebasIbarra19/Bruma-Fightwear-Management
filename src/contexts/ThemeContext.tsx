@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
-export type ThemeName = 'light' | 'dark' | 'forest' | 'ocean'
+export type ThemeName = 'light' | 'dark' | 'forest' | 'ocean' | 'warm'
 
 export interface ThemePalette {
   name: string
@@ -100,40 +100,40 @@ export const themes: Record<ThemeName, ThemePalette> = {
     name: 'dark',
     displayName: 'Oscuro',
     colors: {
-      background: '#0f172a',
-      surface: '#1e293b',
-      surfaceHover: '#334155',
-      surfaceActive: '#475569',
+      background: '#0a0a0a',
+      surface: '#1a1a1a',
+      surfaceHover: '#2a2a2a',
+      surfaceActive: '#3a3a3a',
       
-      textPrimary: '#f8fafc',
-      textSecondary: '#cbd5e1',
-      textTertiary: '#94a3b8',
-      textInverse: '#0f172a',
+      textPrimary: '#ffffff',
+      textSecondary: '#d4d4d4',
+      textTertiary: '#a1a1a1',
+      textInverse: '#0a0a0a',
       
-      border: '#334155',
-      borderHover: '#475569',
+      border: '#404040',
+      borderHover: '#525252',
       
-      primary: '#60a5fa',
-      primaryHover: '#3b82f6',
-      secondary: '#818cf8',
-      secondaryHover: '#6366f1',
-      success: '#34d399',
-      successHover: '#10b981',
-      warning: '#fbbf24',
-      warningHover: '#f59e0b',
-      error: '#f87171',
-      errorHover: '#ef4444',
-      info: '#22d3ee',
-      infoHover: '#06b6d4',
+      primary: '#ffffff',
+      primaryHover: '#e5e5e5',
+      secondary: '#737373',
+      secondaryHover: '#525252',
+      success: '#22c55e',
+      successHover: '#16a34a',
+      warning: '#eab308',
+      warningHover: '#ca8a04',
+      error: '#dc2626',
+      errorHover: '#b91c1c',
+      info: '#06b6d4',
+      infoHover: '#0891b2',
       
-      shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-      overlay: 'rgba(0, 0, 0, 0.7)',
+      shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+      overlay: 'rgba(0, 0, 0, 0.8)',
       
       chart: {
-        primary: '#60a5fa',
-        secondary: '#34d399',
-        tertiary: '#fbbf24',
-        quaternary: '#f87171'
+        primary: '#ffffff',
+        secondary: '#22c55e',
+        tertiary: '#eab308',
+        quaternary: '#dc2626'
       }
     }
   },
@@ -220,6 +220,48 @@ export const themes: Record<ThemeName, ThemePalette> = {
         quaternary: '#f87171'
       }
     }
+  },
+  
+  warm: {
+    name: 'warm',
+    displayName: 'Cálido',
+    colors: {
+      background: '#f0e6d2',
+      surface: '#e8dcc6',
+      surfaceHover: '#ddd0b8',
+      surfaceActive: '#d2c5a9',
+      
+      textPrimary: '#3e2723',
+      textSecondary: '#5d4037',
+      textTertiary: '#795548',
+      textInverse: '#f0e6d2',
+      
+      border: '#c7b896',
+      borderHover: '#b8a882',
+      
+      primary: '#c56c00',
+      primaryHover: '#a55a00',
+      secondary: '#d4810f',
+      secondaryHover: '#c56c00',
+      success: '#2e7d32',
+      successHover: '#1b5e20',
+      warning: '#f57c00',
+      warningHover: '#ef6c00',
+      error: '#d32f2f',
+      errorHover: '#c62828',
+      info: '#0288d1',
+      infoHover: '#0277bd',
+      
+      shadow: '0 4px 6px -1px rgba(62, 39, 35, 0.2)',
+      overlay: 'rgba(62, 39, 35, 0.7)',
+      
+      chart: {
+        primary: '#c56c00',
+        secondary: '#2e7d32',
+        tertiary: '#f57c00',
+        quaternary: '#d32f2f'
+      }
+    }
   }
 }
 
@@ -242,40 +284,119 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
   children, 
-  defaultTheme = 'light' 
+  defaultTheme = 'warm' 
 }) => {
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>(defaultTheme)
+  // Función para aplicar tema inmediatamente al DOM
+  const applyThemeToDOM = (themeName: ThemeName) => {
+    if (typeof window !== 'undefined') {
+      const colors = themes[themeName].colors
+      const root = document.documentElement
+      
+      root.style.setProperty('--color-background', colors.background)
+      root.style.setProperty('--color-surface', colors.surface)
+      root.style.setProperty('--color-text-primary', colors.textPrimary)
+      root.style.setProperty('--color-text-secondary', colors.textSecondary)
+      root.style.setProperty('--color-border', colors.border)
+      root.style.setProperty('--color-primary', colors.primary)
+      root.setAttribute('data-theme', themeName)
+    }
+  }
 
-  // Cargar tema desde localStorage al montar
+  // Función para obtener el tema inicial con PRIORIDAD ABSOLUTA a localStorage
+  const getInitialTheme = (): ThemeName => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as ThemeName
+      // PRIORIDAD ABSOLUTA: Si hay tema guardado, usarlo SIEMPRE
+      if (savedTheme && themes[savedTheme]) {
+        // Aplicar inmediatamente al DOM
+        applyThemeToDOM(savedTheme)
+        return savedTheme
+      }
+    }
+    // Aplicar tema por defecto al DOM
+    applyThemeToDOM(defaultTheme)
+    return defaultTheme
+  }
+
+  const [currentTheme, setCurrentTheme] = useState<ThemeName>(getInitialTheme)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  // Cargar tema desde localStorage al montar - EJECUTAR INMEDIATAMENTE
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as ThemeName
-    if (savedTheme && themes[savedTheme]) {
-      setCurrentTheme(savedTheme)
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as ThemeName
+      
+      if (savedTheme && themes[savedTheme]) {
+        // Aplicar inmediatamente sin esperar al estado
+        applyThemeToDOM(savedTheme)
+        if (savedTheme !== currentTheme) {
+          setCurrentTheme(savedTheme)
+        }
+      }
+      
+      setIsHydrated(true)
     }
   }, [])
 
-  // Guardar tema en localStorage cuando cambie
+  // Aplicar tema al DOM cuando cambie el estado (respaldo)
   useEffect(() => {
-    localStorage.setItem('theme', currentTheme)
-    
-    // Aplicar variables CSS al documento
-    const root = document.documentElement
-    const colors = themes[currentTheme].colors
-    
-    root.style.setProperty('--color-background', colors.background)
-    root.style.setProperty('--color-surface', colors.surface)
-    root.style.setProperty('--color-text-primary', colors.textPrimary)
-    root.style.setProperty('--color-text-secondary', colors.textSecondary)
-    root.style.setProperty('--color-border', colors.border)
-    root.style.setProperty('--color-primary', colors.primary)
+    applyThemeToDOM(currentTheme)
+  }, [currentTheme])
+
+  // Hook para mantener tema en navegación SPA
+  useEffect(() => {
+    const handleRouteChange = () => {
+      // Re-aplicar tema en cada cambio de ruta
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          const savedTheme = localStorage.getItem('theme') as ThemeName
+          if (savedTheme && themes[savedTheme]) {
+            applyThemeToDOM(savedTheme)
+            if (savedTheme !== currentTheme) {
+              setCurrentTheme(savedTheme)
+            }
+          }
+        }
+      }, 0)
+    }
+
+    // Escuchar cambios de URL (Next.js SPA navigation)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handleRouteChange)
+      
+      // También verificar en cada render
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            handleRouteChange()
+          }
+        })
+      })
+      
+      observer.observe(document.body, { childList: true, subtree: true })
+      
+      return () => {
+        window.removeEventListener('popstate', handleRouteChange)
+        observer.disconnect()
+      }
+    }
   }, [currentTheme])
 
   const setTheme = (theme: ThemeName) => {
+    // Aplicar inmediatamente al DOM (sin esperar re-render)
+    applyThemeToDOM(theme)
+    
+    // Guardar en localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', theme)
+    }
+    
+    // Actualizar estado
     setCurrentTheme(theme)
   }
 
   const toggleTheme = () => {
-    const themeOrder: ThemeName[] = ['light', 'dark', 'forest', 'ocean']
+    const themeOrder: ThemeName[] = ['light', 'dark', 'forest', 'ocean', 'warm']
     const currentIndex = themeOrder.indexOf(currentTheme)
     const nextIndex = (currentIndex + 1) % themeOrder.length
     setCurrentTheme(themeOrder[nextIndex])
@@ -287,6 +408,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     setTheme,
     toggleTheme,
     themes
+  }
+
+  // Evitar renderizar hasta que se haya hidratado el tema correcto
+  if (!isHydrated) {
+    return (
+      <ThemeContext.Provider value={value}>
+        <div style={{ 
+          backgroundColor: 'var(--color-background)', 
+          color: 'var(--color-text-primary)',
+          minHeight: '100vh'
+        }}>
+          {children}
+        </div>
+      </ThemeContext.Provider>
+    )
   }
 
   return (

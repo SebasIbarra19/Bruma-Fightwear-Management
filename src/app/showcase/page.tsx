@@ -537,7 +537,6 @@ function ShowcaseContent() {
                 </div>
               </div>
             )}
-            onCreate={() => setIsDialogOpen(true)}
           />
         </div>
       )}

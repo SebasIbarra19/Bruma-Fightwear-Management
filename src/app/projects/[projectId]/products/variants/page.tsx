@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import { ModernTable } from '@/components/ui/modern-table'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject, ProductVariant, Product } from '@/types/database'
 
@@ -345,151 +346,162 @@ export default function ProductVariantsPage() {
         </Card>
 
         {/* Lista de variantes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Variantes ({filteredVariants.length})</CardTitle>
-            <CardDescription>
-              Lista de todas las variantes de productos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredVariants.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">📦</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No hay variantes
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {searchTerm || selectedProduct !== 'all' || selectedType !== 'all' 
-                    ? 'No se encontraron variantes con los filtros aplicados'
-                    : 'Comienza creando tu primera variante de producto'
-                  }
-                </p>
-                <Link href={`/projects/${projectSlug}/products/variants/new`}>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    + Nueva Variante
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left p-4 font-medium text-gray-700">Producto</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Variante</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Tipo</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Valor</th>
-                      <th className="text-left p-4 font-medium text-gray-700">SKU</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Precio</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Stock</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Estado</th>
-                      <th className="text-left p-4 font-medium text-gray-700">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredVariants.map((variant) => (
-                      <tr key={variant.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="p-4">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {variant.product_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {variant.category_name}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="font-medium text-gray-900">{variant.name}</div>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            variant.variant_type === 'color' ? 'bg-purple-100 text-purple-800' :
-                            variant.variant_type === 'size' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {variant.variant_type === 'color' ? 'Color' :
-                             variant.variant_type === 'size' ? 'Talla' :
-                             variant.variant_type}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            {variant.variant_type === 'color' && (
-                              <div 
-                                className="w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: variant.variant_value.toLowerCase() }}
-                                title={variant.variant_value}
-                              />
-                            )}
-                            <span className="text-gray-900">{variant.variant_value}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className="text-sm text-gray-600 font-mono">
-                            {variant.sku || '-'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="text-gray-900">
-                            {variant.price_adjustment > 0 ? '+' : ''}
-                            ${variant.price_adjustment.toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            variant.inventory_quantity > 10 ? 'bg-green-100 text-green-800' :
-                            variant.inventory_quantity > 0 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {variant.inventory_quantity} unidades
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <button
-                            onClick={() => toggleStatus(variant.id, variant.is_active)}
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              variant.is_active 
-                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                          >
-                            {variant.is_active ? 'Activa' : 'Inactiva'}
-                          </button>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <Link href={`/projects/${projectSlug}/products/variants/${variant.id}`}>
-                              <Button variant="outline" size="sm">
-                                Ver
-                              </Button>
-                            </Link>
-                            
-                            <Link href={`/projects/${projectSlug}/products/variants/${variant.id}/edit`}>
-                              <Button variant="outline" size="sm">
-                                Editar
-                              </Button>
-                            </Link>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteVariant(variant.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Eliminar
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ModernTable
+          title="Variantes de Productos"
+          subtitle={`${filteredVariants.length} variantes registradas - Lista de todas las variantes de productos`}
+              data={filteredVariants}
+              columns={[
+                {
+                  key: 'product_name',
+                  title: 'Producto',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      <div className="font-medium">{value}</div>
+                      <div className="text-sm text-gray-500">{row.category_name}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'name',
+                  title: 'Variante',
+                  sortable: true,
+                  render: (value) => (
+                    <div className="font-medium">{value}</div>
+                  )
+                },
+                {
+                  key: 'variant_type',
+                  title: 'Tipo',
+                  sortable: true,
+                  render: (value) => (
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      value === 'color' ? 'bg-purple-100 text-purple-800' :
+                      value === 'size' ? 'bg-orange-100 text-orange-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {value === 'color' ? 'Color' :
+                       value === 'size' ? 'Talla' :
+                       value}
+                    </span>
+                  )
+                },
+                {
+                  key: 'variant_value',
+                  title: 'Valor',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div className="flex items-center gap-2">
+                      {row.variant_type === 'color' && (
+                        <div 
+                          className="w-4 h-4 rounded-full border border-gray-300"
+                          style={{ backgroundColor: value.toLowerCase() }}
+                          title={value}
+                        />
+                      )}
+                      <span>{value}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'sku',
+                  title: 'SKU',
+                  sortable: true,
+                  render: (value) => (
+                    <span className="text-sm font-mono">{value || '-'}</span>
+                  )
+                },
+                {
+                  key: 'price_adjustment',
+                  title: 'Precio',
+                  sortable: true,
+                  render: (value) => (
+                    <div>
+                      {value > 0 ? '+' : ''}${value.toFixed(2)}
+                    </div>
+                  )
+                },
+                {
+                  key: 'inventory_quantity',
+                  title: 'Stock',
+                  sortable: true,
+                  render: (value) => (
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      value > 10 ? 'bg-green-100 text-green-800' :
+                      value > 0 ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {value} unidades
+                    </span>
+                  )
+                },
+                {
+                  key: 'is_active',
+                  title: 'Estado',
+                  sortable: true,
+                  render: (value, row) => (
+                    <button
+                      onClick={() => toggleStatus(row.id, value)}
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        value 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      {value ? 'Activa' : 'Inactiva'}
+                    </button>
+                  )
+                }
+              ]}
+              renderExpandedRow={(row) => (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Información del Producto</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">Producto:</span> {row.product_name}</p>
+                      <p><span className="text-gray-500">Categoría:</span> {row.category_name}</p>
+                      <p><span className="text-gray-500">SKU Producto:</span> {row.product_sku || 'Sin SKU'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Detalles de Variante</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">ID:</span> {row.id}</p>
+                      <p><span className="text-gray-500">SKU Variante:</span> {row.sku || 'Sin SKU'}</p>
+                      <p><span className="text-gray-500">Ajuste precio:</span> ${row.price_adjustment.toFixed(2)}</p>
+                      <p><span className="text-gray-500">Stock actual:</span> {row.inventory_quantity} unidades</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Acciones</h4>
+                    <div className="space-y-2">
+                      <Link href={`/projects/${projectSlug}/products/variants/${row.id}`} className="block">
+                        <Button variant="outline" size="sm" className="w-full">
+                          Ver Detalle
+                        </Button>
+                      </Link>
+                      <Link href={`/projects/${projectSlug}/products/variants/${row.id}/edit`} className="block">
+                        <Button variant="outline" size="sm" className="w-full">
+                          Editar Variante
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteVariant(row.id)}
+                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              onEdit={(variant) => window.location.href = `/projects/${projectSlug}/products/variants/${variant.id}/edit`}
+              onDelete={(variant) => deleteVariant(variant.id)}
+              onRefresh={() => loadData()}
+            />
+        
       </div>
     </div>
   )

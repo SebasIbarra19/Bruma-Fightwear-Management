@@ -3,40 +3,80 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SmartLogoNavbar } from '@/components/common/SmartLogo'
 import { ThemeSelector } from '@/components/ui/theme-selector'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { User } from '@supabase/auth-helpers-nextjs'
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { theme } = useTheme()
+  const [profile, setProfile] = useState<any>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/auth/login')
-        return
-      }
-      
-      setUser(session.user)
-      setLoading(false)
+    // El middleware ya maneja la redirección de autenticación
+    // Solo cargar el perfil si hay usuario
+    if (user && !isLoading) {
+      loadProfile()
     }
-    
-    getUser()
-  }, [router])
+  }, [user, isLoading])
 
-  if (loading) {
+  const loadProfile = async () => {
+    if (!user) return
+
+    try {
+      setProfileLoading(true)
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading profile:', error)
+      }
+
+      // Combinar datos del usuario con perfil
+      setProfile({
+        id: user.id,
+        email: user.email,
+        full_name: data?.full_name || user.user_metadata?.full_name || '',
+        phone: data?.phone || user.user_metadata?.phone || '',
+        company: data?.company || 'BRUMA Fightwear',
+        role: data?.role || 'Usuario',
+        avatar_url: data?.avatar_url || user.user_metadata?.avatar_url || '',
+        created_at: user.created_at
+      })
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
         <div className="text-center">
           <p style={{ color: theme.colors.textPrimary }}>Cargando perfil...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <div className="text-center">
+          <p style={{ color: theme.colors.error }}>No se pudo cargar el perfil</p>
+          <Button onClick={() => router.push('/dashboard')} className="mt-4">
+            Volver al Dashboard
+          </Button>
         </div>
       </div>
     )
@@ -96,14 +136,14 @@ export default function ProfilePage() {
                   color: 'white'
                 }}
               >
-                {user?.email?.charAt(0).toUpperCase()}
+                {profile?.full_name?.charAt(0) || profile?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div>
                 <CardTitle style={{ color: theme.colors.textPrimary }}>
-                  {user?.email?.split('@')[0] || 'Usuario'}
+                  {profile?.full_name || profile?.email?.split('@')[0] || 'Usuario'}
                 </CardTitle>
                 <CardDescription style={{ color: theme.colors.textSecondary }}>
-                  {user?.email}
+                  {profile?.email}
                 </CardDescription>
               </div>
             </div>
@@ -122,7 +162,7 @@ export default function ProfilePage() {
                     color: theme.colors.textSecondary
                   }}
                 >
-                  {user?.email}
+                  {profile?.email}
                 </div>
               </div>
               
@@ -138,7 +178,7 @@ export default function ProfilePage() {
                     color: theme.colors.textSecondary
                   }}
                 >
-                  {user?.id?.substring(0, 8)}...
+                  {profile?.id?.substring(0, 8)}...
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils'
+import { ModernTable } from '@/components/ui/modern-table'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject } from '@/types/database'
 
@@ -404,100 +405,124 @@ export default function InventoryMovementsPage() {
         </Card>
 
         {/* Lista de movimientos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Movimientos de Inventario ({filteredMovements.length})</CardTitle>
-            <CardDescription>
-              Historial completo de todos los movimientos de inventario
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredMovements.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">📦</div>
-                <p className="text-gray-600">No se encontraron movimientos</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  {searchTerm || selectedType !== 'all' || selectedProduct !== 'all' || selectedDateRange !== 'all'
-                    ? 'Intenta ajustar los filtros'
-                    : 'Los movimientos aparecerán aquí cuando se registren entradas y salidas'
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium text-gray-900">Fecha</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Producto</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Tipo</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Cantidad</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Costo Unit.</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Total</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Referencia</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMovements.map((movement) => (
-                      <tr key={movement.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {new Date(movement.created_at).toLocaleDateString()}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(movement.created_at).toLocaleTimeString()}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {movement.inventory?.sku || 'N/A'}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {movement.inventory?.product_name || 'Sin nombre'}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          {getMovementTypeBadge(movement.movement_type)}
-                        </td>
-                        <td className="p-3">
-                          {formatQuantity(movement.quantity, movement.movement_type)}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium text-gray-900">
-                            {movement.unit_cost ? formatCurrency(movement.unit_cost) : '-'}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium text-gray-900">
-                            {movement.total_cost ? formatCurrency(movement.total_cost) : '-'}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            {movement.reference_type && (
-                              <div className="text-sm text-gray-600 capitalize">
-                                {movement.reference_type}
-                              </div>
-                            )}
-                            {movement.notes && (
-                              <div className="text-sm text-gray-500 mt-1">
-                                {movement.notes}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ModernTable
+          title="Movimientos de Inventario"
+          subtitle={`${filteredMovements.length} movimientos registrados - Historial completo de todos los movimientos de inventario`}
+              data={filteredMovements}
+              columns={[
+                {
+                  key: 'created_at',
+                  title: 'Fecha',
+                  sortable: true,
+                  render: (value) => (
+                    <div>
+                      <div className="font-medium">
+                        {new Date(value).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(value).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'inventory',
+                  title: 'Producto',
+                  sortable: true,
+                  render: (value) => (
+                    <div>
+                      <div className="font-medium">{value?.sku || 'N/A'}</div>
+                      <div className="text-sm text-gray-500">
+                        {value?.product_name || 'Sin nombre'}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'movement_type',
+                  title: 'Tipo',
+                  sortable: true,
+                  render: (value) => getMovementTypeBadge(value)
+                },
+                {
+                  key: 'quantity',
+                  title: 'Cantidad',
+                  sortable: true,
+                  render: (value, row) => formatQuantity(value, row.movement_type)
+                },
+                {
+                  key: 'unit_cost',
+                  title: 'Costo Unit.',
+                  sortable: true,
+                  render: (value) => (
+                    <div className="font-medium">
+                      {value ? formatCurrency(value) : '-'}
+                    </div>
+                  )
+                },
+                {
+                  key: 'total_cost',
+                  title: 'Total',
+                  sortable: true,
+                  render: (value) => (
+                    <div className="font-medium">
+                      {value ? formatCurrency(value) : '-'}
+                    </div>
+                  )
+                },
+                {
+                  key: 'reference_type',
+                  title: 'Referencia',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      {value && (
+                        <div className="text-sm capitalize">{value}</div>
+                      )}
+                      {row.notes && (
+                        <div className="text-sm text-gray-500 mt-1">{row.notes}</div>
+                      )}
+                    </div>
+                  )
+                }
+              ]}
+              renderExpandedRow={(row) => (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Información del Movimiento</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">ID:</span> {row.id}</p>
+                      <p><span className="text-gray-500">Fecha completa:</span> {new Date(row.created_at).toLocaleString()}</p>
+                      <p><span className="text-gray-500">Tipo movimiento:</span> {row.movement_type}</p>
+                      <p><span className="text-gray-500">Creado por:</span> {row.created_by}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Detalles del Producto</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">SKU:</span> {row.inventory?.sku || 'N/A'}</p>
+                      <p><span className="text-gray-500">Producto:</span> {row.inventory?.product_name || 'Sin nombre'}</p>
+                      <p><span className="text-gray-500">Cantidad:</span> {formatQuantity(row.quantity, row.movement_type)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Información Financiera</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">Costo unitario:</span> {row.unit_cost ? formatCurrency(row.unit_cost) : 'No especificado'}</p>
+                      <p><span className="text-gray-500">Costo total:</span> {row.total_cost ? formatCurrency(row.total_cost) : 'No especificado'}</p>
+                      {row.reference_type && (
+                        <p><span className="text-gray-500">Referencia:</span> {row.reference_type} {row.reference_id && `- ${row.reference_id}`}</p>
+                      )}
+                      {row.notes && (
+                        <p><span className="text-gray-500">Notas:</span> {row.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              onRefresh={() => project && loadMovementsData(project.project_id)}
+            />
+        
       </div>
     </div>
   )

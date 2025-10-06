@@ -99,6 +99,61 @@ export const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+
+  // Iconos adicionales para navegación completa
+  Package: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  ),
+  ShoppingCart: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m2.6 8L6 5H3m3 8l1.68 6.64a2 2 0 002 1.36h9.72a2 2 0 002-1.36L21 13" />
+    </svg>
+  ),
+  Receipt: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5l-5-5-5 5v-13a2 2 0 012-2h6a2 2 0 012 2v13z" />
+    </svg>
+  ),
+  Truck: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM21 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+    </svg>
+  ),
+  Shipping: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7h16z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13v4a2 2 0 002 2h12a2 2 0 002-2v-4" />
+    </svg>
+  ),
+  Tag: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+    </svg>
+  ),
+  TrendingUp: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+  ),
+  Location: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  Eye: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  ),
+  Plus: ({ className, color }: IconProps = {}) => (
+    <svg className={`w-5 h-5 ${className || ''}`} fill="none" stroke={color || "currentColor"} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    </svg>
+  ),
   
   // Usuario
   User: ({ className, color }: IconProps = {}) => (

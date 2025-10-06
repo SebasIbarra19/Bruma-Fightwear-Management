@@ -102,61 +102,42 @@ interface Payment {
   payment_method_name?: string
 }
 
-interface OrderWithItems extends Order {
+interface OrderWithDetails extends Order {
   items?: OrderItem[]
-  payments?: Payment[]
+  payments?: (Payment & { payment_method_name?: string })[]
   total_paid?: number
   pending_amount?: number
 }
 
-interface OrderStats {
-  totalOrders: number
-  pendingOrders: number
-  confirmedOrders: number
-  shippedOrders: number
-  totalRevenue: number
-  totalCustomers: number
-  activeCustomers: number
-  averageOrderValue: number
-}
-
-export default function ModernOrdersPage({ params }: { params: { projectId: string } }) {
-  const { user, isLoading } = useAuth()
+export default function OrdersPage({ params }: { params: { projectId: string } }) {
+  const { user, isLoading: authLoading } = useAuth()
   const { theme } = useTheme()
   const router = useRouter()
   const projectSlug = params.projectId
   
   const [projectData, setProjectData] = useState<ProjectOrdersData | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // Estados para datos de orders
-  const [stats, setStats] = useState<OrderStats>({
-    totalOrders: 0,
-    pendingOrders: 0,
-    confirmedOrders: 0,
-    shippedOrders: 0,
-    totalRevenue: 0,
-    totalCustomers: 0,
-    activeCustomers: 0,
-    averageOrderValue: 0
-  })
-
-  const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [orders, setOrders] = useState<OrderWithDetails[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
 
-
-
+  // El middleware maneja la autenticación automáticamente
   useEffect(() => {
-    if (isLoading) return
-    
-    if (!user) {
-      router.push('/auth/login')
-      return
+    if ((user || !authLoading) && params.projectId) {
+      loadProjectData()
     }
+  }, [user, authLoading, params.projectId])
 
-    const loadProjectData = async () => {
+  const loadProjectData = async () => {
+    try {
+      setLoading(true)
+      
+      // Verificar autenticación
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
+
       try {
         const { data: userProjects, error } = await supabase
           .rpc('get_user_projects', { user_uuid: user.id })
@@ -172,81 +153,106 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
         }
 
         setProjectData({ project })
+        
+        // Cargar datos simulados de pedidos
         await loadOrdersData(project)
+        
       } catch (error) {
-        console.error('Error cargando proyecto:', error)
-        router.push('/dashboard')
-      } finally {
-        setLoading(false)
+        console.error('Error loading projects:', error)
+        // Usar datos mock como fallback
+        setProjectData({ 
+          project: { 
+            project_id: params.projectId, 
+            project_name: "BRUMA Fightwear", 
+            project_slug: "bruma-fightwear",
+            project_type: "ecommerce"
+          } 
+        })
+        
+        // Cargar datos mock
+        await loadOrdersData({ 
+          project_id: params.projectId, 
+          project_name: "BRUMA Fightwear", 
+          project_slug: "bruma-fightwear",
+          project_type: "ecommerce"
+        })
       }
+      
+    } catch (error) {
+      console.error('Error loading project data:', error)
+    } finally {
+      setLoading(false)
     }
-
-    loadProjectData()
-  }, [router, projectSlug, user, isLoading])
+  }
 
   const loadOrdersData = async (project: UserProject) => {
     try {
-      // Simulación de datos hasta que existan las tablas reales
-      setStats({
-        totalOrders: 3,
-        pendingOrders: 1,
-        confirmedOrders: 1,
-        shippedOrders: 1,
-        totalRevenue: 672200,
-        totalCustomers: 3,
-        activeCustomers: 3,
-        averageOrderValue: 224066
-      })
-
-      // Mock orders data
-      const mockOrders: OrderWithItems[] = [
+      setOrdersLoading(true)
+      
+      // Mock data para demostración - cuando tengas las tablas reales, esto se reemplazará con queries reales
+      const mockOrders: OrderWithDetails[] = [
         {
           id: '1',
           project_id: project.project_id,
           customer_id: 'cust1',
           order_number: 'ORD-2024-001',
-          status: 'pending',
+          status: 'processing',
           order_date: '2024-09-20',
-          subtotal: 150000,
-          tax_amount: 24000,
-          shipping_cost: 5000,
-          total_amount: 179000,
+          subtotal: 280000,
+          tax_amount: 44800,
+          shipping_cost: 12000,
+          total_amount: 336800,
           currency: 'COP',
-          payment_status: 'pending',
-          customer_name: 'Deportes El Campeón',
-          created_at: '2024-09-20T10:00:00Z',
-          updated_at: '2024-09-20T10:00:00Z',
+          payment_status: 'partial',
+          customer_name: 'Juan Carlos Pérez',
+          created_at: '2024-09-20T10:30:00Z',
+          updated_at: '2024-09-20T10:30:00Z',
           items: [
             {
               id: 'item1',
               order_id: '1',
               product_id: 'prod1',
-              product_name: 'Rashguard BRUMA Pro',
+              product_name: 'Guantes de Boxeo BRUMA Pro',
               variant_description: 'Talla L, Color Negro',
-              sku: 'RG-BRUMA-PRO-L-BLK',
-              quantity: 5,
-              unit_price: 25000,
-              total_price: 125000,
-              created_at: '2024-09-20T10:00:00Z',
-              updated_at: '2024-09-20T10:00:00Z'
+              sku: 'GBX-BRUMA-PRO-L-BLK',
+              quantity: 2,
+              unit_price: 85000,
+              total_price: 170000,
+              created_at: '2024-09-20T10:30:00Z',
+              updated_at: '2024-09-20T10:30:00Z'
             },
             {
               id: 'item2',
               order_id: '1',
               product_id: 'prod2',
-              product_name: 'Pantaloneta Sin Licra Elite',
+              product_name: 'Shorts MMA BRUMA Elite',
               variant_description: 'Talla M, Color Azul',
-              sku: 'PSL-ELITE-M-BLU',
-              quantity: 3,
-              unit_price: 18000,
-              total_price: 54000,
-              created_at: '2024-09-20T10:00:00Z',
-              updated_at: '2024-09-20T10:00:00Z'
+              sku: 'SHT-BRUMA-ELT-M-BLU',
+              quantity: 1,
+              unit_price: 110000,
+              total_price: 110000,
+              created_at: '2024-09-20T10:30:00Z',
+              updated_at: '2024-09-20T10:30:00Z'
             }
           ],
-          payments: [],
-          total_paid: 0,
-          pending_amount: 179000
+          payments: [
+            {
+              id: 'payment1',
+              project_id: project.project_id,
+              order_id: '1',
+              payment_method_id: 'pm1',
+              amount: 200000,
+              currency: 'COP',
+              payment_date: '2024-09-20',
+              reference_number: 'SINPE-20240920-001',
+              status: 'completed',
+              payment_method_name: 'SINPE Móvil',
+              created_at: '2024-09-20T10:30:00Z',
+              updated_at: '2024-09-20T10:30:00Z'
+            }
+          ],
+          total_paid: 200000,
+          pending_amount: 136800
         },
         {
           id: '2',
@@ -298,33 +304,35 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
           total_paid: 379200,
           pending_amount: 0
         },
+        // Agregar más orders...
         {
           id: '3',
           project_id: project.project_id,
           customer_id: 'cust3',
           order_number: 'ORD-2024-003',
-          status: 'processing',
+          status: 'shipped',
           order_date: '2024-09-22',
-          subtotal: 95000,
-          tax_amount: 15200,
-          shipping_cost: 4000,
-          total_amount: 114200,
+          delivery_date: '2024-09-25',
+          subtotal: 450000,
+          tax_amount: 72000,
+          shipping_cost: 15000,
+          total_amount: 537000,
           currency: 'COP',
-          payment_status: 'partial',
-          customer_name: 'Laura Patricia Martínez',
+          payment_status: 'paid',
+          customer_name: 'Academia Guerreros',
           created_at: '2024-09-22T09:15:00Z',
           updated_at: '2024-09-22T09:15:00Z',
           items: [
             {
-              id: 'item5',
+              id: 'item4',
               order_id: '3',
-              product_id: 'prod2',
-              product_name: 'Pantaloneta Sin Licra Elite',
-              variant_description: 'Talla S, Color Negro',
-              sku: 'PSL-ELITE-S-BLK',
-              quantity: 2,
-              unit_price: 18000,
-              total_price: 36000,
+              product_id: 'prod4',
+              product_name: 'Kit Completo MMA BRUMA',
+              variant_description: 'Talla L, Kit Profesional',
+              sku: 'KIT-BRUMA-MMA-L-PRO',
+              quantity: 1,
+              unit_price: 450000,
+              total_price: 450000,
               created_at: '2024-09-22T09:15:00Z',
               updated_at: '2024-09-22T09:15:00Z'
             }
@@ -334,102 +342,65 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
               id: 'payment2',
               project_id: project.project_id,
               order_id: '3',
-              payment_method_id: 'pm4',
-              amount: 50000,
+              payment_method_id: 'pm3',
+              amount: 537000,
               currency: 'COP',
               payment_date: '2024-09-22',
-              reference_number: 'SINPE-89765432',
+              reference_number: 'CARD-20240922-001',
               status: 'completed',
-              payment_method_name: 'Sinpe Móvil',
+              payment_method_name: 'Tarjeta de Crédito',
               created_at: '2024-09-22T09:15:00Z',
               updated_at: '2024-09-22T09:15:00Z'
             }
           ],
-          total_paid: 50000,
-          pending_amount: 64200
-        }
-      ]
-
-      // Mock payment methods
-      const mockPaymentMethods: PaymentMethod[] = [
-        {
-          id: 'pm1',
-          project_id: project.project_id,
-          name: 'Cortesía',
-          type: 'courtesy',
-          description: 'Productos de cortesía sin costo',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 'pm2',
-          project_id: project.project_id,
-          name: 'Transferencia Bancaria',
-          type: 'transfer',
-          description: 'Pago mediante transferencia bancaria',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 'pm3',
-          project_id: project.project_id,
-          name: 'Efectivo',
-          type: 'cash',
-          description: 'Pago en efectivo',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 'pm4',
-          project_id: project.project_id,
-          name: 'Sinpe Móvil',
-          type: 'sinpe_movil',
-          description: 'Sistema de pagos móviles de Costa Rica',
-          is_active: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
+          total_paid: 537000,
+          pending_amount: 0
         }
       ]
 
       setOrders(mockOrders)
-      setPaymentMethods(mockPaymentMethods)
-
-      // Extract payments from orders
-      const allPayments: Payment[] = []
-      mockOrders.forEach(order => {
-        if (order.payments) {
-          allPayments.push(...order.payments)
-        }
-      })
-      setPayments(allPayments)
-
+      
     } catch (error) {
-      console.error('Error cargando datos de pedidos:', error)
+      console.error('Error loading orders:', error)
+    } finally {
+      setOrdersLoading(false)
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/auth/login')
+  const filteredOrders = () => {
+    return orders.filter(order => 
+      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.status.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   }
 
-  // Funciones de filtrado
+  const handleEdit = (order: OrderWithDetails) => {
+    router.push(`/projects/${projectSlug}/orders/${order.id}/edit`)
+  }
 
+  const handleDelete = (order: OrderWithDetails) => {
+    console.log('Eliminar pedido:', order.id)
+  }
 
-  const getStatusBadge = (status: Order['status']) => {
+  const handleRefresh = () => {
+    if (projectData?.project) {
+      loadOrdersData(projectData.project)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
-      confirmed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Confirmado' },
-      processing: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Procesando' },
-      shipped: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Enviado' },
-      delivered: { bg: 'bg-green-100', text: 'text-green-800', label: 'Entregado' },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelado' }
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
+      'confirmed': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Confirmado' },
+      'processing': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Procesando' },
+      'shipped': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Enviado' },
+      'delivered': { bg: 'bg-green-100', text: 'text-green-800', label: 'Entregado' },
+      'cancelled': { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelado' }
     }
-
-    const config = statusConfig[status]
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
@@ -437,15 +408,16 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
     )
   }
 
-  const getPaymentStatusBadge = (status: Order['payment_status']) => {
+  const getPaymentStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
-      paid: { bg: 'bg-green-100', text: 'text-green-800', label: 'Pagado' },
-      partial: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Parcial' },
-      failed: { bg: 'bg-red-100', text: 'text-red-800', label: 'Fallido' }
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendiente' },
+      'paid': { bg: 'bg-green-100', text: 'text-green-800', label: 'Pagado' },
+      'partial': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Parcial' },
+      'failed': { bg: 'bg-red-100', text: 'text-red-800', label: 'Fallido' }
     }
-
-    const config = statusConfig[status]
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
@@ -453,20 +425,42 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
     )
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" style={{ borderColor: theme.colors.primary }}></div>
+          <p style={{ color: theme.colors.textSecondary }}>Cargando proyecto...</p>
+        </div>
+      </div>
+    )
+  }
 
+  if (!projectData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
+        <div className="text-center">
+          <p style={{ color: theme.colors.textSecondary }} className="mb-4">Error al cargar el proyecto</p>
+          <Button onClick={() => router.push('/dashboard')}>
+            Volver al Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   const ordersTabs = [
     {
-      id: 'overview',
+      id: 'resumen',
       label: 'Resumen de Pedidos',
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2z" />
         </svg>
       ),
       content: (
         <div className="space-y-6">
-          {/* Stats Cards */}
+          {/* KPIs de Pedidos */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
@@ -476,11 +470,9 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
-                  {stats.totalOrders}
+                  {orders.length}
                 </div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>
-                  Todos los pedidos
-                </p>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>Este mes</p>
               </CardContent>
             </Card>
 
@@ -492,53 +484,45 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" style={{ color: theme.colors.warning }}>
-                  {stats.pendingOrders}
+                  {orders.filter(o => o.status === 'pending').length}
                 </div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
-                  Requieren atención
-                </p>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>Requieren atención</p>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
-                  Ingresos Totales
+                  Valor Total
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" style={{ color: theme.colors.success }}>
-                  ${stats.totalRevenue.toLocaleString()}
+                  ${orders.reduce((sum, order) => sum + order.total_amount, 0).toLocaleString()}
                 </div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
-                  COP en ventas
-                </p>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>En pedidos activos</p>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
-                  Valor Promedio
+                  Pedidos Entregados
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
-                  ${stats.averageOrderValue.toLocaleString()}
+                  {orders.filter(o => o.status === 'delivered').length}
                 </div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
-                  Por pedido
-                </p>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>Completados</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Recent Orders */}
+          {/* Pedidos Recientes */}
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardHeader>
-              <CardTitle style={{ color: theme.colors.textPrimary }}>
-                Pedidos Recientes
-              </CardTitle>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>Pedidos Recientes</CardTitle>
               <CardDescription style={{ color: theme.colors.textSecondary }}>
                 Últimos pedidos registrados en el sistema
               </CardDescription>
@@ -553,7 +537,7 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
                   >
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
-                           style={{ backgroundColor: theme.colors.primary + '20', color: theme.colors.primary }}>
+                           style={{ backgroundColor: theme.colors.surface, color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
                         {order.order_number.slice(-2)}
                       </div>
                       <div>
@@ -594,240 +578,252 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
       ),
       content: (
         <div className="space-y-6">
-
-
-          {/* Orders Table */}
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold" style={{ color: theme.colors.textPrimary }}>
-                    Lista de Pedidos
-                  </h3>
-                  <p className="text-sm mt-1" style={{ color: theme.colors.textSecondary }}>
-                    Gestiona todos los pedidos de ventas
-                  </p>
-                </div>
-                <Link href={`/projects/${projectSlug}/orders/new`}>
-                  <Button style={{ backgroundColor: theme.colors.primary, color: 'white' }}>
-                    + Nuevo Pedido
-                  </Button>
-                </Link>
+          {/* ESTRUCTURA PERFECTA - Como Control de Stock */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                  Lista de Pedidos
+                </h3>
+                <p style={{ color: theme.colors.textSecondary }}>
+                  Gestiona todos los pedidos de ventas
+                </p>
               </div>
-              {ordersLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" 
-                       style={{ borderColor: theme.colors.primary }}></div>
-                  <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
-                </div>
-              ) : orders.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">📦</div>
-                  <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                    No se encontraron pedidos
-                  </h3>
-                  <p style={{ color: theme.colors.textSecondary }}>
-                    Los pedidos aparecerán aquí cuando se registren
-                  </p>
-                </div>
-              ) : (
-                <ModernTable
-                  data={orders}
-                  columns={[
-                    {
-                      key: 'order_number',
-                      title: 'Pedido',
-                      sortable: true,
-                      render: (value, row) => (
-                        <div>
-                          <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                            {value}
-                          </div>
-                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                            {new Date(row.order_date).toLocaleDateString()}
-                          </div>
-                        </div>
-                      )
-                    },
-                    {
-                      key: 'customer_name',
-                      title: 'Cliente',
-                      sortable: true,
-                      render: (value) => (
+              <Button 
+                className="shadow-lg"
+                onClick={() => router.push(`/projects/${projectSlug}/orders/new`)}
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                  border: 'none'
+                }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Nuevo Pedido
+              </Button>
+            </div>
+
+            {/* Orders Table */}
+            {ordersLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4" 
+                     style={{ borderColor: theme.colors.primary }}></div>
+                <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📦</div>
+                <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
+                  No se encontraron pedidos
+                </h3>
+                <p style={{ color: theme.colors.textSecondary }}>
+                  Los pedidos aparecerán aquí cuando se registren
+                </p>
+              </div>
+            ) : (
+              <ModernTable
+                data={orders}
+                columns={[
+                  {
+                    key: 'order_number',
+                    title: 'Pedido',
+                    sortable: true,
+                    render: (value, row) => (
+                      <div>
                         <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
                           {value}
                         </div>
-                      )
-                    },
-                    {
-                      key: 'items',
-                      title: 'Items',
-                      sortable: false,
-                      render: (value) => (
-                        <div className="text-sm" style={{ color: theme.colors.textPrimary }}>
-                          {value?.length || 0} productos
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {new Date(row.order_date).toLocaleDateString()}
                         </div>
-                      )
-                    },
-                    {
-                      key: 'total_amount',
-                      title: 'Total',
-                      sortable: true,
-                      render: (value, row) => (
-                        <div>
-                          <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                            ${value.toLocaleString()}
-                          </div>
-                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                            {row.currency}
-                          </div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'customer_name',
+                    title: 'Cliente',
+                    sortable: true,
+                    render: (value) => (
+                      <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                        {value}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'items',
+                    title: 'Items',
+                    sortable: false,
+                    render: (value, row) => (
+                      <div>
+                        <div className="font-medium" style={{ color: theme.colors.primary }}>
+                          {row.items?.length || 0} productos
                         </div>
-                      )
-                    },
-                    {
-                      key: 'status',
-                      title: 'Estado',
-                      sortable: true,
-                      render: (value) => getStatusBadge(value)
-                    },
-                    {
-                      key: 'payment_status',
-                      title: 'Pago',
-                      sortable: true,
-                      render: (value) => getPaymentStatusBadge(value)
-                    }
-                  ]}
-                  renderExpandedRow={(order) => (
-                    <div className="space-y-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
-                      {/* Primera fila: Información del pedido, Detalles financieros y Acciones */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Información del Pedido</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-400">Número:</span> {order.order_number}</p>
-                            <p><span className="text-gray-400">Fecha:</span> {new Date(order.order_date).toLocaleString()}</p>
-                            <p><span className="text-gray-400">Cliente:</span> {order.customer_name}</p>
-                            <p><span className="text-gray-400">Items:</span> {order.items?.length || 0} productos</p>
-                          </div>
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {row.items?.[0]?.product_name && `${row.items[0].product_name}${row.items?.length > 1 ? '...' : ''}`}
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Detalles Financieros</h4>
-                          <div className="space-y-1 text-sm">
-                            <p><span className="text-gray-400">Total:</span> ${order.total_amount.toLocaleString()}</p>
-                            <p><span className="text-gray-400">Moneda:</span> {order.currency}</p>
-                            <p><span className="text-gray-400">Estado Pago:</span> {getPaymentStatusBadge(order.payment_status)}</p>
-                            <p><span className="text-gray-400">Estado:</span> {getStatusBadge(order.status)}</p>
-                          </div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'status',
+                    title: 'Estado',
+                    sortable: true,
+                    render: (value) => getStatusBadge(value)
+                  },
+                  {
+                    key: 'payment_status',
+                    title: 'Pago',
+                    sortable: true,
+                    render: (value) => getPaymentStatusBadge(value)
+                  },
+                  {
+                    key: 'total_amount',
+                    title: 'Total',
+                    sortable: true,
+                    render: (value) => (
+                      <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                        ${value.toLocaleString()}
+                      </div>
+                    )
+                  }
+                ]}
+                renderExpandedRow={(row) => (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                    {/* Información del Pedido */}
+                    <div>
+                      <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>Información del Pedido</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">N° Pedido:</span>
+                          <span style={{ color: theme.colors.textPrimary }}>{row.order_number}</span>
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Acciones</h4>
-                          <div className="space-y-2">
-                            <Button variant="outline" size="sm" className="w-full">
-                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              Ver Detalles
-                            </Button>
-                            <Button variant="outline" size="sm" className="w-full">
-                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              Editar Pedido
-                            </Button>
-                            <Button variant="outline" size="sm" className="w-full">
-                              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H9.5a2 2 0 01-2-2V5a2 2 0 00-2-2H3a2 2 0 00-2 2v4a2 2 0 002 2h2.5a2 2 0 012 2v2a2 2 0 002 2z" />
-                              </svg>
-                              Cambiar Estado
-                            </Button>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Cliente:</span>
+                          <span style={{ color: theme.colors.textPrimary }}>{row.customer_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Fecha:</span>
+                          <span style={{ color: theme.colors.textPrimary }}>{new Date(row.order_date).toLocaleDateString()}</span>
+                        </div>
+                        {row.delivery_date && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Entrega:</span>
+                            <span style={{ color: theme.colors.textPrimary }}>{new Date(row.delivery_date).toLocaleDateString()}</span>
                           </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Estado:</span>
+                          {getStatusBadge(row.status)}
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Pago:</span>
+                          {getPaymentStatusBadge(row.payment_status)}
                         </div>
                       </div>
 
-                      {/* Segunda fila: Productos del pedido */}
-                      <div>
-                        <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
-                          📦 Productos del Pedido ({order.items?.length || 0})
-                        </h4>
-                        {order.items && order.items.length > 0 ? (
-                          <div className="space-y-3">
-                            {order.items.map((item, index) => (
-                              <div 
-                                key={item.id || index}
-                                className="flex items-center justify-between p-3 rounded-lg border"
-                                style={{ 
-                                  borderColor: theme.colors.border,
-                                  backgroundColor: theme.colors.surface 
-                                }}
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                                         style={{ backgroundColor: theme.colors.primary + '20', color: theme.colors.primary }}>
-                                      🏷️
-                                    </div>
-                                    <div>
-                                      <h5 className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                                        {item.product_name}
-                                      </h5>
-                                      {item.variant_description && (
-                                        <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                                          {item.variant_description}
-                                        </p>
-                                      )}
-                                      <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
-                                        SKU: {item.sku}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                                    {item.quantity} x ${item.unit_price.toLocaleString()}
-                                  </div>
-                                  <div className="text-sm font-semibold" style={{ color: theme.colors.success }}>
-                                    Total: ${item.total_price.toLocaleString()}
-                                  </div>
-                                </div>
+                      {/* Resumen Financiero */}
+                      <div className="mt-4 pt-3 border-t" style={{ borderColor: theme.colors.border }}>
+                        <h5 className="font-medium mb-2" style={{ color: theme.colors.textPrimary }}>Resumen Financiero</h5>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Subtotal:</span>
+                            <span style={{ color: theme.colors.textPrimary }}>${row.subtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Impuestos:</span>
+                            <span style={{ color: theme.colors.textPrimary }}>${row.tax_amount.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Envío:</span>
+                            <span style={{ color: theme.colors.textPrimary }}>${row.shipping_cost.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-medium pt-1 border-t" style={{ borderColor: theme.colors.border }}>
+                            <span style={{ color: theme.colors.textPrimary }}>Total:</span>
+                            <span style={{ color: theme.colors.success }}>${row.total_amount.toLocaleString()}</span>
+                          </div>
+                          {row.total_paid && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Pagado:</span>
+                                <span style={{ color: theme.colors.success }}>${row.total_paid.toLocaleString()}</span>
                               </div>
-                            ))}
-                            {/* Resumen total */}
-                            <div 
-                              className="flex justify-between items-center p-3 rounded-lg border-2"
-                              style={{ 
-                                borderColor: theme.colors.primary,
-                                backgroundColor: theme.colors.primary + '10'
-                              }}
-                            >
-                              <span className="font-semibold" style={{ color: theme.colors.textPrimary }}>
-                                Total del Pedido:
-                              </span>
-                              <span className="text-xl font-bold" style={{ color: theme.colors.primary }}>
-                                ${order.total_amount.toLocaleString()} {order.currency}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-6" style={{ color: theme.colors.textSecondary }}>
-                            <div className="text-3xl mb-2">📦</div>
-                            <p>No hay productos asociados a este pedido</p>
-                          </div>
-                        )}
+                              {row.pending_amount && row.pending_amount > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Pendiente:</span>
+                                  <span style={{ color: theme.colors.warning }}>${row.pending_amount.toLocaleString()}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                  onEdit={(order) => console.log('Editar pedido:', order)}
-                  onDelete={(order) => console.log('Eliminar pedido:', order)}
-                  onRefresh={() => {
-                    if (projectData?.project) {
-                      loadOrdersData(projectData.project)
-                    }
-                  }}
-                />
-              )}
-            </CardContent>
-          </Card>
+
+                    {/* Items del Pedido y Acciones */}
+                    <div>
+                      <h4 className="font-semibold mb-3" style={{ color: theme.colors.success }}>Productos del Pedido</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {row.items?.map((item, index) => (
+                          <div key={index} className="flex justify-between items-start p-2 rounded" style={{ backgroundColor: theme.colors.surface }}>
+                            <div className="flex-1">
+                              <div className="font-medium text-sm" style={{ color: theme.colors.textPrimary }}>
+                                {item.product_name}
+                              </div>
+                              {item.variant_description && (
+                                <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                                  {item.variant_description}
+                                </div>
+                              )}
+                              <div className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                                SKU: {item.sku}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                                {item.quantity}x ${item.unit_price.toLocaleString()}
+                              </div>
+                              <div className="text-xs font-medium" style={{ color: theme.colors.success }}>
+                                ${item.total_price.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Acciones */}
+                      <div className="mt-4 pt-3 border-t" style={{ borderColor: theme.colors.border }}>
+                        <h5 className="font-medium mb-3" style={{ color: theme.colors.warning }}>Acciones</h5>
+                        <div className="space-y-2">
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar Pedido
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H9.414a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 005.586 6H4a2 2 0 00-2 2v4a2 2 0 002 2h2m3 4h6m-6 0V9a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2H9a2 2 0 01-2-2z" />
+                            </svg>
+                            Imprimir Factura
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full">
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            Gestionar Pagos
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onRefresh={handleRefresh}
+              />
+            )}
+          </div>
         </div>
       )
     },
@@ -841,207 +837,94 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
       ),
       content: (
         <div className="space-y-6">
-          {/* Payment Methods */}
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardHeader>
-              <CardTitle style={{ color: theme.colors.textPrimary }}>
-                Métodos de Pago
-              </CardTitle>
-              <CardDescription style={{ color: theme.colors.textSecondary }}>
-                Métodos de pago disponibles para los pedidos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {paymentMethods.map((method) => (
-                  <div 
-                    key={method.id}
-                    className="p-4 rounded-lg border"
-                    style={{ 
-                      borderColor: theme.colors.border,
-                      backgroundColor: theme.colors.background + '50'
-                    }}
-                  >
-                    <div className="font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                      {method.name}
-                    </div>
-                    <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                      {method.description}
-                    </div>
-                    <div className={`inline-block px-2 py-1 rounded-full text-xs mt-2 ${
-                      method.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {method.is_active ? 'Activo' : 'Inactivo'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Payments */}
-          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <CardHeader>
-              <CardTitle style={{ color: theme.colors.textPrimary }}>
-                Pagos Recientes
-              </CardTitle>
-              <CardDescription style={{ color: theme.colors.textSecondary }}>
-                Últimos pagos registrados en el sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {payments.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-4">💳</div>
-                  <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                    No hay pagos registrados
-                  </h3>
-                  <p style={{ color: theme.colors.textSecondary }}>
-                    Los pagos aparecerán aquí cuando se registren
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {payments.slice(0, 10).map((payment) => {
-                    const order = orders.find(o => o.id === payment.order_id)
-                    return (
-                      <div 
-                        key={payment.id}
-                        className="flex items-center justify-between p-4 rounded-lg border"
-                        style={{ 
-                          borderColor: theme.colors.border,
-                          backgroundColor: theme.colors.background + '50'
-                        }}
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                            💳
-                          </div>
-                          <div>
-                            <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                              {order?.order_number || 'Pedido desconocido'}
-                            </div>
-                            <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                              {payment.payment_method_name} • {order?.customer_name}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium text-green-600">
-                            ${payment.amount.toLocaleString()}
-                          </div>
-                          <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
-                            {new Date(payment.payment_date).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )
-    },
-    {
-      id: 'estadisticas',
-      label: 'Estadísticas y Reportes',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      content: (
-        <div className="space-y-6">
-          {/* Stats Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Resumen de Facturación */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-              <CardHeader>
-                <CardTitle style={{ color: theme.colors.textPrimary }}>
-                  Resumen de Ventas
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Total Facturado
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Total de Pedidos</span>
-                    <span className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                      {stats.totalOrders}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Ingresos Totales</span>
-                    <span className="font-medium" style={{ color: theme.colors.success }}>
-                      ${stats.totalRevenue.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Valor Promedio</span>
-                    <span className="font-medium" style={{ color: theme.colors.primary }}>
-                      ${stats.averageOrderValue.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Clientes Activos</span>
-                    <span className="font-medium" style={{ color: theme.colors.textPrimary }}>
-                      {stats.activeCustomers}
-                    </span>
-                  </div>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.success }}>
+                  ${orders.reduce((sum, order) => sum + (order.total_paid || 0), 0).toLocaleString()}
                 </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>Pagos completados</p>
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-              <CardHeader>
-                <CardTitle style={{ color: theme.colors.textPrimary }}>
-                  Estado de Pedidos
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Pagos Pendientes
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Pendientes</span>
-                    <span className="font-medium" style={{ color: theme.colors.warning }}>
-                      {stats.pendingOrders}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Confirmados</span>
-                    <span className="font-medium" style={{ color: theme.colors.primary }}>
-                      {stats.confirmedOrders}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: theme.colors.textSecondary }}>Enviados</span>
-                    <span className="font-medium" style={{ color: theme.colors.success }}>
-                      {stats.shippedOrders}
-                    </span>
-                  </div>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.warning }}>
+                  ${orders.reduce((sum, order) => sum + (order.pending_amount || 0), 0).toLocaleString()}
                 </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.warning }}>Por cobrar</p>
+              </CardContent>
+            </Card>
+
+            <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
+                  Facturas Generadas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
+                  {orders.filter(o => o.payment_status !== 'pending').length}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>Este mes</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Charts Placeholder */}
+          {/* Tabla de Pagos */}
           <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <CardHeader>
-              <CardTitle style={{ color: theme.colors.textPrimary }}>
-                Tendencias de Ventas
-              </CardTitle>
+              <CardTitle style={{ color: theme.colors.textPrimary }}>Historial de Pagos</CardTitle>
               <CardDescription style={{ color: theme.colors.textSecondary }}>
-                Gráficos y análisis detallados próximamente
+                Todos los pagos recibidos y pendientes
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">📈</div>
-                <h3 className="text-lg font-medium mb-2" style={{ color: theme.colors.textPrimary }}>
-                  Gráficos en Desarrollo
-                </h3>
-                <p style={{ color: theme.colors.textSecondary }}>
-                  Los gráficos de tendencias y análisis detallados estarán disponibles próximamente
-                </p>
+              <div className="space-y-4">
+                {orders.flatMap(order => 
+                  order.payments?.map(payment => ({
+                    ...payment,
+                    order_number: order.order_number,
+                    customer_name: order.customer_name
+                  })) || []
+                ).map((payment, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 rounded-lg border"
+                       style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background }}>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
+                           style={{ backgroundColor: theme.colors.success + '20', color: theme.colors.success }}>
+                        $
+                      </div>
+                      <div>
+                        <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                          {payment.order_number}
+                        </div>
+                        <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                          {payment.customer_name} • {payment.payment_method_name}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium" style={{ color: theme.colors.success }}>
+                        ${payment.amount.toLocaleString()}
+                      </div>
+                      <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                        {new Date(payment.payment_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -1050,35 +933,15 @@ export default function ModernOrdersPage({ params }: { params: { projectId: stri
     }
   ]
 
-  if (loading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
-               style={{ borderColor: theme.colors.primary }}></div>
-          <p style={{ color: theme.colors.textSecondary }}>Cargando pedidos...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!projectData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.colors.background }}>
-        <div className="text-center">
-          <p className="text-red-600">Proyecto no encontrado</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <ProjectPageLayout
       projectData={projectData}
       loading={loading}
       pageTitle="Gestión de Pedidos"
     >
-      <Tabs tabs={ordersTabs} defaultTab="overview" />
+      <div className="p-6">
+        <Tabs tabs={ordersTabs} />
+      </div>
     </ProjectPageLayout>
   )
 }

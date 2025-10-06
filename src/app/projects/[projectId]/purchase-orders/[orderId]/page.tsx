@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../../../../components/ui/dialog'
 import { formatCurrency } from '@/lib/utils'
+import { ModernTable } from '@/components/ui/modern-table'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { UserProject } from '@/types/database'
 
@@ -514,88 +515,97 @@ export default function PurchaseOrderDetailPage() {
         </div>
 
         {/* Lista de items */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Items de la Orden ({totalItems})</CardTitle>
-            <CardDescription>
-              Productos incluidos en esta orden de compra
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!purchaseOrder.items || purchaseOrder.items.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">📦</div>
-                <p className="text-gray-600">No hay items en esta orden</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Agrega productos usando el botón &quot;Agregar Item&quot;
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium text-gray-900">SKU</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Descripción</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Cantidad</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Costo Unit.</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Total</th>
-                      <th className="text-left p-3 font-medium text-gray-900">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {purchaseOrder.items.map((item) => (
-                      <tr key={item.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3">
-                          <div className="font-medium text-gray-900">{item.sku}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(item.created_at).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-gray-900">{item.description || '-'}</div>
-                          {item.notes && (
-                            <div className="text-sm text-gray-500 mt-1">{item.notes}</div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium">{item.quantity_ordered}</div>
-                          {item.quantity_received > 0 && (
-                            <div className="text-sm text-green-600">
-                              Recibido: {item.quantity_received}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium">{formatCurrency(item.unit_cost)}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium">{formatCurrency(item.total_cost)}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openEditDialog(item)}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="text-red-600 hover:text-red-800 text-sm"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ModernTable
+          title="Items de la Orden"
+          subtitle={`${totalItems} productos incluidos en esta orden de compra`}
+              data={purchaseOrder.items || []}
+              columns={[
+                {
+                  key: 'sku',
+                  title: 'SKU',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      <div className="font-medium">{value}</div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(row.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'description',
+                  title: 'Descripción',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      <div>{value || '-'}</div>
+                      {row.notes && (
+                        <div className="text-sm text-gray-500 mt-1">{row.notes}</div>
+                      )}
+                    </div>
+                  )
+                },
+                {
+                  key: 'quantity_ordered',
+                  title: 'Cantidad',
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      <div className="font-medium">{value}</div>
+                      {row.quantity_received > 0 && (
+                        <div className="text-sm text-green-600">
+                          Recibido: {row.quantity_received}
+                        </div>
+                      )}
+                    </div>
+                  )
+                },
+                {
+                  key: 'unit_cost',
+                  title: 'Costo Unit.',
+                  sortable: true,
+                  render: (value) => (
+                    <div className="font-medium">{formatCurrency(value)}</div>
+                  )
+                },
+                {
+                  key: 'total_cost',
+                  title: 'Total',
+                  sortable: true,
+                  render: (value) => (
+                    <div className="font-medium">{formatCurrency(value)}</div>
+                  )
+                }
+              ]}
+              renderExpandedRow={(row) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Detalles del Item</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">ID:</span> {row.id}</p>
+                      <p><span className="text-gray-500">SKU:</span> {row.sku}</p>
+                      <p><span className="text-gray-500">Descripción:</span> {row.description || 'Sin descripción'}</p>
+                      {row.notes && (
+                        <p><span className="text-gray-500">Notas:</span> {row.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Cantidades y Costos</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">Cantidad ordenada:</span> {row.quantity_ordered}</p>
+                      <p><span className="text-gray-500">Cantidad recibida:</span> {row.quantity_received}</p>
+                      <p><span className="text-gray-500">Costo unitario:</span> {formatCurrency(row.unit_cost)}</p>
+                      <p><span className="text-gray-500 font-medium">Costo total:</span> <span className="font-medium">{formatCurrency(row.total_cost)}</span></p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              onEdit={(item) => openEditDialog(item)}
+              onDelete={(item) => handleDeleteItem(item.id)}
+              onRefresh={() => project && loadPurchaseOrderData(project.project_id)}
+            />
 
         {/* Dialog para editar item */}
         <Dialog open={!!editingItem} onOpenChange={(open: boolean) => !open && setEditingItem(null)}>
