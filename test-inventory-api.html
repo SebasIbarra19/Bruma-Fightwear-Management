@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Inventory API</title>
+</head>
+<body>
+    <h1>Test Inventory API</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Cargando...';
+            
+            try {
+                const response = await fetch('/api/inventory/items?projectId=4cffbb29-0a5b-414c-86c0-9509a19485d3&limit=5');
+                const data = await response.json();
+                
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+                console.log('API Response:', data);
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

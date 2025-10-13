@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { ModernTable } from '@/components/ui/modern-table'
 import { ProjectPageLayout } from '@/components/layout/ProjectPageLayout'
+import { useInventoryData } from '@/hooks/useInventoryData'
 
 interface UserProject {
   project_id: string
@@ -30,6 +31,52 @@ export default function InventoryPage({ params }: { params: { projectId: string 
   
   const [projectData, setProjectData] = useState<ProjectInventoryData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Hook para datos de inventario
+  const {
+    stats,
+    alerts,
+    items,
+    movements,
+    movementStats,
+    loadingStats,
+    loadingAlerts,
+    loadingItems,
+    loadingMovements,
+    loadingMovementStats,
+    fetchItems,
+    fetchMovements,
+    fetchMovementStats,
+    error: inventoryError
+  } = useInventoryData(projectData?.project?.project_id)
+
+  // Debug: log cuando cambian los datos
+  useEffect(() => {
+    console.log('🔍 DEBUG COMPLETO:')
+    console.log('   - Project Data:', projectData?.project?.project_id)
+    console.log('   - Project Slug:', projectSlug)
+    console.log('   - Items:', items)
+    console.log('   - Items Length:', items?.length)
+    console.log('   - Loading Items:', loadingItems)
+    console.log('   - Inventory Error:', inventoryError)
+    console.log('   - Stats:', stats)
+    console.log('   - LoadingStats:', loadingStats)
+  }, [projectData, items, loadingItems, inventoryError, projectSlug, stats, loadingStats])
+
+  // Test manual de la API
+  useEffect(() => {
+    if (projectData?.project?.project_id) {
+      console.log('🧪 TESTING API MANUAL:')
+      fetch(`/api/inventory/items?projectId=${projectData.project.project_id}&limit=5`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('🧪 API Response:', data)
+        })
+        .catch(err => {
+          console.error('🧪 API Error:', err)
+        })
+    }
+  }, [projectData?.project?.project_id])
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -87,8 +134,20 @@ export default function InventoryPage({ params }: { params: { projectId: string 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>1,234</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+12 nuevos este mes</p>
+                {loadingStats ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                      {stats?.total_products?.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                      Productos únicos en inventario
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -99,20 +158,48 @@ export default function InventoryPage({ params }: { params: { projectId: string 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>8,456</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.warning }}>-5% vs mes anterior</p>
+                {loadingStats ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 w-20 bg-gray-200 rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                      {stats?.total_items?.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                      Items disponibles en almacén
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
             <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium" style={{ color: theme.colors.textSecondary }}>
-                  Productos Bajo Stock
+                  Items Bajo Stock
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>23</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.error }}>Requieren reposición</p>
+                {loadingStats ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 w-12 bg-gray-200 rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold" style={{ 
+                      color: (stats?.low_stock_items || 0) > 0 ? theme.colors.error : theme.colors.textPrimary 
+                    }}>
+                      {stats?.low_stock_items?.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs mt-1" style={{ 
+                      color: (stats?.low_stock_items || 0) > 0 ? theme.colors.error : theme.colors.success 
+                    }}>
+                      {(stats?.low_stock_items || 0) > 0 ? 'Requieren reposición' : 'Todo en orden'}
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -123,8 +210,20 @@ export default function InventoryPage({ params }: { params: { projectId: string 
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>$156,789</div>
-                <p className="text-xs mt-1" style={{ color: theme.colors.success }}>+8% vs mes anterior</p>
+                {loadingStats ? (
+                  <div className="animate-pulse">
+                    <div className="h-8 w-24 bg-gray-200 rounded"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold" style={{ color: theme.colors.textPrimary }}>
+                      ${stats?.total_value?.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                      Valor total a costo promedio
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -139,42 +238,80 @@ export default function InventoryPage({ params }: { params: { projectId: string 
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { name: 'Guantes BRUMA Pro', stock: 5, minStock: 20, status: 'critical' },
-                    { name: 'Shorts MMA Elite', stock: 12, minStock: 25, status: 'warning' },
-                    { name: 'Vendas Elásticas', stock: 8, minStock: 30, status: 'critical' },
-                    { name: 'Protector Bucal', stock: 18, minStock: 50, status: 'warning' }
-                  ].map((product, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                          {product.name}
-                        </p>
-                        <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
-                          Stock actual: {product.stock} | Mínimo: {product.minStock}
-                        </p>
+                {loadingAlerts ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                          <div className="h-3 w-24 bg-gray-200 rounded"></div>
+                        </div>
+                        <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span 
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.status === 'critical' 
-                              ? 'text-red-700' 
-                              : 'text-yellow-700'
-                          }`}
-                          style={{ 
-                            backgroundColor: product.status === 'critical' 
-                              ? theme.colors.error + '20' 
-                              : theme.colors.warning + '20',
-                            border: `1px solid ${product.status === 'critical' ? theme.colors.error : theme.colors.warning}30`
-                          }}
-                        >
-                          {product.status === 'critical' ? 'Crítico' : 'Bajo'}
-                        </span>
+                    ))}
+                  </div>
+                ) : alerts && alerts.length > 0 ? (
+                  <div className="space-y-3">
+                    {alerts.slice(0, 4).map((alert, index) => (
+                      <div key={alert.alert_id} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                            {alert.product_name}
+                          </p>
+                          <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                            {alert.variant_name} • Stock: {alert.current_stock} | Mínimo: {alert.reorder_level}
+                          </p>
+                          <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                            SKU: {alert.variant_sku} • Sugerido: {alert.suggested_order_quantity}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span 
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              alert.alert_level === 'critical' 
+                                ? 'text-red-700' 
+                                : alert.alert_level === 'high'
+                                ? 'text-orange-700'
+                                : 'text-yellow-700'
+                            }`}
+                            style={{ 
+                              backgroundColor: 
+                                alert.alert_level === 'critical' 
+                                  ? theme.colors.error + '20' 
+                                  : alert.alert_level === 'high'
+                                  ? '#f97316' + '20'
+                                  : theme.colors.warning + '20',
+                              border: `1px solid ${
+                                alert.alert_level === 'critical' 
+                                  ? theme.colors.error 
+                                  : alert.alert_level === 'high'
+                                  ? '#f97316'
+                                  : theme.colors.warning
+                              }30`
+                            }}
+                          >
+                            {alert.alert_level === 'critical' ? 'Crítico' : 
+                             alert.alert_level === 'high' ? 'Alto' : 'Medio'}
+                          </span>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.success + '20' }}>
+                      <svg className="w-8 h-8" style={{ color: theme.colors.success }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                      ¡Excelente!
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                      No hay alertas de stock bajo en este momento
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -267,86 +404,306 @@ export default function InventoryPage({ params }: { params: { projectId: string 
           </div>
 
           {/* Tabla de productos usando ModernTable */}
-          <ModernTable
-            data={[
-              { id: 1, name: 'Guantes BRUMA Pro', sku: 'GBP-001', current: 5, min: 20, status: 'critical' },
-              { id: 2, name: 'Shorts MMA Elite', sku: 'SME-002', current: 45, min: 25, status: 'good' },
-              { id: 3, name: 'Vendas Elásticas', sku: 'VE-003', current: 8, min: 30, status: 'critical' },
-              { id: 4, name: 'Protector Bucal', sku: 'PB-004', current: 18, min: 50, status: 'warning' },
-              { id: 5, name: 'Camiseta Training', sku: 'CT-005', current: 85, min: 40, status: 'good' }
-            ]}
-            columns={[
-              { key: 'name', title: 'Producto', sortable: true },
-              { key: 'sku', title: 'SKU', sortable: true },
-              { key: 'current', title: 'Stock Actual', sortable: true },
-              { key: 'min', title: 'Stock Mínimo', sortable: true },
-              {
-                key: 'status',
-                title: 'Estado',
-                render: (value) => (
-                  <span 
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      value === 'critical' ? 'text-red-700' :
-                      value === 'warning' ? 'text-yellow-700' : 'text-green-700'
-                    }`}
-                    style={{ 
-                      backgroundColor: 
-                        value === 'critical' ? theme.colors.error + '20' :
-                        value === 'warning' ? theme.colors.warning + '20' : theme.colors.success + '20',
-                      border: `1px solid ${
-                        value === 'critical' ? theme.colors.error :
-                        value === 'warning' ? theme.colors.warning : theme.colors.success
-                      }30`
-                    }}
-                  >
-                    {value === 'critical' ? 'Crítico' :
-                     value === 'warning' ? 'Bajo' : 'Bueno'}
-                  </span>
-                )
-              }
-            ]}
-            renderExpandedRow={(row) => (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
-                <div>
-                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.primary }}>Detalles del Producto</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-400">SKU:</span> {row.sku}</p>
-                    <p><span className="text-gray-400">Stock actual:</span> {row.current} unidades</p>
-                    <p><span className="text-gray-400">Stock mínimo:</span> {row.min} unidades</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.warning }}>Alerta de Stock</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-400">Diferencia:</span> {row.current - row.min} unidades</p>
-                    <p><span className="text-gray-400">Sugerido reponer:</span> {Math.max(0, row.min - row.current + 20)} unidades</p>
-                    <p><span className="text-gray-400">Última reposición:</span> Hace 15 días</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2" style={{ color: theme.colors.success }}>Acciones</h4>
-                  <div className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Editar Stock
-                    </Button>
-
-                    <Button variant="outline" size="sm" className="w-full">
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v14a2 2 0 01-2 2z" />
-                      </svg>
-                      Ver Historial
-                    </Button>
-                  </div>
+          {loadingItems ? (
+            // Skeleton loading para la tabla
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="p-6 border-b">
+                <div className="animate-pulse">
+                  <div className="h-6 bg-gray-200 rounded w-1/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </div>
               </div>
-            )}
-            onEdit={(product) => console.log('Editar:', product)}
-            onDelete={(product) => console.log('Eliminar:', product)}
-            onRefresh={() => console.log('Refrescar inventario')}
-          />
+              <div className="divide-y divide-gray-200">
+                {Array(5).fill(0).map((_, index) => (
+                  <div key={index} className="p-6 animate-pulse">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                      <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-12 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-12 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-16 h-6 bg-gray-200 rounded-full"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : items.length === 0 ? (
+            // Estado vacío
+            <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary + '20' }}>
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.secondary}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-4 4-4-4m8 4l-4 4-4-4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                No hay productos en inventario
+              </h3>
+              <p style={{ color: theme.colors.textSecondary }} className="mb-4">
+                Comienza agregando productos a tu inventario para gestionar el stock
+              </p>
+              <Button
+                onClick={() => console.log('Agregar primer producto')}
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                  border: 'none'
+                }}
+              >
+                Agregar Primer Producto
+              </Button>
+            </div>
+          ) : (
+            <ModernTable
+              data={items.map(item => ({
+                id: item.id,
+                name: item.name,
+                sku: item.sku,
+                category: item.category_name,
+                variants_count: item.total_variants,
+                total_stock: item.total_stock,
+                total_value: item.total_value,
+                status: item.status,
+                variants: item.variants
+              }))}
+              columns={[
+                { 
+                  key: 'name', 
+                  title: 'Producto', 
+                  sortable: true,
+                  render: (value, row) => (
+                    <div>
+                      <div className="font-semibold" style={{ color: theme.colors.textPrimary }}>{value}</div>
+                      <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                        SKU: {row.sku} • {row.category}
+                      </div>
+                    </div>
+                  )
+                },
+                { 
+                  key: 'variants_count', 
+                  title: 'Variantes', 
+                  sortable: true,
+                  render: (value) => (
+                    <span 
+                      className="px-3 py-1 rounded-full text-sm font-medium"
+                      style={{
+                        backgroundColor: theme.colors.secondary + '20',
+                        color: theme.colors.secondary
+                      }}
+                    >
+                      {value} variante{value !== 1 ? 's' : ''}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'total_stock', 
+                  title: 'Stock Total', 
+                  sortable: true,
+                  render: (value) => (
+                    <span className="font-semibold text-lg" style={{ color: theme.colors.textPrimary }}>
+                      {value?.toLocaleString() || 0}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'total_value', 
+                  title: 'Valor Total',
+                  sortable: true,
+                  render: (value) => (
+                    <span className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                      ${(value || 0).toFixed(2)}
+                    </span>
+                  )
+                },
+                {
+                  key: 'status',
+                  title: 'Estado',
+                  render: (value) => (
+                    <span 
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        value === 'critical' ? 'text-red-700' :
+                        value === 'warning' ? 'text-yellow-700' : 'text-green-700'
+                      }`}
+                      style={{ 
+                        backgroundColor: 
+                          value === 'critical' ? theme.colors.error + '20' :
+                          value === 'warning' ? theme.colors.warning + '20' : theme.colors.success + '20',
+                        border: `1px solid ${
+                          value === 'critical' ? theme.colors.error :
+                          value === 'warning' ? theme.colors.warning : theme.colors.success
+                        }30`
+                      }}
+                    >
+                      {value === 'critical' ? 'Crítico' :
+                       value === 'warning' ? 'Bajo Stock' : 'Normal'}
+                    </span>
+                  )
+                }
+              ]}
+              renderExpandedRow={(row) => (
+                <div className="p-6 rounded-lg border-l-4" style={{ 
+                  backgroundColor: theme.colors.surface, 
+                  borderLeftColor: theme.colors.primary,
+                  borderColor: theme.colors.border + '40'
+                }}>
+                  <div className="flex items-center mb-4">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3" style={{ 
+                      backgroundColor: theme.colors.primary + '20' 
+                    }}>
+                      <svg className="w-4 h-4" style={{ color: theme.colors.primary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </div>
+                    <h4 className="text-lg font-semibold" style={{ color: theme.colors.primary }}>
+                      Variantes de {row.name}
+                    </h4>
+                    <span className="ml-auto px-3 py-1 rounded-full text-sm font-medium" style={{
+                      backgroundColor: theme.colors.secondary + '20',
+                      color: theme.colors.secondary
+                    }}>
+                      {row.variants?.length || 0} variantes
+                    </span>
+                  </div>
+                  
+                  <div className="overflow-x-auto rounded-lg border" style={{ borderColor: theme.colors.border }}>
+                    <table className="w-full">
+                      <thead style={{ backgroundColor: theme.colors.background }}>
+                        <tr className="border-b" style={{ borderColor: theme.colors.border }}>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Variante</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>SKU</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Tamaño</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Color</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Stock</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Valor</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Estado</th>
+                          <th className="text-center py-3 px-4 text-sm font-semibold" style={{ color: theme.colors.textPrimary }}>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {row.variants?.map((variant: any, index: number) => (
+                          <tr 
+                            key={variant.inventory_id} 
+                            className="border-b hover:bg-opacity-50 transition-colors" 
+                            style={{ 
+                              backgroundColor: index % 2 === 0 ? 'transparent' : theme.colors.background + '30',
+                              borderColor: theme.colors.border + '30'
+                            }}
+                          >
+                            <td className="py-3 px-4 text-sm">
+                              <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                                {variant.variant_name}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm font-mono" style={{ color: theme.colors.textSecondary }}>
+                              {variant.variant_sku}
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className="px-2 py-1 rounded-md text-xs font-medium" style={{
+                                backgroundColor: theme.colors.secondary + '15',
+                                color: theme.colors.secondary
+                              }}>
+                                {variant.size || '-'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className="px-2 py-1 rounded-md text-xs font-medium" style={{
+                                backgroundColor: theme.colors.primary + '15',
+                                color: theme.colors.primary
+                              }}>
+                                {variant.color || '-'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className="font-semibold text-lg" style={{ color: theme.colors.textPrimary }}>
+                                {variant.quantity_available?.toLocaleString() || 0}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                              ${variant.total_value?.toFixed(2) || '0.00'}
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              <span 
+                                className="px-3 py-1 text-xs font-medium rounded-full border"
+                                style={{ 
+                                  backgroundColor: variant.stock_status === 'out_of_stock' ? theme.colors.error + '15' :
+                                                variant.stock_status === 'low_stock' ? theme.colors.warning + '15' : 
+                                                theme.colors.success + '15',
+                                  color: variant.stock_status === 'out_of_stock' ? theme.colors.error :
+                                         variant.stock_status === 'low_stock' ? theme.colors.warning : 
+                                         theme.colors.success,
+                                  borderColor: variant.stock_status === 'out_of_stock' ? theme.colors.error + '30' :
+                                              variant.stock_status === 'low_stock' ? theme.colors.warning + '30' : 
+                                              theme.colors.success + '30'
+                                }}
+                              >
+                                {variant.stock_status === 'out_of_stock' ? 'Sin Stock' :
+                                 variant.stock_status === 'low_stock' ? 'Bajo Stock' : 'Stock Normal'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              <div className="flex items-center justify-center space-x-2">
+                                <button
+                                  className="p-1.5 rounded-md hover:bg-opacity-80 transition-colors"
+                                  style={{ 
+                                    backgroundColor: theme.colors.primary + '15',
+                                    color: theme.colors.primary
+                                  }}
+                                  onClick={() => console.log('Editar variante:', variant.variant_name)}
+                                  title="Editar variante"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  className="p-1.5 rounded-md hover:bg-opacity-80 transition-colors"
+                                  style={{ 
+                                    backgroundColor: theme.colors.secondary + '15',
+                                    color: theme.colors.secondary
+                                  }}
+                                  onClick={() => console.log('Ajustar stock:', variant.variant_name)}
+                                  title="Ajustar stock"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 010-2h4zM6 6v12h12V6H6zm3 3h6v2H9V9zm0 4h6v2H9v-2z" />
+                                  </svg>
+                                </button>
+                                
+                                {variant.needs_reorder && (
+                                  <button
+                                    className="p-1.5 rounded-md hover:bg-opacity-80 transition-colors"
+                                    style={{ 
+                                      backgroundColor: theme.colors.warning + '15',
+                                      color: theme.colors.warning
+                                    }}
+                                    onClick={() => console.log('Reponer stock:', variant.variant_name)}
+                                    title="Reponer stock"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )) || []}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              onEdit={(product) => console.log('Editar:', product)}
+              onDelete={(product) => console.log('Eliminar:', product)}
+              onRefresh={() => {
+                console.log('Refrescando inventario...')
+                fetchItems()
+              }}
+            />
+          )}
         </div>
       )
     },
@@ -359,18 +716,474 @@ export default function InventoryPage({ params }: { params: { projectId: string 
         </svg>
       ),
       content: (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary + '20' }}>
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.secondary}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                Movimientos de Inventario
+              </h3>
+              <p style={{ color: theme.colors.textSecondary }}>
+                Registro completo de entradas, salidas, transferencias y ajustes de inventario
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline"
+                onClick={() => console.log('Registrar entrada')}
+                style={{ 
+                  borderColor: theme.colors.success,
+                  color: theme.colors.success
+                }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Entrada
+              </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={() => console.log('Registrar salida')}
+                style={{ 
+                  borderColor: theme.colors.error,
+                  color: theme.colors.error
+                }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+                Salida
+              </Button>
+              
+              <Button 
+                onClick={() => console.log('Ajuste de inventario')}
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                  border: 'none'
+                }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Ajustar Stock
+              </Button>
+            </div>
           </div>
-          <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
-            Historial de Movimientos
-          </h3>
-          <p style={{ color: theme.colors.textSecondary }}>
-            Registro completo de entradas, salidas, transferencias y ajustes de inventario
-          </p>
+
+          {/* Filtros */}
+          <Card style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block" style={{ color: theme.colors.textPrimary }}>
+                    Tipo de Movimiento
+                  </label>
+                  <select className="w-full px-3 py-2 rounded-md border" style={{ 
+                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.background
+                  }}>
+                    <option>Todos</option>
+                    <option>Entrada</option>
+                    <option>Salida</option>
+                    <option>Transferencia</option>
+                    <option>Ajuste</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block" style={{ color: theme.colors.textPrimary }}>
+                    Fecha Desde
+                  </label>
+                  <input 
+                    type="date" 
+                    className="w-full px-3 py-2 rounded-md border"
+                    style={{ 
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.background
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block" style={{ color: theme.colors.textPrimary }}>
+                    Fecha Hasta
+                  </label>
+                  <input 
+                    type="date" 
+                    className="w-full px-3 py-2 rounded-md border"
+                    style={{ 
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.background
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block" style={{ color: theme.colors.textPrimary }}>
+                    Producto
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Buscar producto..."
+                    className="w-full px-3 py-2 rounded-md border"
+                    style={{ 
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.background
+                    }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tabla de Movimientos */}
+          {loadingMovements ? (
+            // Skeleton loading para la tabla de movimientos
+            <div 
+              className="rounded-lg shadow-sm border overflow-hidden"
+              style={{ 
+                backgroundColor: theme.colors.surface, 
+                borderColor: theme.colors.border 
+              }}
+            >
+              <div className="p-6 border-b" style={{ borderColor: theme.colors.border }}>
+                <div className="animate-pulse">
+                  <div 
+                    className="h-6 rounded w-1/3 mb-2" 
+                    style={{ backgroundColor: theme.colors.border + '40' }}
+                  ></div>
+                  <div 
+                    className="h-4 rounded w-1/2" 
+                    style={{ backgroundColor: theme.colors.border + '30' }}
+                  ></div>
+                </div>
+              </div>
+              <div className="divide-y" style={{ borderColor: theme.colors.border + '30' }}>
+                {Array(5).fill(0).map((_, index) => (
+                  <div key={index} className="p-6 animate-pulse">
+                    <div className="flex items-center space-x-4">
+                      <div 
+                        className="w-16 h-6 rounded-full" 
+                        style={{ backgroundColor: theme.colors.border + '40' }}
+                      ></div>
+                      <div className="flex-1 space-y-2">
+                        <div 
+                          className="h-4 rounded w-3/4" 
+                          style={{ backgroundColor: theme.colors.border + '40' }}
+                        ></div>
+                        <div 
+                          className="h-3 rounded w-1/2" 
+                          style={{ backgroundColor: theme.colors.border + '30' }}
+                        ></div>
+                      </div>
+                      <div 
+                        className="w-12 h-4 rounded" 
+                        style={{ backgroundColor: theme.colors.border + '40' }}
+                      ></div>
+                      <div 
+                        className="w-16 h-4 rounded" 
+                        style={{ backgroundColor: theme.colors.border + '40' }}
+                      ></div>
+                      <div 
+                        className="w-20 h-4 rounded" 
+                        style={{ backgroundColor: theme.colors.border + '40' }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : movements.length === 0 ? (
+            // Estado vacío
+            <div 
+              className="rounded-lg shadow-sm border p-12 text-center"
+              style={{ 
+                backgroundColor: theme.colors.surface, 
+                borderColor: theme.colors.border 
+              }}
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary + '20' }}>
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke={theme.colors.secondary}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: theme.colors.textPrimary }}>
+                No hay movimientos registrados
+              </h3>
+              <p style={{ color: theme.colors.textSecondary }} className="mb-4">
+                Los movimientos de inventario aparecerán aquí cuando registres entradas, salidas o ajustes
+              </p>
+              <Button
+                onClick={() => console.log('Registrar primer movimiento')}
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
+                  border: 'none'
+                }}
+              >
+                Registrar Primer Movimiento
+              </Button>
+            </div>
+          ) : (
+            <ModernTable
+              data={movements}
+            columns={[
+              {
+                key: 'type',
+                title: 'Tipo',
+                sortable: true,
+                render: (value) => (
+                  <span 
+                    className="px-3 py-1 rounded-full text-xs font-medium flex items-center w-fit"
+                    style={{
+                      backgroundColor: 
+                        value === 'entrada' ? theme.colors.success + '20' :
+                        value === 'salida' ? theme.colors.error + '20' :
+                        value === 'transferencia' ? theme.colors.secondary + '20' :
+                        theme.colors.warning + '20',
+                      color:
+                        value === 'entrada' ? theme.colors.success :
+                        value === 'salida' ? theme.colors.error :
+                        value === 'transferencia' ? theme.colors.secondary :
+                        theme.colors.warning
+                    }}
+                  >
+                    {value === 'entrada' && (
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                      </svg>
+                    )}
+                    {value === 'salida' && (
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    )}
+                    {value === 'transferencia' && (
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    )}
+                    {value === 'ajuste' && (
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                      </svg>
+                    )}
+                    {value.charAt(0).toUpperCase() + value.slice(1)}
+                  </span>
+                )
+              },
+              {
+                key: 'product_name',
+                title: 'Producto',
+                sortable: true,
+                render: (value, row) => (
+                  <div>
+                    <div className="font-medium" style={{ color: theme.colors.textPrimary }}>
+                      {value}
+                    </div>
+                    <div className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                      {row.variant_name} • SKU: {row.sku}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'quantity',
+                title: 'Cantidad',
+                sortable: true,
+                render: (value) => (
+                  <span 
+                    className="font-semibold"
+                    style={{ 
+                      color: value > 0 ? theme.colors.success : theme.colors.error 
+                    }}
+                  >
+                    {value > 0 ? '+' : ''}{value}
+                  </span>
+                )
+              },
+              {
+                key: 'total_cost',
+                title: 'Valor',
+                sortable: true,
+                render: (value) => (
+                  <span 
+                    className="font-medium"
+                    style={{ 
+                      color: value === 0 ? theme.colors.textSecondary : 
+                             value > 0 ? theme.colors.success : theme.colors.error 
+                    }}
+                  >
+                    {value === 0 ? '-' : `$${Math.abs(value).toFixed(2)}`}
+                  </span>
+                )
+              },
+              {
+                key: 'location_from',
+                title: 'Origen → Destino',
+                render: (value, row) => (
+                  <div className="text-sm">
+                    <div style={{ color: theme.colors.textPrimary }}>
+                      {value}
+                    </div>
+                    <div className="flex items-center mt-1" style={{ color: theme.colors.textSecondary }}>
+                      <svg className="w-3 h-3 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                      {row.location_to}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'date',
+                title: 'Fecha',
+                sortable: true,
+                render: (value) => (
+                  <div className="text-sm">
+                    <div style={{ color: theme.colors.textPrimary }}>
+                      {new Date(value).toLocaleDateString()}
+                    </div>
+                    <div style={{ color: theme.colors.textSecondary }}>
+                      {new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'user',
+                title: 'Usuario',
+                render: (value) => (
+                  <span className="text-sm" style={{ color: theme.colors.textSecondary }}>
+                    {value}
+                  </span>
+                )
+              }
+            ]}
+            renderExpandedRow={(row) => (
+              <div className="p-6 rounded-lg border-l-4" style={{ 
+                backgroundColor: theme.colors.surface, 
+                borderLeftColor: 
+                  row.type === 'entrada' ? theme.colors.success :
+                  row.type === 'salida' ? theme.colors.error :
+                  row.type === 'transferencia' ? theme.colors.secondary :
+                  theme.colors.warning,
+                borderColor: theme.colors.border + '40'
+              }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
+                      Detalles del Movimiento
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Referencia:</span>
+                        <span className="ml-2 font-mono" style={{ color: theme.colors.textPrimary }}>
+                          {row.reference}
+                        </span>
+                      </p>
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Motivo:</span>
+                        <span className="ml-2" style={{ color: theme.colors.textPrimary }}>
+                          {row.reason}
+                        </span>
+                      </p>
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Usuario:</span>
+                        <span className="ml-2" style={{ color: theme.colors.textPrimary }}>
+                          {row.user}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
+                      Información Financiera
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Costo Unitario:</span>
+                        <span className="ml-2 font-medium" style={{ color: theme.colors.textPrimary }}>
+                          ${row.unit_cost.toFixed(2)}
+                        </span>
+                      </p>
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Cantidad:</span>
+                        <span 
+                          className="ml-2 font-medium" 
+                          style={{ 
+                            color: row.quantity > 0 ? theme.colors.success : theme.colors.error 
+                          }}
+                        >
+                          {row.quantity > 0 ? '+' : ''}{row.quantity}
+                        </span>
+                      </p>
+                      <p>
+                        <span style={{ color: theme.colors.textSecondary }}>Valor Total:</span>
+                        <span 
+                          className="ml-2 font-semibold" 
+                          style={{ 
+                            color: row.total_cost === 0 ? theme.colors.textSecondary : 
+                                   row.total_cost > 0 ? theme.colors.success : theme.colors.error 
+                          }}
+                        >
+                          {row.total_cost === 0 ? 'Sin costo' : `$${Math.abs(row.total_cost).toFixed(2)}`}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-3" style={{ color: theme.colors.primary }}>
+                      Acciones
+                    </h4>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => console.log('Ver detalles completos:', row.id)}
+                      >
+                        Ver Detalles
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => console.log('Descargar comprobante:', row.id)}
+                      >
+                        Descargar PDF
+                      </Button>
+                      
+                      {row.type === 'ajuste' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          style={{ 
+                            borderColor: theme.colors.error + '50',
+                            color: theme.colors.error 
+                          }}
+                          onClick={() => console.log('Revertir ajuste:', row.id)}
+                        >
+                          Revertir
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            onEdit={(movement) => console.log('Editar movimiento:', movement)}
+            onDelete={(movement) => console.log('Eliminar movimiento:', movement)}
+            onRefresh={() => {
+              console.log('Refrescando movimientos...')
+              fetchMovements()
+            }}
+          />
+          )}
         </div>
       )
     }
