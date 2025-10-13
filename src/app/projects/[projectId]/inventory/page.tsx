@@ -50,33 +50,7 @@ export default function InventoryPage({ params }: { params: { projectId: string 
     error: inventoryError
   } = useInventoryData(projectData?.project?.project_id)
 
-  // Debug: log cuando cambian los datos
-  useEffect(() => {
-    console.log('🔍 DEBUG COMPLETO:')
-    console.log('   - Project Data:', projectData?.project?.project_id)
-    console.log('   - Project Slug:', projectSlug)
-    console.log('   - Items:', items)
-    console.log('   - Items Length:', items?.length)
-    console.log('   - Loading Items:', loadingItems)
-    console.log('   - Inventory Error:', inventoryError)
-    console.log('   - Stats:', stats)
-    console.log('   - LoadingStats:', loadingStats)
-  }, [projectData, items, loadingItems, inventoryError, projectSlug, stats, loadingStats])
 
-  // Test manual de la API
-  useEffect(() => {
-    if (projectData?.project?.project_id) {
-      console.log('🧪 TESTING API MANUAL:')
-      fetch(`/api/inventory/items?projectId=${projectData.project.project_id}&limit=5`)
-        .then(res => res.json())
-        .then(data => {
-          console.log('🧪 API Response:', data)
-        })
-        .catch(err => {
-          console.error('🧪 API Error:', err)
-        })
-    }
-  }, [projectData?.project?.project_id])
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -323,46 +297,67 @@ export default function InventoryPage({ params }: { params: { projectId: string 
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { type: 'entrada', product: 'Guantes BRUMA Pro', quantity: 50, date: '2024-01-15' },
-                    { type: 'salida', product: 'Shorts MMA Elite', quantity: -25, date: '2024-01-15' },
-                    { type: 'entrada', product: 'Vendas Elásticas', quantity: 100, date: '2024-01-14' },
-                    { type: 'salida', product: 'Protector Bucal', quantity: -15, date: '2024-01-14' }
-                  ].map((movement, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
-                      <div className="flex items-center space-x-3">
-                        <div 
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                          style={{ 
-                            backgroundColor: movement.type === 'entrada' 
-                              ? theme.colors.success + '20' 
-                              : theme.colors.error + '20'
-                          }}
-                        >
-                          {movement.type === 'entrada' ? '+' : '-'}
+                {loadingMovements ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6" style={{ border: `2px solid ${theme.colors.border}`, borderTop: `2px solid ${theme.colors.primary}` }}></div>
+                  </div>
+                ) : movements && movements.length > 0 ? (
+                  <div className="space-y-3">
+                    {movements.slice(0, 5).map((movement, index) => (
+                      <div key={movement.id || index} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
+                        <div className="flex items-center space-x-3">
+                          <div 
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                            }`}
+                            style={{ 
+                              backgroundColor: movement.type === 'entrada' 
+                                ? theme.colors.success + '20' 
+                                : theme.colors.error + '20'
+                            }}
+                          >
+                            {movement.type === 'entrada' ? '+' : '-'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
+                              {movement.product_name || 'Producto'}
+                            </p>
+                            <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                              {movement.variant_name && `${movement.variant_name} • `}
+                              {new Date(movement.date || movement.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: theme.colors.textPrimary }}>
-                            {movement.product}
-                          </p>
+                        <div className="text-right">
+                          <span 
+                            className={`text-sm font-medium ${
+                              movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {movement.type === 'entrada' ? '+' : '-'}{Math.abs(movement.quantity)}
+                          </span>
                           <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
-                            {movement.date}
+                            ${movement.unit_cost?.toFixed(2) || '0.00'}
                           </p>
                         </div>
                       </div>
-                      <span 
-                        className={`text-sm font-medium ${
-                          movement.type === 'entrada' ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.border + '30' }}>
+                      <svg className="w-6 h-6" style={{ color: theme.colors.textSecondary }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm" style={{ color: theme.colors.textPrimary }}>
+                      Sin movimientos recientes
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                      Los movimientos de inventario aparecerán aquí
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

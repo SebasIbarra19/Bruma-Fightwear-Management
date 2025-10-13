@@ -4,7 +4,8 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,36 @@ export async function GET(request: NextRequest) {
 
     console.log('📦 API Inventory Movements: Consultando movimientos para proyecto:', projectId)
 
+    // Crear cliente con service role para server-side
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found')
+      return Response.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
     // Llamar al stored procedure para obtener movimientos
+    console.log('📦 Calling get_inventory_movements SP with params:', {
+      p_project_id: projectId,
+      p_limit: limit,
+      p_offset: offset,
+      p_movement_type: movementType || null,
+      p_date_from: dateFrom || null,
+      p_date_to: dateTo || null,
+      p_search_term: search || null
+    })
+
     const { data: movements, error } = await supabase
       .rpc('get_inventory_movements', {
         p_project_id: projectId,
@@ -36,18 +66,25 @@ export async function GET(request: NextRequest) {
         p_date_from: dateFrom || null,
         p_date_to: dateTo || null,
         p_search_term: search || null
-      })
+      } as any)
+
+    console.log('📦 SP Response:', { data: movements, error })
 
     if (error) {
       console.error('❌ Error consultando movimientos:', error)
       return Response.json(
-        { error: 'Error fetching inventory movements' },
+        { 
+          error: 'Error fetching inventory movements',
+          details: error,
+          message: error.message || 'Unknown database error',
+          code: error.code || 'UNKNOWN'
+        },
         { status: 500 }
       )
     }
 
     // Transformar datos al formato esperado por el frontend
-    const transformedMovements = (movements || []).map((movement: any) => ({
+    const transformedMovements = ((movements as any) || []).map((movement: any) => ({
       id: movement.movement_id,
       type: movement.movement_type,
       product_id: movement.product_id,
@@ -131,8 +168,19 @@ export async function POST(request: NextRequest) {
       quantity
     })
 
+    // Crear cliente con service role para server-side
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    const supabaseServerSide = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
     // Llamar al stored procedure para crear movimiento
-    const { data: movementId, error } = await supabase
+    const { data: movementId, error } = await supabaseServerSide
       .rpc('create_inventory_movement', {
         p_project_id: projectId,
         p_movement_type: movementType,
@@ -146,7 +194,7 @@ export async function POST(request: NextRequest) {
         p_reference_number: referenceNumber || null,
         p_user_name: userName || 'Sistema',
         p_notes: notes || null
-      })
+      } as any)
 
     if (error) {
       console.error('❌ Error creando movimiento:', error)

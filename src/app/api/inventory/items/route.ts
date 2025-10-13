@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,72 +17,108 @@ export async function GET(request: NextRequest) {
 
     console.log('📋 API Inventory Items: Consultando items para proyecto:', projectId)
 
-    // Query principal de inventario
-    const { data: inventoryItems, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .eq('project_id', projectId)
-      .limit(limit)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('❌ Error consultando inventory:', error)
+    // Crear cliente con service role para server-side
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found')
       return Response.json(
-        { error: 'Error fetching inventory items', details: error },
+        { error: 'Server configuration error' },
         { status: 500 }
       )
     }
 
-    // Obtener datos relacionados
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, name, sku, category_id')
-      .eq('project_id', projectId)
+    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
 
-    const { data: variants } = await supabase
-      .from('product_variants')
-      .select('id, product_id, name, sku, size, color')
+    // Llamar al stored procedure para obtener items de inventario
+    console.log('📋 Calling list_inventory_items SP with params:', {
+      p_project_id: projectId,
+      p_limit: limit,
+      p_offset: 0,
+      p_include_zero_stock: true,
+      p_category_filter: null,
+      p_location_filter: null
+    })
 
-    const { data: categories } = await supabase
-      .from('categories')
-      .select('id, name')
-      .eq('project_id', projectId)
+    const { data: inventoryData, error } = await supabase
+      .rpc('list_inventory_items', {
+        p_project_id: projectId,
+        p_limit: limit,
+        p_offset: 0,
+        p_include_zero_stock: true,
+        p_category_filter: null,
+        p_location_filter: null
+      } as any)
 
-    console.log('✅ Inventory items encontrados:', inventoryItems?.length || 0)
+    console.log('📋 SP Response:', { data: inventoryData, error })
 
-    // Crear mapas para búsquedas rápidas
-    const productMap = new Map((products || []).map(p => [p.id, p]))
-    const variantMap = new Map((variants || []).map(v => [v.id, v]))
-    const categoryMap = new Map((categories || []).map(c => [c.id, c]))
+    if (error) {
+      console.error('❌ Error consultando inventory items:', error)
+      return Response.json(
+        { 
+          error: 'Error fetching inventory items', 
+          details: error,
+          message: error.message || 'Unknown database error',
+          code: error.code || 'UNKNOWN'
+        },
+        { status: 500 }
+      )
+    }
 
-    // Agrupar por productos
+    console.log('✅ Inventory items data type:', typeof inventoryData, inventoryData)
+
+    // Las funciones ahora retornan JSON, así que necesitamos parsearlo
+    let parsedData: any[] = []
+    
+    if (inventoryData) {
+      // Si es string JSON, parsearlo
+      if (typeof inventoryData === 'string') {
+        try {
+          parsedData = JSON.parse(inventoryData)
+        } catch (e) {
+          console.error('Error parsing JSON:', e)
+          parsedData = []
+        }
+      } 
+      // Si ya es array/object, usarlo directamente
+      else if (Array.isArray(inventoryData)) {
+        parsedData = inventoryData
+      }
+      // Si es un objeto JSON, podría ser el resultado directo
+      else if (inventoryData && typeof inventoryData === 'object') {
+        parsedData = Array.isArray(inventoryData) ? inventoryData : [inventoryData]
+      }
+    }
+
+    console.log('✅ Parsed inventory items:', parsedData?.length || 0)
+
+    // Agrupar por productos usando los datos del SP
     const productGroups = new Map()
 
-    inventoryItems.forEach((item: any) => {
-      const variant = variantMap.get(item.variant_id)
-      const product = productMap.get(item.product_id)
-      const category = product ? categoryMap.get(product.category_id) : null
-
+    parsedData?.forEach((item: any) => {
       const variantData = {
-        inventory_id: item.id,
+        inventory_id: item.inventory_id,
         variant_id: item.variant_id,
-        variant_name: variant?.name || `Variante ${item.variant_id?.slice(-4) || 'N/A'}`,
-        variant_sku: variant?.sku || item.sku,
-        size: variant?.size || 'N/A',
-        color: variant?.color || 'N/A',
-        quantity_available: item.quantity_available || 0,
-        quantity_reserved: item.quantity_reserved || 0,
-        quantity_on_order: item.quantity_on_order || 0,
-        reorder_level: item.reorder_level || 10,
+        variant_name: item.variant_name || `Variante ${item.variant_id?.slice(-4) || 'N/A'}`,
+        variant_sku: item.variant_sku || item.product_sku,
+        size: item.variant_size || 'N/A',
+        color: item.variant_color || 'N/A',
+        quantity_available: item.current_stock || 0,
+        quantity_reserved: item.reserved_stock || 0,
+        quantity_on_order: item.on_order_stock || 0,
+        reorder_level: item.reorder_point || 10,
         reorder_quantity: item.reorder_quantity || 20,
-        unit_cost: Number((item.average_cost || 25.00).toFixed(2)),
-        total_value: Number(((item.quantity_available || 0) * (item.average_cost || 25.00)).toFixed(2)),
+        unit_cost: Number((item.unit_cost || 25.00).toFixed(2)),
+        total_value: Number((item.total_value || 0).toFixed(2)),
         location: item.location || 'Almacén Principal',
-        stock_status: 
-          item.quantity_available === 0 ? 'out_of_stock' :
-          item.quantity_available <= (item.reorder_level || 0) ? 'low_stock' :
-          item.quantity_available <= ((item.reorder_level || 0) * 2) ? 'normal' : 'high_stock',
-        needs_reorder: (item.quantity_available || 0) <= (item.reorder_level || 0),
+        stock_status: item.stock_status || 'normal',
+        needs_reorder: item.needs_reorder || false,
         created_at: item.created_at,
         updated_at: item.updated_at
       }
@@ -89,9 +126,9 @@ export async function GET(request: NextRequest) {
       if (!productGroups.has(item.product_id)) {
         productGroups.set(item.product_id, {
           id: item.product_id,
-          name: product?.name || `Producto ${item.id.slice(-4)}`,
-          sku: product?.sku || item.sku,
-          category_name: category?.name || 'Sin Categoría',
+          name: item.product_name || `Producto ${item.product_id?.slice(-4)}`,
+          sku: item.product_sku || 'N/A',
+          category_name: item.category_name || 'Sin Categoría',
           total_variants: 0,
           total_stock: 0,
           total_value: 0,

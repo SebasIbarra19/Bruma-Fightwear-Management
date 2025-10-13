@@ -350,7 +350,8 @@ export function useInventoryData(projectId?: string) {
       fetchStats(),
       fetchAlerts(),
       fetchItems(),
-      fetchValuation()
+      fetchValuation(),
+      fetchMovements({ limit: 5 }) // Movimientos recientes para overview
     ])
   }
 

@@ -4,7 +4,8 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,13 +23,32 @@ export async function GET(request: NextRequest) {
 
     console.log('📊 API Movement Stats: Consultando estadísticas para proyecto:', projectId)
 
+    // Crear cliente con service role para server-side
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found')
+      return Response.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
     // Llamar al stored procedure para obtener estadísticas
     const { data: stats, error } = await supabase
       .rpc('get_inventory_movement_stats', {
         p_project_id: projectId,
         p_date_from: dateFrom || null,
         p_date_to: dateTo || null
-      })
+      } as any)
 
     if (error) {
       console.error('❌ Error consultando estadísticas de movimientos:', error)
@@ -38,7 +58,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const statsData = stats?.[0] || {}
+    const statsData = (stats as any)?.[0] || {}
 
     // Transformar datos al formato esperado
     const transformedStats = {
