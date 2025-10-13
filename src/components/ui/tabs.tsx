@@ -14,13 +14,19 @@ interface TabsProps {
   tabs: Tab[]
   defaultTab?: string
   className?: string
+  onTabChange?: (tabId: string) => void
 }
 
-export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
+export function Tabs({ tabs, defaultTab, className = '', onTabChange }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '')
   const { theme } = useTheme()
   
   const activeTabData = tabs.find(tab => tab.id === activeTab)
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    onTabChange?.(tabId)
+  }
 
   return (
     <div className={`w-full ${className}`}>
@@ -32,7 +38,7 @@ export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={`flex items-center space-x-2 px-4 py-3 font-medium text-sm whitespace-nowrap transition-all duration-200 border-b-2 ${
               activeTab === tab.id 
                 ? 'border-current' 

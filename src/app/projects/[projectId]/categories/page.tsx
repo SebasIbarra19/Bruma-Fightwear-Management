@@ -40,6 +40,30 @@ interface ProjectData {
   }
 }
 
+// Función para generar colores únicos basados en el nombre de la categoría
+const generateCategoryColor = (name: string): string => {
+  const colors = [
+    "#3B82F6", // blue-500
+    "#10B981", // emerald-500
+    "#F59E0B", // amber-500
+    "#EF4444", // red-500
+    "#8B5CF6", // violet-500
+    "#06B6D4", // cyan-500
+    "#84CC16", // lime-500
+    "#F97316", // orange-500
+    "#EC4899", // pink-500
+    "#6366F1"  // indigo-500
+  ]
+  
+  // Usar hash simple del nombre para obtener un índice consistente
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) & 0xffffffff
+  }
+  
+  return colors[Math.abs(hash) % colors.length]
+}
+
 export default function CategoriesPage({ params }: { params: { projectId: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const { theme } = useTheme()
@@ -62,60 +86,69 @@ export default function CategoriesPage({ params }: { params: { projectId: string
     try {
       setLoading(true)
       
-      // Mock data para demostración
+      // Resolver project ID desde slug
+      let projectUuid = params.projectId
+      if (!projectUuid.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        const response = await fetch(`/api/projects/resolve-slug?slug=${params.projectId}`)
+        const result = await response.json()
+        if (result.success && result.project) {
+          projectUuid = result.project.id
+          console.log('✅ Project ID resuelto:', projectUuid)
+        } else {
+          throw new Error('Proyecto no encontrado')
+        }
+      }
+      
+      // Cargar datos del proyecto desde el slug resuelto
       setProjectData({ 
         project: { 
-          project_id: params.projectId, 
+          project_id: projectUuid, 
           project_name: "BRUMA Fightwear", 
-          project_slug: "bruma-fightwear",
+          project_slug: params.projectId,
           project_type: "ecommerce"
         } 
       })
       
-      // Mock categories
-      setCategories([
-        {
-          id: "1",
-          name: "Guantes",
-          description: "Guantes de combate y entrenamiento",
-          parent_id: undefined,
-          is_active: true,
-          products_count: 15,
-          subcategories_count: 3,
-          color: "#3B82F6",
-          created_at: "2024-01-15"
-        },
-        {
-          id: "2", 
-          name: "Shorts",
-          description: "Shorts para MMA y entrenamiento",
-          parent_id: undefined,
-          is_active: true,
-          products_count: 8,
-          subcategories_count: 2,
-          color: "#10B981",
-          created_at: "2024-01-20"
-        },
-        {
-          id: "3",
-          name: "Protección",
-          description: "Equipamiento de protección",
-          parent_id: undefined,
-          is_active: true,
-          products_count: 12,
-          subcategories_count: 4,
-          color: "#F59E0B",
-          created_at: "2024-01-25"
-        }
-      ])
+      // Cargar categorías reales desde la API
+      console.log('🔍 Cargando categorías del proyecto:', projectUuid)
+      const categoriesResponse = await fetch(`/api/categories?project_id=${projectUuid}&limit=100`)
+      const categoriesResult = await categoriesResponse.json()
       
-      // Mock stats
-      setStats({
-        total_categories: 3,
-        active_categories: 3,
-        total_products: 35,
-        total_subcategories: 9
-      })
+      if (categoriesResult.success && categoriesResult.data) {
+        // Transformar datos de la BD al formato esperado por la UI
+        const transformedCategories: Category[] = categoriesResult.data.data.map((category: any) => ({
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          parent_id: category.parent_id,
+          is_active: category.is_active,
+          products_count: Number(category.product_count) || 0,
+          subcategories_count: Number(category.children_count) || 0,
+          color: generateCategoryColor(category.name), // Generar color dinámicamente
+          created_at: category.created_at
+        }))
+        
+        setCategories(transformedCategories)
+        
+        // Calcular estadísticas reales
+        const totalCategories = categoriesResult.data.total
+        const activeCategories = transformedCategories.filter(c => c.is_active).length
+        const totalProducts = transformedCategories.reduce((sum, c) => sum + c.products_count, 0)
+        const totalSubcategories = transformedCategories.reduce((sum, c) => sum + c.subcategories_count, 0)
+        
+        setStats({
+          total_categories: totalCategories,
+          active_categories: activeCategories,
+          total_products: totalProducts,
+          total_subcategories: totalSubcategories
+        })
+        
+        console.log('✅ Categorías cargadas:', transformedCategories.length)
+        console.log('📊 Stats calculadas:', { totalCategories, activeCategories, totalProducts, totalSubcategories })
+      } else {
+        console.error('Error cargando categorías:', categoriesResult.error)
+        throw new Error(categoriesResult.error || 'Error al cargar categorías')
+      }
       
     } catch (error) {
       console.error('Error cargando datos:', error)
