@@ -1,123 +1,58 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { useTheme } from "@/contexts/ThemeContext"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'success' | 'warning' | 'primary' | 'minimal'
-  size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon'
+import { cn } from "./utils";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[4px] text-[10px] uppercase tracking-[0.15em] font-bold transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ember focus-visible:ring-ember/50 focus-visible:ring-[1px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-background hover:bg-primary/90 shadow-[0_0_15px_rgba(255,77,28,0.2)]",
+        destructive:
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border border-border bg-transparent text-foreground hover:bg-bone hover:text-obsidian hover:border-bone",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost:
+          "hover:text-foreground text-foreground/70 transition-colors",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-6 py-2 has-[>svg]:px-4",
+        sm: "h-8 rounded-[4px] gap-1.5 px-4 has-[>svg]:px-3",
+        lg: "h-12 rounded-[4px] px-8 has-[>svg]:px-6",
+        icon: "size-10 rounded-[4px]",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
+
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }) {
+  const Comp = asChild ? Slot : "button";
+
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', style, ...props }, ref) => {
-    const { theme } = useTheme()
-    const baseClasses = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-    
-    const getVariantStyles = () => {
-      switch (variant) {
-        case 'default':
-        case 'primary':
-          return {
-            backgroundColor: theme.colors.primary,
-            color: theme.colors.textInverse,
-            hoverColor: theme.colors.primaryHover
-          }
-        case 'destructive':
-          return {
-            backgroundColor: theme.colors.error,
-            color: theme.colors.textInverse,
-            hoverColor: theme.colors.errorHover
-          }
-        case 'outline':
-          return {
-            border: `1px solid ${theme.colors.border}`,
-            backgroundColor: 'transparent',
-            color: theme.colors.textSecondary,
-            hoverBgColor: theme.colors.surfaceHover,
-            hoverTextColor: theme.colors.textPrimary
-          }
-        case 'secondary':
-          return {
-            backgroundColor: theme.colors.secondary,
-            color: theme.colors.textInverse,
-            hoverColor: theme.colors.secondaryHover || theme.colors.secondary
-          }
-        case 'ghost':
-          return {
-            backgroundColor: 'transparent',
-            color: theme.colors.textSecondary,
-            hoverBgColor: theme.colors.surfaceHover,
-            hoverTextColor: theme.colors.textPrimary
-          }
-        case 'link':
-          return {
-            backgroundColor: 'transparent',
-            color: theme.colors.primary,
-            textDecoration: 'underline',
-            hoverColor: theme.colors.primaryHover
-          }
-        case 'success':
-          return {
-            backgroundColor: theme.colors.success,
-            color: theme.colors.textInverse,
-            hoverColor: theme.colors.successHover || theme.colors.success
-          }
-        case 'warning':
-          return {
-            backgroundColor: theme.colors.warning,
-            color: theme.colors.textInverse,
-            hoverColor: theme.colors.warningHover || theme.colors.warning
-          }
-        case 'minimal':
-          return {
-            backgroundColor: 'transparent',
-            color: theme.colors.textTertiary,
-            hoverBgColor: theme.colors.surfaceHover,
-            hoverTextColor: theme.colors.textPrimary
-          }
-        default:
-          return {}
-      }
-    }
-    
-    const sizes = {
-      default: "h-9 px-4 py-2",
-      sm: "h-8 px-3 text-xs",
-      lg: "h-10 px-6",
-      xl: "h-12 px-8 text-base",
-      icon: "h-9 w-9",
-    }
-
-    const variantStyles = getVariantStyles()
-
-    return (
-      <button
-        className={cn(baseClasses, sizes[size], className)}
-        style={{ ...variantStyles, ...style }}
-        onMouseEnter={(e) => {
-          if (variantStyles.hoverColor) {
-            e.currentTarget.style.backgroundColor = variantStyles.hoverColor
-          } else if (variantStyles.hoverBgColor) {
-            e.currentTarget.style.backgroundColor = variantStyles.hoverBgColor
-          }
-          if (variantStyles.hoverTextColor) {
-            e.currentTarget.style.color = variantStyles.hoverTextColor
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (variantStyles.backgroundColor) {
-            e.currentTarget.style.backgroundColor = variantStyles.backgroundColor
-          }
-          if (variantStyles.color) {
-            e.currentTarget.style.color = variantStyles.color
-          }
-        }}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = "Button"
-
-export { Button }
+export { Button, buttonVariants };

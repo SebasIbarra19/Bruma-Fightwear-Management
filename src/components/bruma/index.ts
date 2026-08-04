@@ -1,1 +1,0 @@
-export { default as BrumaLogo, BrumaLogoNavbar, BrumaLogoHero, BrumaLogoCard } from './BrumaLogo'

@@ -2,7 +2,17 @@
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react'
 import { NavigationState, NavigationConfig, NavigationSection, SidebarMode } from '@/types/navigation'
-import { Icons } from '@/components/ui/navigation'
+import { 
+  LayoutDashboard, 
+  Users, 
+  Package, 
+  ShoppingCart, 
+  Truck, 
+  Shield, 
+  ArrowUpDown, 
+  BarChart3,
+  Tag
+} from 'lucide-react'
 
 // Estado inicial
 const initialState: NavigationState = {
@@ -10,7 +20,7 @@ const initialState: NavigationState = {
   activeSection: 'dashboard',
   activePage: 'overview',
   sidebarMode: 'expanded',
-  expandedSections: new Set(['main', 'project'])
+  expandedSections: new Set(['main'])
 }
 
 // Tipos de acciones
@@ -50,83 +60,71 @@ function navigationReducer(state: NavigationState, action: NavigationAction): Na
   }
 }
 
-// Configuración de navegación
-const getNavigationSections = (currentProject?: NavigationState['currentProject']): NavigationSection[] => [
+// Configuración de navegación Single Tenant (Admin Shell)
+const getNavigationSections = (): NavigationSection[] => [
   {
     id: 'main',
-    title: 'Principal',
+    title: 'Gestión Bruma',
     defaultExpanded: true,
     items: [
       {
         id: 'dashboard',
-        label: 'Dashboard Personal',
-        icon: Icons.Dashboard,
+        label: 'Dashboard',
+        icon: <LayoutDashboard size={18} />,
         href: '/dashboard',
         section: 'main'
       },
-
-
-    ]
-  },
-  ...(currentProject ? [{
-    id: 'project',
-    title: `Proyecto: ${currentProject.name}`,
-    defaultExpanded: true,
-    items: [
-      {
-        id: 'project-dashboard',
-        label: 'Dashboard del Proyecto',
-        icon: Icons.Dashboard,
-        href: `/projects/${currentProject.slug}/dashboard`,
-        section: 'project' as const
-      },
-      {
-        id: 'customers',
-        label: 'Clientes',
-        icon: Icons.Users,
-        href: `/projects/${currentProject.slug}/customers`,
-        section: 'project' as const
-      },
-      {
-        id: 'products',
-        label: 'Productos',
-        icon: Icons.Boxing,
-        href: `/projects/${currentProject.slug}/products`,
-        section: 'project' as const
-      },
-
       {
         id: 'inventory',
         label: 'Inventario',
-        icon: Icons.Package,
-        href: `/projects/${currentProject.slug}/inventory`,
-        section: 'project' as const
+        icon: <Package size={18} />,
+        href: '/inventory',
+        section: 'main'
+      },
+      {
+        id: 'movements',
+        label: 'Movimientos',
+        icon: <ArrowUpDown size={18} />,
+        href: '/movements',
+        section: 'main'
+      },
+      {
+        id: 'catalog',
+        label: 'Catálogo',
+        icon: <Tag size={18} />,
+        href: '/catalog',
+        section: 'main'
       },
       {
         id: 'orders',
         label: 'Pedidos',
-        icon: Icons.ShoppingCart,
-        href: `/projects/${currentProject.slug}/orders`,
-        section: 'project' as const
+        icon: <ShoppingCart size={18} />,
+        href: '/orders',
+        section: 'main'
       },
-
+      {
+        id: 'customers',
+        label: 'Clientes',
+        icon: <Users size={18} />,
+        href: '/customers',
+        section: 'main'
+      },
       {
         id: 'suppliers',
         label: 'Proveedores',
-        icon: Icons.Truck,
-        href: `/projects/${currentProject.slug}/suppliers`,
-        section: 'project' as const
+        icon: <Truck size={18} />,
+        href: '/suppliers',
+        section: 'main'
       },
       {
-        id: 'shipping',
-        label: 'Envíos',
-        icon: Icons.Shipping,
-        href: `/projects/${currentProject.slug}/shipping`,
-        section: 'project' as const
+        id: 'reporting',
+        label: 'Reportes',
+        icon: <BarChart3 size={18} />,
+        href: '/reporting',
+        section: 'main'
       }
     ]
-  }] : []),
-
+  }
 ]
 
 // Context
@@ -148,7 +146,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(navigationReducer, initialState)
   
-  const sections = getNavigationSections(state.currentProject)
+  const sections = getNavigationSections()
   const config: NavigationConfig = { sections, state }
 
   const setCurrentProject = useCallback((project: NavigationState['currentProject']) => {
@@ -168,7 +166,6 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   const toggleSidebar = useCallback(() => {
-    // Alternamos entre expanded y hover cuando se hace toggle
     const newMode: SidebarMode = state.sidebarMode === 'expanded' ? 'hover' : 'expanded'
     dispatch({ type: 'SET_SIDEBAR_MODE', payload: newMode })
   }, [state.sidebarMode])
@@ -180,8 +177,6 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const navigateToPage = useCallback((href: string, sectionId?: string, pageId?: string) => {
     if (sectionId) setActiveSection(sectionId)
     if (pageId) setActivePage(pageId)
-    
-    // Aquí podrías agregar navegación programática si es necesario
     window.location.href = href
   }, [setActiveSection, setActivePage])
 

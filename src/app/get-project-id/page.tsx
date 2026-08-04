@@ -191,7 +191,7 @@ export default function GetProjectIdPage() {
             <CardContent className="pt-6 text-center">
               <p className="text-gray-600 mb-4">No se encontraron proyectos</p>
               <p className="text-sm text-gray-500">
-                Haz clic en "Crear Proyecto BRUMA" para crear uno nuevo
+                Haz clic en &quot;Crear Proyecto BRUMA&quot; para crear uno nuevo
               </p>
             </CardContent>
           </Card>
@@ -202,9 +202,9 @@ export default function GetProjectIdPage() {
             <CardTitle>📝 Instrucciones</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            <p><strong>1.</strong> Haz clic en "Buscar Proyectos" para ver todos los proyectos</p>
+            <p><strong>1.</strong> Haz clic en &quot;Buscar Proyectos&quot; para ver todos los proyectos</p>
             <p><strong>2.</strong> Si ves un proyecto BRUMA, copia su UUID</p>
-            <p><strong>3.</strong> Si no existe, haz clic en "Crear Proyecto BRUMA"</p>
+            <p><strong>3.</strong> Si no existe, haz clic en &quot;Crear Proyecto BRUMA&quot;</p>
             <p><strong>4.</strong> Usa el UUID copiado para actualizar el código</p>
           </CardContent>
         </Card>

@@ -44,6 +44,26 @@ export function useProjectSidebar({ projectSlug }: ProjectSidebarConfig): Sideba
       href: `/projects/${projectSlug}/inventory`
     },
     {
+      id: 'movements',
+      label: 'Movimientos de Inventario',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/inventory-movements`
+    },
+    {
+      id: 'reports',
+      label: 'Reportes y Análisis',
+      icon: (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 2v-6m-8 13h12a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      href: `/projects/${projectSlug}/reports`
+    },
+    {
       id: 'products',
       label: 'Productos y Categorías',
       icon: (

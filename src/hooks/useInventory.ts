@@ -1,352 +1,341 @@
-'use client'
+import { useState } from 'react'
 
-import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useAuth } from '@/hooks/useAuth'
-import type { 
-  Inventory, 
-  InventoryInsert, 
-  InventoryUpdate, 
-  InventoryWithDetails,
-  InventoryFormData,
-  Database 
-} from '@/types/database'
-
+// ================================================
+// HOOK PRINCIPAL - API BASED
+// ================================================
 export function useInventory(projectId?: string) {
-  const supabase = createClientComponentClient<Database>()
-  const { user } = useAuth()
-  const [inventory, setInventory] = useState<InventoryWithDetails[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [inventory, setInventory] = useState<any[]>([])
+  const [inventoryDetails, setInventoryDetails] = useState<any | null>(null)
+  const [totalInventory, setTotalInventory] = useState(0)
+  const [loadingInventory, setLoadingInventory] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Cargar inventario con detalles
-  const fetchInventory = async (includeDetails = true) => {
-    if (!user?.id) return
+  // Movimientos de inventario
+  const [movements, setMovements] = useState<any[]>([])
+  const [loadingMovements, setLoadingMovements] = useState(false)
+  const [errorMovements, setErrorMovements] = useState<string | null>(null)
 
+  // ================================================
+  // CARGAR MOVIMIENTOS DE INVENTARIO
+  // ================================================
+  const fetchMovements = async (params: {
+    limit?: number
+    offset?: number
+    movementType?: string | null
+    search?: string | null
+    dateFrom?: string | null
+    dateTo?: string | null
+  } = {}) => {
+    if (!projectId) {
+      setErrorMovements('No projectId')
+      return
+    }
+    setLoadingMovements(true)
+    setErrorMovements(null)
     try {
-      setError(null)
-      
-      let queryResult
-      
-      if (includeDetails) {
-        let query = supabase
-          .from('inventory')
-          .select(`
-            *,
-            products(name, sku),
-            product_variants(name),
-            suppliers(name)
-          `)
-          
-        if (projectId) {
-          query = query.eq('project_id', projectId)
-        }
-        
-        queryResult = await query.order('sku', { ascending: true })
-      } else {
-        let query = supabase
-          .from('inventory')
-          .select('*')
-          
-        if (projectId) {
-          query = query.eq('project_id', projectId)
-        }
-        
-        queryResult = await query.order('sku', { ascending: true })
+      const searchParams = new URLSearchParams({
+        projectId,
+        limit: (params.limit || 50).toString(),
+        offset: (params.offset || 0).toString()
+      })
+      if (params.movementType) searchParams.set('movementType', params.movementType)
+      if (params.search) searchParams.set('search', params.search)
+      if (params.dateFrom) searchParams.set('dateFrom', params.dateFrom)
+      if (params.dateTo) searchParams.set('dateTo', params.dateTo)
+
+      const response = await fetch(`/api/inventory/movements?${searchParams}`)
+      const result = await response.json()
+      console.log('[Inventory] Movements API response:', result)
+
+      if (!response.ok) {
+        console.error('[Inventory] Error cargando movimientos:', result.error)
+        setErrorMovements(result.error?.message || result.error || 'Error cargando movimientos')
+        setMovements([])
+        return
       }
-
-      const { data, error: queryError } = queryResult
-
-      if (queryError) throw queryError
-
-      // Procesar datos con detalles
-      const processedData = includeDetails && data 
-        ? data.map((item: any) => {
-            const product = item.products
-            const variant = item.product_variants
-            const supplier = item.suppliers
-            
-            return {
-              ...item,
-              product_name: product?.name,
-              product_sku: product?.sku,
-              variant_name: variant?.name,
-              supplier_name: supplier?.name,
-              total_quantity: item.quantity_available + item.quantity_reserved + item.quantity_on_order,
-              available_quantity: item.quantity_available,
-              low_stock: item.reorder_level && item.quantity_available <= item.reorder_level
-            } as InventoryWithDetails
-          })
-        : data || []
-
-      setInventory(processedData)
+      if (result.success) {
+        setMovements(Array.isArray(result.data) ? result.data : [])
+        console.log('[Inventory] Movements loaded:', result.data)
+      }
     } catch (err) {
-      console.error('Error fetching inventory:', err)
-      setError(err instanceof Error ? err.message : 'Error al cargar inventario')
+      console.error('[Inventory] Movements fetch error:', err)
+      setErrorMovements(err instanceof Error ? err.message : 'Error cargando movimientos')
+      setMovements([])
     } finally {
-      setIsLoading(false)
+      setLoadingMovements(false)
     }
   }
 
-  // Cargar un elemento de inventario específico
-  const fetchInventoryItem = async (id: string): Promise<Inventory | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (error) throw error
-      return data
-    } catch (err) {
-      console.error('Error fetching inventory item:', err)
-      return null
+  // ================================================
+  // CARGAR LISTA DE INVENTARIO
+  // ================================================
+  // Nuevo fetchInventory para SP agrupado
+  const fetchInventory = async () => {
+    if (!projectId) {
+      setError('No projectId')
+      return
     }
-  }
-
-  // Crear elemento de inventario
-  const createInventoryItem = async (formData: InventoryFormData): Promise<Inventory | null> => {
-    if (!user?.id) return null
-
+    setLoadingInventory(true)
+    setError(null)
     try {
-      setError(null)
-      
-      const inventoryData: InventoryInsert = {
-        ...formData,
-        project_id: user.id
+      const response = await fetch(`/api/inventory/grouped?projectId=${projectId}`)
+      const result = await response.json()
+      console.log('[Inventory] Grouped API response:', result)
+
+      if (!response.ok) {
+        console.error('[Inventory] Error cargando inventario agrupado:', result.error)
+        setError(result.error?.message || result.error || 'Error cargando inventario')
+        setInventory([])
+        setTotalInventory(0)
+        return
       }
-
-      const { data, error } = await supabase
-        .from('inventory')
-        .insert([inventoryData])
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Actualizar la lista local
-      await fetchInventory()
-      
-      return data
-    } catch (err) {
-      console.error('Error creating inventory item:', err)
-      setError(err instanceof Error ? err.message : 'Error al crear elemento de inventario')
-      return null
-    }
-  }
-
-  // Actualizar elemento de inventario
-  const updateInventoryItem = async (id: string, formData: Partial<InventoryFormData>): Promise<Inventory | null> => {
-    if (!user?.id) return null
-
-    try {
-      setError(null)
-      
-      const inventoryData: InventoryUpdate = {
-        ...formData,
-        updated_at: new Date().toISOString()
+      if (result.success) {
+        const items = result.data || []
+        setInventory(Array.isArray(items) ? items : [])
+        setTotalInventory(items.length)
+        console.log('[Inventory] Grouped items loaded:', items)
       }
-
-      const { data, error } = await supabase
-        .from('inventory')
-        .update(inventoryData)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Actualizar la lista local
-      setInventory(prev => prev.map(item => 
-        item.id === id ? { ...item, ...data } : item
-      ))
-      
-      return data
     } catch (err) {
-      console.error('Error updating inventory item:', err)
-      setError(err instanceof Error ? err.message : 'Error al actualizar elemento de inventario')
+      console.error('[Inventory] Grouped items fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Error cargando inventario')
+      setInventory([])
+      setTotalInventory(0)
+    } finally {
+      setLoadingInventory(false)
+    }
+  }
+
+  // ================================================
+  // CARGAR DETALLES DE UN ITEM DE INVENTARIO
+  // ================================================
+  const fetchInventoryItem = async (inventoryId: number) => {
+    if (!projectId) {
+      setError('No projectId')
+      return
+    }
+    setLoadingDetails(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`)
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error?.message || result.error || 'Error cargando item')
+        setInventoryDetails(null)
+        return
+      }
+      if (result.success && result.data) {
+        setInventoryDetails(result.data)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando item')
+      setInventoryDetails(null)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+
+  // ================================================
+  // REFRESCAR DATOS
+  // ================================================
+  const refreshInventory = () => {
+    fetchInventory()
+  }
+
+  // ================================================
+  // LIMPIAR DETALLES
+  // ================================================
+  const clearInventoryDetails = () => {
+    setInventoryDetails(null)
+  }
+
+  // ================================================
+  // CREAR ITEM DE INVENTARIO
+  // ================================================
+  const createInventoryItem = async (formData: any) => {
+    if (!projectId) {
+      setError('No projectId')
+      return null
+    }
+    setError(null)
+    try {
+      const response = await fetch(`/api/inventory/items?projectId=${projectId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error?.message || result.error || 'Error creando item')
+        return null
+      }
+      if (result.success && result.data) {
+        refreshInventory()
+        return result.data
+      }
+      return null
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando item')
       return null
     }
   }
 
-  // Eliminar elemento de inventario
-  const deleteInventoryItem = async (id: string): Promise<boolean> => {
+  // ================================================
+  // ACTUALIZAR ITEM DE INVENTARIO
+  // ================================================
+  const updateInventoryItem = async (inventoryId: number, formData: any) => {
+    if (!projectId) {
+      setError('No projectId')
+      return null
+    }
+    setError(null)
     try {
-      setError(null)
+      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error?.message || result.error || 'Error actualizando item')
+        return null
+      }
+      if (result.success && result.data) {
+        refreshInventory()
+        return result.data
+      }
+      return null
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error actualizando item')
+      return null
+    }
+  }
 
-      // Verificar si tiene movimientos asociados
-      const { data: movements } = await supabase
-        .from('inventory_movements')
-        .select('id')
-        .eq('inventory_id', id)
-        .limit(1)
-
-      if (movements && movements.length > 0) {
-        setError('No se puede eliminar el elemento de inventario porque tiene movimientos asociados')
+  // ================================================
+  // ELIMINAR ITEM DE INVENTARIO
+  // ================================================
+  const deleteInventoryItem = async (inventoryId: number) => {
+    if (!projectId) {
+      setError('No projectId')
+      return false
+    }
+    setError(null)
+    try {
+      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
+        method: 'DELETE'
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error?.message || result.error || 'Error eliminando item')
         return false
       }
-
-      const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      // Actualizar la lista local
-      setInventory(prev => prev.filter(item => item.id !== id))
-      
-      return true
+      if (result.success) {
+        refreshInventory()
+        return true
+      }
+      return false
     } catch (err) {
-      console.error('Error deleting inventory item:', err)
-      setError(err instanceof Error ? err.message : 'Error al eliminar elemento de inventario')
+      setError(err instanceof Error ? err.message : 'Error eliminando item')
       return false
     }
   }
 
-  // Buscar en inventario
-  const searchInventory = async (searchTerm: string): Promise<InventoryWithDetails[]> => {
+  // ================================================
+  // BUSCAR EN INVENTARIO (filtrado local)
+  // ================================================
+  const searchInventory = (searchTerm: string): any[] => {
     if (!searchTerm.trim()) return inventory
-
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select(`
-          *,
-          products(name, sku),
-          product_variants(name),
-          suppliers(name)
-        `)
-        .or(`sku.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`)
-        .order('sku', { ascending: true })
-
-      if (error) throw error
-      
-      return data?.map((item: any) => ({
-        ...item,
-        product_name: item.products?.name,
-        product_sku: item.products?.sku,
-        variant_name: item.product_variants?.name,
-        supplier_name: item.suppliers?.name,
-        total_quantity: item.quantity_available + item.quantity_reserved + item.quantity_on_order,
-        available_quantity: item.quantity_available,
-        low_stock: item.reorder_level && item.quantity_available <= item.reorder_level
-      })) || []
-    } catch (err) {
-      console.error('Error searching inventory:', err)
-      return []
-    }
+    const lower = searchTerm.toLowerCase()
+    return inventory.filter(item =>
+      (item.sku && item.sku.toLowerCase().includes(lower)) ||
+      (item.product_name && item.product_name.toLowerCase().includes(lower)) ||
+      (item.variant_name && item.variant_name.toLowerCase().includes(lower)) ||
+      (item.location && item.location.toLowerCase().includes(lower))
+    )
   }
 
-  // Obtener elementos con stock bajo
-  const getLowStockItems = async (): Promise<InventoryWithDetails[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select(`
-          *,
-          products(name, sku),
-          product_variants(name),
-          suppliers(name)
-        `)
-        .not('reorder_level', 'is', null)
-        .order('quantity_available', { ascending: true })
-
-      if (error) throw error
-
-      return data?.filter((item: any) => item.quantity_available <= item.reorder_level)
-        .map((item: any) => ({
-          ...item,
-          product_name: item.products?.name,
-          product_sku: item.products?.sku,
-          variant_name: item.product_variants?.name,
-          supplier_name: item.suppliers?.name,
-          total_quantity: item.quantity_available + item.quantity_reserved + item.quantity_on_order,
-          available_quantity: item.quantity_available,
-          low_stock: true
-        })) || []
-    } catch (err) {
-      console.error('Error getting low stock items:', err)
-      return []
-    }
+  // ================================================
+  // OBTENER ITEMS CON STOCK BAJO (filtrado local)
+  // ================================================
+  const getLowStockItems = (): any[] => {
+    // From grouped structure: return variants that are at or below reorder_level
+    const low: any[] = []
+    inventory.forEach(prod => {
+      const variantes = (prod as any).variantes || []
+      variantes.forEach((v: any) => {
+        if (typeof v.reorder_level !== 'undefined' && (v.stock_quantity || 0) <= (v.reorder_level || 0)) {
+          low.push({
+            ...prod,
+            product_name: prod.product_name,
+            product_sku: prod.product_sku,
+            variant_name: v.name,
+            id: v.variante_id,
+            quantity_available: v.stock_quantity,
+            reorder_level: v.reorder_level
+          })
+        }
+      })
+    })
+    return low
   }
 
-  // Ajustar stock
-  const adjustStock = async (
-    inventoryId: string, 
-    newQuantity: number, 
-    reason?: string
-  ): Promise<boolean> => {
-    if (!user?.id) return false
-
+  // ================================================
+  // AJUSTAR STOCK (requiere endpoint específico)
+  // ================================================
+  const adjustStock = async (inventoryId: number, newQuantity: number, reason?: string) => {
+    if (!projectId) {
+      setError('No projectId')
+      return false
+    }
+    setError(null)
     try {
-      setError(null)
-
-      // Obtener cantidad actual
-      const { data: currentItem, error: fetchError } = await supabase
-        .from('inventory')
-        .select('quantity_available')
-        .eq('id', inventoryId)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      const adjustment = newQuantity - currentItem.quantity_available
-
-      // Actualizar inventario
-      const { error: updateError } = await supabase
-        .from('inventory')
-        .update({ 
-          quantity_available: newQuantity,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', inventoryId)
-
-      if (updateError) throw updateError
-
-      // Registrar movimiento de ajuste
-      const { error: movementError } = await supabase
-        .from('inventory_movements')
-        .insert([{
-          inventory_id: inventoryId,
-          movement_type: 'adjustment',
-          quantity: Math.abs(adjustment),
-          notes: reason || `Ajuste de inventario: ${adjustment > 0 ? '+' : ''}${adjustment}`,
-          project_id: user.id
-        }])
-
-      if (movementError) throw movementError
-
-      // Actualizar lista local
-      await fetchInventory()
-      
-      return true
+      const response = await fetch(`/api/inventory/adjust?projectId=${projectId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventoryId, newQuantity, reason })
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error?.message || result.error || 'Error ajustando stock')
+        return false
+      }
+      if (result.success) {
+        refreshInventory()
+        return true
+      }
+      return false
     } catch (err) {
-      console.error('Error adjusting stock:', err)
-      setError(err instanceof Error ? err.message : 'Error al ajustar stock')
+      setError(err instanceof Error ? err.message : 'Error ajustando stock')
       return false
     }
   }
 
-  // Cargar inventario al montar el componente
-  useEffect(() => {
-    if (user?.id) {
-      fetchInventory()
-    }
-  }, [user?.id])
-
+  // ================================================
+  // RETORNO
+  // ================================================
   return {
     inventory,
-    isLoading,
+    inventoryDetails,
+    totalInventory,
+    loadingInventory,
+    loadingDetails,
+    isLoading: loadingInventory || loadingDetails,
     error,
     fetchInventory,
     fetchInventoryItem,
+    refreshInventory,
+    clearInventoryDetails,
     createInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
     searchInventory,
     getLowStockItems,
-    adjustStock
+    adjustStock,
+
+    // Movimientos
+    movements,
+    loadingMovements,
+    errorMovements,
+    fetchMovements
   }
 }

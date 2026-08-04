@@ -32,7 +32,8 @@ export default function ProjectDebugPage() {
       // 2. Ver TODOS los proyectos con service client (sin RLS)
       console.log('2. Obteniendo TODOS los proyectos (sin RLS)...')
       const { supabaseService } = await import('@/lib/supabase/service')
-      const { data: allProjectsService, error: allErrorService } = await supabaseService
+      const supabaseServiceAny = supabaseService as any;
+      const { data: allProjectsService, error: allErrorService } = await supabaseServiceAny
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false })
@@ -42,9 +43,9 @@ export default function ProjectDebugPage() {
       console.log('All projects (Service):', allProjectsService)
       console.log('All projects error (Service):', allErrorService)
       
-      // 3. Buscar específicamente bruma-fightwear con service client
-      console.log('3. Buscando bruma-fightwear específicamente (Service)...')
-      const { data: brumaProject, error: brumaError } = await supabaseService
+      // 3. Buscar especA-ficamente bruma-fightwear con service client
+      console.log('3. Buscando bruma-fightwear especA-ficamente (Service)...')
+      const { data: brumaProject, error: brumaError } = await supabaseServiceAny
         .from('projects')
         .select('*')
         .eq('slug', 'bruma-fightwear')
@@ -128,7 +129,7 @@ export default function ProjectDebugPage() {
             <CardTitle>📝 Instrucciones</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            <p><strong>1.</strong> Haz clic en "Test Direct Query"</p>
+            <p><strong>1.</strong> Haz clic en &quot;Test Direct Query&quot;</p>
             <p><strong>2.</strong> Revisa la consola (F12) para logs detallados</p>
             <p><strong>3.</strong> Copia y pega los resultados aquí</p>
             <p><strong>4.</strong> Veremos exactamente qué está en la BD</p>

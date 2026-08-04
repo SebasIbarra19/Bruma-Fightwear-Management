@@ -14,7 +14,7 @@ export const PageTitle = React.forwardRef<HTMLHeadingElement, PageTitleProps>(
     return (
       <h1
         ref={ref}
-        className={cn("text-3xl font-bold", className)}
+        className={cn("font-fraunces font-black tracking-tight", className)}
         style={{ color: theme.colors.textPrimary }}
         {...props}
       >
@@ -39,9 +39,9 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
 }) => {
   const { theme } = useTheme()
   const levelStyles = {
-    2: "text-2xl font-semibold",
-    3: "text-xl font-semibold", 
-    4: "text-lg font-medium"
+    2: "font-geist text-2xl font-semibold tracking-tight",
+    3: "font-geist text-xl font-semibold tracking-tight", 
+    4: "font-geist text-lg font-medium"
   }
 
   const commonStyle = { color: theme.colors.textPrimary }
@@ -73,17 +73,18 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
 interface TextProps extends React.HTMLAttributes<HTMLParagraphElement> {
   children: React.ReactNode
   className?: string
-  variant?: 'default' | 'muted' | 'small' | 'large'
+  variant?: 'default' | 'muted' | 'small' | 'large' | 'italic'
 }
 
 export const Text = React.forwardRef<HTMLParagraphElement, TextProps>(
   ({ children, className, variant = 'default', ...props }, ref) => {
     const { theme } = useTheme()
     const variants = {
-      default: { color: theme.colors.textPrimary },
-      muted: { color: theme.colors.textSecondary, fontSize: '0.875rem' },
-      small: { color: theme.colors.textTertiary, fontSize: '0.75rem' },
-      large: { color: theme.colors.textPrimary, fontSize: '1.125rem' }
+      default: { color: theme.colors.textPrimary, fontFamily: 'var(--font-geist-sans)' },
+      muted: { color: theme.colors.textSecondary, fontSize: '0.875rem', fontFamily: 'var(--font-geist-sans)' },
+      small: { color: theme.colors.textTertiary, fontSize: '0.75rem', fontFamily: 'var(--font-geist-sans)' },
+      large: { color: theme.colors.textPrimary, fontSize: '1.125rem', fontFamily: 'var(--font-geist-sans)' },
+      italic: { color: theme.colors.textSecondary, fontSize: '1.125rem', fontFamily: 'var(--font-fraunces)', fontStyle: 'italic', fontWeight: 300 }
     }
 
     return (

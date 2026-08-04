@@ -1,119 +1,69 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+// ================================================
+// 📂 CATEGORIES API ENDPOINT
+// GET    /api/categories          - Lista categorías con filtros
+// GET    /api/categories?id=...   - Obtiene una categoría por ID
+// POST   /api/categories          - Crea nueva categoría
+// PATCH  /api/categories          - Actualiza una categoría
+// ================================================
 
-// Cliente con service role para bypass RLS
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
+import { NextRequest, NextResponse } from 'next/server';
+import { withErrorHandling } from '@/lib/api/middleware';
+import { ApiResponse } from '@/lib/api/response-builder';
+import { CategoriesAdapter, CreateCategoryParams, UpdateCategoryParams } from '@/lib/database/adapters/categories-adapter';
+import { ValidationError } from '@/lib/api/error-handler';
+
+async function getCategoriesHandler(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const adapter = new CategoriesAdapter();
+
+  const id = searchParams.get('id');
+  if (id) {
+    const category = await adapter.getCategoryById(parseInt(id, 10));
+    return ApiResponse.success(category);
   }
-)
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = request.nextUrl
-    const projectId = searchParams.get('project_id')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const search = searchParams.get('search')
-    const parentId = searchParams.get('parent_id')
-    const includeChildren = searchParams.get('include_children') === 'true'
-
-    if (!projectId) {
-      return NextResponse.json(
-        { error: 'project_id es requerido' },
-        { status: 400 }
-      )
-    }
-
-    console.log('🔍 API Categories: Consultando categorías para proyecto:', projectId)
-    console.log('📄 Parámetros:', { page, limit, search, parentId, includeChildren })
-
-    // Calcular offset
-    const offset = (page - 1) * limit
-
-    // Query directo sin stored procedures (igual que productos)
-    let query = supabase
-      .from('categories')
-      .select('*', { count: 'exact' })
-      .eq('project_id', projectId)
-
-    // Aplicar filtros
-    if (parentId) {
-      query = query.eq('parent_id', parentId)
-    }
-
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
-    }
-
-    // Aplicar paginación y ordenamiento
-    const { data, count, error } = await query
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('❌ Error consultando categorías:', error)
-      return NextResponse.json(
-        { error: 'Error consultando categorías', details: error.message },
-        { status: 500 }
-      )
-    }
-
-    console.log(`✅ Categorías encontradas: ${data?.length || 0} de ${count || 0} total`)
-
-    // Si necesitamos conteo de productos, haremos una consulta separada
-    let categoriesWithCount = data || []
-    
-    if (data && data.length > 0) {
-      // Obtener conteos de productos para cada categoría
-      const categoryIds = data.map(cat => cat.id)
-      
-      const { data: productCounts } = await supabase
-        .from('products')
-        .select('category_id')
-        .in('category_id', categoryIds)
-        .eq('project_id', projectId)
-      
-      // Crear mapa de conteos
-      const countMap = (productCounts || []).reduce((acc: any, product: any) => {
-        acc[product.category_id] = (acc[product.category_id] || 0) + 1
-        return acc
-      }, {})
-      
-      // Agregar conteos a las categorías
-      categoriesWithCount = data.map((category: any) => ({
-        ...category,
-        product_count: countMap[category.id] || 0,
-        children_count: 0, // Placeholder, se puede calcular después si se necesita
-        total_count: count || 0
-      }))
-    }
-
-    // Transformar datos para coincidir con el formato esperado
-    const transformedData = categoriesWithCount
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        data: transformedData,
-        total: count || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((count || 0) / limit)
-      }
-    })
-
-  } catch (error) {
-    console.error('💥 Error inesperado en API categories:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
-  }
+  const params = {
+    limit: parseInt(searchParams.get('limit') || '100', 10),
+    offset: parseInt(searchParams.get('offset') || '0', 10),
+    search: searchParams.get('search'),
+  };
+  const categories = await adapter.listCategories(params);
+  return ApiResponse.success(categories);
 }
+
+async function createCategoryHandler(request: NextRequest) {
+  const body = await request.json();
+  const params: CreateCategoryParams = {
+    nombre: body.nombre,
+    codigo: body.codigo,
+  };
+
+  if (!params.nombre) {
+    throw new ValidationError('El campo nombre es requerido');
+  }
+
+  const adapter = new CategoriesAdapter();
+  const newCategory = await adapter.createCategory(params);
+  return ApiResponse.success(newCategory, 201);
+}
+
+async function updateCategoryHandler(request: NextRequest) {
+  const body = await request.json();
+  const id = body.id;
+  if (!id) {
+    throw new ValidationError('El campo id es requerido para actualizar');
+  }
+
+  const params: UpdateCategoryParams = {
+    nombre: body.nombre,
+    codigo: body.codigo,
+  };
+
+  const adapter = new CategoriesAdapter();
+  const updatedCategory = await adapter.updateCategory(id, params);
+  return ApiResponse.success(updatedCategory);
+}
+
+export const GET = withErrorHandling(getCategoriesHandler);
+export const POST = withErrorHandling(createCategoryHandler);
+export const PATCH = withErrorHandling(updateCategoryHandler);

@@ -3,6 +3,7 @@ node_modules/
 .next/
 
 # Variables de entorno
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -25,3 +26,8 @@ build/
 
 # Cache
 .eslintcache
+
+
+*.credentials.json
+service-account*.json
+.opencode.json

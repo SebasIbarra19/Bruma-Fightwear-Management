@@ -1,81 +1,102 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --font-fraunces: 'Fraunces', serif;
+    --font-size: 16px;
+    
+    /* Base BRUMA Theme — Source of truth: Ember #F46734, Bone #CEC19C, Obsidian #1a1208 from bruma-final.html prototype */
+    --obsidian: #1a1208;
+    --background: #1a1208;
+    --foreground: #CEC19C;
+    --primary: #F46734;
+    --primary-foreground: #0a0a08;
+    --secondary: #1a2e1a;
+    --secondary-foreground: #7ddb7d;
+    --muted: #2c200e;
+    --muted-foreground: #a0906c;
+    --accent: #d4a017;
+    --accent-foreground: #0a0a08;
+    --border: rgba(240, 232, 213, 0.15);
+    
+    /* Bruma Glass & Environment */
+    --bruma-glass: rgba(35, 26, 10, 0.4);
+    --bruma-wall: #120d06;
+    --bruma-blur-sm: 8px;
+    --bruma-blur-md: 16px;
+    --bruma-blur-lg: 20px;
+    --bruma-fog-light: rgba(240, 232, 213, 0.15);
+    --bruma-fog-dark: rgba(240, 232, 213, 0.08);
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
- 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
+    /* Legacy Shadcn mappings */
+    --card: var(--background);
+    --card-foreground: var(--foreground);
+    --popover: var(--background);
+    --popover-foreground: var(--foreground);
+    --destructive: #d4183d;
+    --destructive-foreground: #ffffff;
+    --input: transparent;
+    --input-background: #2c200e;
+    --switch-background: #3d2e18;
+    --ring: var(--primary);
+    --radius: 4px;
+    
+    /* Font Weights */
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
   }
- 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+
+  /* Placeholder for future biomes */
+  .theme-midnight-swamp {
+    /* To be defined */
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-geist;
+  }
+  
+  html {
+    font-size: var(--font-size);
+    font-family: var(--font-geist-sans);
+  }
+
+  h1 {
+    font-family: var(--font-fraunces);
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-family: var(--font-geist-sans);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-family: var(--font-geist-sans);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  h4 {
+    font-family: var(--font-geist-sans);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
   }
 }
 
-/* Estilos personalizados para carruseles */
 @layer utilities {
   .scrollbar-none {
     -ms-overflow-style: none;  /* Internet Explorer 10+ */
@@ -88,20 +109,233 @@
     height: 0;
   }
 
-  /* Variables CSS dinámicas para temas */
-  :root {
-    --theme-background: #0f172a;
-    --theme-surface: #1e293b;
-    --theme-surface-hover: #334155;
-    --theme-text-primary: #f8fafc;
-    --theme-text-secondary: #e2e8f0;
-    --theme-border: #334155;
-    --theme-primary: #60a5fa;
-    --theme-primary-hover: #3b82f6;
-  }
-
-  /* Placeholder personalizado */
   .theme-input::placeholder {
     color: var(--theme-text-tertiary, #cbd5e1);
+  }
+
+  /* Core Bruma Utilities */
+  .bruma-wash {
+    background: radial-gradient(circle at 40% 10%, var(--bruma-fog-light) 0%, transparent 60%),
+                radial-gradient(circle at 80% 60%, var(--bruma-fog-dark) 0%, transparent 50%);
+  }
+
+  /* Tactical Scrollbar for lists */
+  .tactical-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(240, 232, 213, 0.1) rgba(240, 232, 213, 0.02);
+  }
+  .tactical-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .tactical-scrollbar::-webkit-scrollbar-track {
+    background: rgba(240, 232, 213, 0.02);
+    border-radius: 2px;
+  }
+  .tactical-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(240, 232, 213, 0.1);
+    border-radius: 2px;
+    transition: background 0.2s ease;
+  }
+  .tactical-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 77, 28, 0.3); /* subtle glow on hover */
+  }
+
+  .tactical-grid {
+    background-image: linear-gradient(rgba(240, 232, 213, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 232, 213, 0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Flora Glass Base */
+  .flora-glass {
+    position: relative;
+    overflow: hidden;
+    background: var(--bruma-glass);
+    backdrop-filter: blur(var(--bruma-blur-lg));
+    -webkit-backdrop-filter: blur(var(--bruma-blur-lg));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+  }
+  
+  /* The pseudo element needs the image to be passed or hardcoded if it's universal. 
+     We'll use a CSS variable for the image so it's reusable. */
+  .flora-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--flora-bg-image, url('/brand/brackgrounds/Rainfores-02.jpg'));
+    background-size: cover;
+    background-position: center;
+    opacity: 0.15;
+    mix-blend-mode: overlay;
+    z-index: -1;
+    transition: opacity 0.5s ease;
+  }
+  
+  .flora-glass:hover::before {
+    opacity: 0.3;
+  }
+
+  /* Nav Glasses — transparent by default, solid when scrolled (Home) */
+  .nav-horizontal-wall {
+    position: relative;
+    background-color: transparent;
+    border-bottom: 1px solid transparent;
+    box-shadow: none;
+    transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+  }
+  .nav-horizontal-wall::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/brand/patterns/Bruma-Pattern-01.png');
+    background-size: 180px;
+    opacity: 0;
+    mix-blend-mode: color-dodge;
+    z-index: 1;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .nav-horizontal-wall.scrolled {
+    background-color: #120d06;
+    border-bottom: 1px solid rgba(206, 193, 156, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  }
+  .nav-horizontal-wall.scrolled::before {
+    opacity: 0.12;
+  }
+
+  .header-btn {
+    background-color: #2c200e !important;
+    color: #CEC19C !important;
+    border-radius: 999px !important;
+    padding: 10px 22px !important;
+    border: 2px solid transparent !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+  .header-btn.active {
+    border: 2px solid #F46734 !important;
+  }
+  .header-btn:hover {
+    transform: scale(1.05) !important;
+  }
+  .nav-horizontal-wall.scrolled .header-btn {
+    background-color: #CEC19C !important;
+    color: #1a1208 !important;
+    border: 1px solid rgba(26, 18, 8, 0.15) !important;
+  }
+  .nav-horizontal-wall.scrolled .header-btn.active {
+    border: 2px solid #F46734 !important;
+  }
+  .nav-horizontal-wall.scrolled .header-btn:hover {
+    background-color: #1a1208 !important;
+    color: #CEC19C !important;
+    border-color: rgba(240, 232, 213, 0.2) !important;
+  }
+
+  .nav-vertical-glass {
+    background: var(--bruma-glass);
+    backdrop-filter: blur(var(--bruma-blur-md));
+    -webkit-backdrop-filter: blur(var(--bruma-blur-md));
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 2);
+  }
+
+  .fauna-anchored {
+    position: absolute;
+    pointer-events: none;
+    z-index: 50; /* default z-index, can be overridden */
+  }
+
+  /* BRUMA prototype-ported utilities (Home/Auth port) */
+  .color-grade-bruma {
+    filter: sepia(0.4) saturate(0.55) contrast(1.15) brightness(0.8) hue-rotate(-5deg);
+    transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tactical-grid-dark {
+    background-image: linear-gradient(rgba(26, 18, 8, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(26, 18, 8, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  .ease-out-expo {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .portal-form-transition {
+    transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes rotateSlow {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+  }
+  .animate-rotate-slow {
+    animation: rotateSlow 30s linear infinite;
+  }
+
+  @keyframes sweep {
+    0% { transform: translateX(-100%) skewX(-15deg); }
+    100% { transform: translateX(200%) skewX(-15deg); }
+  }
+
+  /* Raíces interactive accordion grid */
+  .raices-grid {
+    display: grid;
+    gap: 0.75rem;
+    width: 100%;
+    transition: grid-template-columns 500ms cubic-bezier(0.16, 1, 0.3, 1), grid-template-rows 500ms cubic-bezier(0.16, 1, 0.3, 1);
+    grid-template-rows: var(--grid-rows, 5fr 1fr 1fr);
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 768px) {
+    .raices-grid {
+      grid-template-rows: 1fr;
+      grid-template-columns: var(--grid-cols, 5fr 1fr 1fr);
+    }
+  }
+  .vertical-text {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+  .raices-card img {
+    filter: grayscale(1) contrast(1.25) brightness(0.7);
+    transition: filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .raices-card.active img {
+    filter: sepia(0.4) saturate(0.55) contrast(1.15) brightness(0.8) hue-rotate(-5deg);
+  }
+  .raices-card.active:hover img {
+    filter: sepia(0.3) saturate(0.75) contrast(1.2) brightness(0.92) hue-rotate(-5deg);
+  }
+  .raices-card::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45%;
+    background: linear-gradient(to top, rgba(18, 13, 6, 0.85), transparent);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .raices-card.active::after {
+    height: 30%;
+    background: linear-gradient(to top, rgba(18, 13, 6, 0.55), transparent);
+  }
+
+  /* Bruma form controls (auth + contact) */
+  .btn-bruma-primary {
+    @apply bg-ember text-obsidian px-8 py-3 rounded-[4px] font-bold hover:bg-ember/90 transition-all uppercase text-[10px] tracking-[0.2em] shadow-[0_0_20px_rgba(244,103,52,0.25)] hover:shadow-[0_0_30px_rgba(244,103,52,0.4)] focus:outline-none focus:ring-1 focus:ring-ember/50 active:scale-[0.98] duration-300;
+  }
+  .btn-bruma-ghost {
+    @apply text-bone/70 hover:text-bone border border-bone/20 hover:border-bone/50 px-6 py-2.5 rounded-[4px] transition-all uppercase text-[10px] tracking-widest focus:outline-none duration-300 active:scale-[0.98];
+  }
+  .input-bruma {
+    @apply bg-obsidian/80 border border-bone/15 rounded-[2px] px-4 py-3 text-bone placeholder:text-bone/30 focus:outline-none focus:border-ember/60 focus:ring-1 focus:ring-ember/30 transition-all text-xs tracking-wider font-light w-full;
+  }
+  .label-bruma {
+    @apply block font-geist text-[10px] uppercase tracking-widest text-bone/50 mb-2;
   }
 }

@@ -221,13 +221,18 @@ export function useInventoryData(projectId?: string) {
       const response = await fetch(`/api/inventory/items?${searchParams}`)
       const result = await response.json()
       
+      console.log('🔍 DEBUG - Full result:', JSON.stringify(result, null, 2))
+      console.log('🔍 DEBUG - result.data type:', typeof result.data)
+      console.log('🔍 DEBUG - result.data:', result.data)
+      console.log('🔍 DEBUG - result.data.items:', result.data?.items)
+      
       if (!response.ok) {
         throw new Error(result.error || 'Error cargando items')
       }
       
       if (result.success) {
-        setItems(result.data || [])
-        console.log('✅ Items de inventario cargados:', result.data?.length || 0)
+        setItems(result.data?.items || [])
+        console.log('✅ Items de inventario cargados:', result.data?.items?.length || 0)
       }
     } catch (err) {
       console.error('❌ Error cargando items:', err)

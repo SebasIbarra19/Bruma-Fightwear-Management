@@ -14,7 +14,7 @@ interface FilterOperator {
 }
 
 interface ModernTableProps<T> {
-  data: T[]
+  data: T[] | undefined
   columns: Column<T>[]
   title?: string
   subtitle?: string
@@ -78,8 +78,9 @@ export function ModernTable<T extends Record<string, any>>({
     columns.reduce((acc, col) => ({ ...acc, [String(col.key)]: true }), {})
   )
 
-  // Filtrar datos
-  const filteredData = data.filter(item => {
+  // Filtrar datos - VERSIÓN CORREGIDA
+  const safeData = Array.isArray(data) ? data : []
+  const filteredData = safeData.filter(item => {
     // Filtro de búsqueda global
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
@@ -485,19 +486,25 @@ export function ModernTable<T extends Record<string, any>>({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+            <tr style={{ 
+              borderBottom: `1px solid ${theme.colors.border}`,
+              backgroundColor: theme.colors.surfaceHover,
+            }}>
               {renderExpandedRow && (
-                <th className="text-left p-4 font-medium w-8" style={{ color: theme.colors.textSecondary }}></th>
+                <th className="text-left p-4 font-bold w-8" style={{ color: theme.colors.primary, fontSize: '1.1rem', letterSpacing: '0.02em' }}></th>
               )}
               {columns.map((column) => 
                 visibleColumns[String(column.key)] ? (
                   <th 
                     key={String(column.key)}
-                    className={`text-left p-4 font-medium ${
+                    className={`text-left p-4 font-bold ${
                       column.sortable ? 'cursor-pointer transition-colors' : ''
                     }`}
                     style={{ 
-                      color: column.sortable && sortColumn === column.key ? theme.colors.textPrimary : theme.colors.textSecondary 
+                      color: theme.colors.primary,
+                      fontSize: '1.1rem',
+                      letterSpacing: '0.02em',
+                      backgroundColor: theme.colors.surfaceHover
                     }}
                     onMouseEnter={(e) => {
                       if (column.sortable) {
@@ -505,8 +512,8 @@ export function ModernTable<T extends Record<string, any>>({
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (column.sortable && sortColumn !== column.key) {
-                        e.currentTarget.style.color = theme.colors.textSecondary
+                      if (column.sortable) {
+                        e.currentTarget.style.color = theme.colors.primary
                       }
                     }}
                     onClick={column.sortable ? () => handleSort(column.key) : undefined}
@@ -527,7 +534,7 @@ export function ModernTable<T extends Record<string, any>>({
                 ) : null
               )}
               {(onEdit || onDelete) && (
-                <th className="text-left p-4 font-medium" style={{ color: theme.colors.textSecondary }}>Actions</th>
+                <th className="text-left p-4 font-bold" style={{ color: theme.colors.primary, fontSize: '1.1rem', letterSpacing: '0.02em', backgroundColor: theme.colors.surfaceHover }}>Actions</th>
               )}
             </tr>
           </thead>
@@ -535,14 +542,19 @@ export function ModernTable<T extends Record<string, any>>({
             {paginatedData.map((row, index) => {
               const globalIndex = getRowIndex(row)
               const isExpanded = expandedRows.has(globalIndex)
-              
+              // Alternancia de color por fila
+              const isEven = index % 2 === 0
+              const rowBg = isEven ? theme.colors.surface : theme.colors.surfaceHover
               return (
                 <React.Fragment key={index}>
                   <tr 
                     className="transition-colors cursor-pointer"
-                    style={{ borderBottom: `1px solid ${theme.colors.border}` }}
+                    style={{ 
+                      borderBottom: `1px solid ${theme.colors.border}`,
+                      backgroundColor: rowBg
+                    }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.colors.surfaceHover}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = rowBg }
                   >
                     {renderExpandedRow && (
                       <td className="p-4">

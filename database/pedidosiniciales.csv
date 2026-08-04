@@ -1,0 +1,67 @@
+Número de pedido,Fecha de pedido,Código interno / SKU,Producto,Descripción breve,Colección,Estilo,Color,Talla,Cantidad pedida,Cantidad entregada,Precio unitario,Monto total del pedido,Punto de reorden,Estado del pedido,Contacto del cliente,Dirección de entrega,Distribuidor,Proveedor,Método de pago,Número de factura,Fecha de factura,Estado de pago,Fecha de pago recibido,Transportista / método de envío,Número de guía / tracking,Observaciones del pedido,Responsable interno,Canal de venta
+1001,2025-08-14,RSG-001,Rashguard,,Bruma,Rashguard,Negro,L,1,1,₡27000,₡27000,5,Entregado,Luis Felipe,,,Proveedor A,Cortesía,1,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK001,,Luis,WhatsApp
+1001,2025-08-14,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,L,1,1,₡27000,₡27000,5,Entregado,Luis Felipe,,,Proveedor A,Cortesía,1,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK001,,Luis,WhatsApp
+1001,2025-08-14,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,1,,,,Entregado,Luis Felipe,,,Proveedor A,Cortesía,1,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK001,,Luis,WhatsApp
+1002,2025-08-14,RSG-001,Rashguard,,Bruma,Rashguard,Negro,L,1,1,₡15000,₡15000,5,Entregado,Sebas Soni,,,Proveedor A,Cortesía,2,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK002,,Luis,WhatsApp
+1002,2025-08-14,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,L,1,1,₡12000,₡12000,5,Entregado,Sebas Soni,,,Proveedor A,Cortesía,2,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK002,,Luis,WhatsApp
+1002,2025-08-14,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Sebas Soni,,,Proveedor A,Cortesía,2,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK002,,Luis,WhatsApp
+1003,2025-08-14,TSH-001,T-shirt,,Bruma,Camiseta,Negro,S,1,1,,,,Entregado,Dani,,,Proveedor A,Cortesía,3,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK003,,Luis,WhatsApp
+1004,2025-08-14,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,1,,,,Entregado,Muga,,,Proveedor A,Cortesía,4,2025-08-14,Pagado,2025-08-14,Correos CR,TRACK004,,Luis,WhatsApp
+1005,2025-08-14,TSH-001,T-shirt,,Bruma,Camiseta,Negro,S,1,0,,,,Entregado,Sebas Ibarra,,,Proveedor A,Cortesía,5,2025-08-14,Pagado,,Correos CR,,,Luis,WhatsApp
+1005,2025-08-14,RSG-001,Rashguard,,Bruma,Rashguard,Negro,S,1,0,₡15000,₡15000,5,En proceso,Sebas Ibarra,,,Proveedor A,Transferencia,5,2025-08-14,Pendiente,,Correos CR,,,Luis,WhatsApp
+1005,2025-08-14,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,S,1,0,₡12000,₡12000,5,En proceso,Sebas Ibarra,,,Proveedor A,Transferencia,5,2025-08-14,Pendiente,,Correos CR,,,Luis,WhatsApp
+1006,2025-08-15,RSG-001,Rashguard,,Bruma,Rashguard,Negro,M,1,0,₡15000,₡15000,5,En proceso,Richi,,,Proveedor A,Transferencia,6,2025-08-15,Pendiente,,Correos CR,,,Luis,WhatsApp
+1007,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Luis Salazar,,,Proveedor B,Transferencia,7,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK007,,Luis,WhatsApp
+1008,2025-08-18,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,M,1,1,,,,Entregado,Katherine Lopez,,,Proveedor B,Transferencia,8,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK008,,Luis,WhatsApp
+1009,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,1,,,,Entregado,Danna,,,Proveedor B,Transferencia,9,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK009,,Luis,WhatsApp
+1010,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,0,,,,En proceso,Ariza,,,Proveedor B,Transferencia,10,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1011,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Anzola,,,Proveedor B,Transferencia,11,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK011,,Luis,WhatsApp
+1012,2025-08-18,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,L,2,2,,,,Entregado,Sequiera,,,Proveedor B,Transferencia,12,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK012,,Luis,WhatsApp
+1013,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Matias,,,Proveedor B,Transferencia,13,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK013,,Luis,WhatsApp
+1014,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XXL,1,1,,,,Entregado,Papá(soni),,,Proveedor B,Transferencia,14,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK014,,Luis,WhatsApp
+1015,2025-08-18,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,S,1,1,,,,Entregado,Mama(soni),,,Proveedor B,Transferencia,15,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK015,,Luis,WhatsApp
+1016,2025-08-18,RSG-001,Rashguard,,Bruma,Rashguard,Negro,M,1,0,₡15000,₡15000,5,En proceso,Nuñez,,,Proveedor B,Transferencia,16,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1016,2025-08-18,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,M,1,0,₡12000,₡12000,5,En proceso,Nuñez,,,Proveedor B,Transferencia,16,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1017,2025-08-18,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,M,1,1,,,,Entregado,Marcelly Berrocal,,,Proveedor B,Transferencia,17,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK017,,Luis,WhatsApp
+1018,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,John Zeledon,,,Proveedor B,Transferencia,18,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK018,,Luis,WhatsApp
+1019,2025-08-18,RSG-001,Rashguard,,Bruma,Rashguard,Negro,M,1,0,₡15000,₡15000,5,En proceso,Aron,,,Proveedor B,Transferencia,19,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1019,2025-08-18,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,M,1,0,₡12000,₡12000,5,En proceso,Aron,,,Proveedor B,Transferencia,19,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1020,2025-08-18,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,1,,,,Entregado,Sebas Chavez,,,Proveedor B,Transferencia,20,2025-08-18,Pagado,2025-08-18,Correos CR,TRACK020,,Luis,WhatsApp
+1020,2025-08-18,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,M,1,0,,,,En proceso,Sebas Chavez,,,Proveedor B,Transferencia,20,2025-08-18,Pendiente,,Correos CR,,,Luis,WhatsApp
+1021,2025-08-19,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,XL,1,1,,,,Entregado,Muga,,,Proveedor B,Transferencia,21,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK021,,Luis,WhatsApp
+1022,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,0,,,,En proceso,Fata,,,Proveedor B,Transferencia,22,2025-08-19,Pendiente,,Correos CR,,,Luis,WhatsApp
+1023,2025-08-19,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,XL,1,1,,,,Entregado,Richie,,,Proveedor B,Transferencia,23,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK023,,Luis,WhatsApp
+1024,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Aron,,,Proveedor B,Transferencia,24,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK024,,Luis,WhatsApp
+1025,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Mario,,,Proveedor B,Transferencia,25,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK025,,Luis,WhatsApp
+1026,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,0,,,,En proceso,Steve,,,Proveedor B,Transferencia,26,2025-08-19,Pendiente,,Correos CR,,,Luis,WhatsApp
+1027,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Saul,,,Proveedor B,Transferencia,27,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK027,,Luis,WhatsApp
+1028,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,1,,,,Entregado,Fran,,,Proveedor B,Transferencia,28,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK028,,Luis,WhatsApp
+1029,2025-08-19,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,S,1,1,,,,Entregado,Thiago Muga,,,Proveedor B,Transferencia,29,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK029,,Luis,WhatsApp
+1030,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,S,1,1,,,,Entregado,Cami T,,,Proveedor B,Transferencia,30,2025-08-19,Pagado,2025-08-19,Correos CR,TRACK030,,Luis,WhatsApp
+1031,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,0,,,,En proceso,Tamara,,,Proveedor B,Transferencia,31,2025-08-19,Pendiente,,Correos CR,,,Luis,WhatsApp
+1032,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,0,,,,En proceso,Alexa,,,Proveedor B,Transferencia,32,2025-08-19,Pendiente,,Correos CR,,,Luis,WhatsApp
+1033,2025-08-19,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,0,,,,En proceso,Fio,,,Proveedor B,Transferencia,33,2025-08-19,Pendiente,,Correos CR,,,Luis,WhatsApp
+1034,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,L,1,0,,,,En proceso,Mile,,,Proveedor B,Transferencia,34,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1035,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,XL,1,0,,,,En proceso,Roomie Richie,,,Proveedor B,Transferencia,35,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1036,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,M,1,0,,,,En proceso,Diego Arias,,,Proveedor B,Transferencia,36,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1037,2025-08-20,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,1,,,,Entregado,Richie,,,Proveedor B,Transferencia,37,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK037,,Luis,WhatsApp
+1038,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,M,1,1,,,,Entregado,Jafet,,,Proveedor B,Transferencia,38,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK038,,Luis,WhatsApp
+1039,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,L,1,1,,,,Entregado,Luis Felipe,,,Proveedor B,Transferencia,39,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK039,,Luis,WhatsApp
+1040,2025-08-20,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,L,1,0,,,,En proceso,Sebas Soni,,,Proveedor B,Transferencia,40,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1041,2025-08-20,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,0,,,,En proceso,Roberto Arce,,,Proveedor B,Transferencia,41,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1042,2025-08-20,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,1,,,,Entregado,Tecno,,,Proveedor B,Transferencia,42,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK042,,Luis,WhatsApp
+1043,2025-08-20,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,1,,,,Entregado,Patrick,,,Proveedor B,Transferencia,43,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK043,,Luis,WhatsApp
+1044,2025-08-20,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,M,1,0,₡12000,₡12000,5,En proceso,Alexa SAS,,,Proveedor B,Transferencia,44,2025-08-20,Pendiente,,Correos CR,,,Luis,WhatsApp
+1045,2025-08-20,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,XL,1,1,₡12000,₡12000,5,Entregado,Franklin,,,Proveedor B,Transferencia,45,2025-08-20,Pagado,2025-08-20,Correos CR,TRACK045,,Luis,WhatsApp
+1046,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,0,,,,En proceso,Adrian,,,Proveedor B,Transferencia,46,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1047,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,0,,,,En proceso,Mario,,,Proveedor B,Transferencia,47,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1048,2025-08-21,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,S,1,0,,,,En proceso,Karen,,,Proveedor B,Transferencia,48,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1049,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,0,,,,En proceso,Sequiera,,,Proveedor B,Transferencia,49,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1050,2025-08-21,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,XXL,1,0,,,,En proceso,Papa(Soni),,,Proveedor B,Transferencia,50,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1051,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,L,1,0,,,,En proceso,Gordillo pequeño,,,Proveedor B,Transferencia,51,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1052,2025-08-21,RSG-001,Rashguard,,Bruma,Rashguard,Negro,M,1,0,₡15000,₡15000,5,En proceso,Koa,,,Proveedor B,Transferencia,52,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1053,2025-08-21,RSG-001,Rashguard,,Bruma,Rashguard,Negro,XL,1,0,₡15000,₡15000,5,En proceso,Gordillo,,,Proveedor B,Transferencia,53,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1053,2025-08-21,PSL-001,Pantaloneta sin licra,,Bruma,Shorts,Negro,XL,1,0,₡12000,₡12000,5,En proceso,Gordillo,,,Proveedor B,Transferencia,53,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1053,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,XL,1,1,,,,Entregado,Gordillo,,,Proveedor B,Transferencia,53,2025-08-21,Pagado,2025-08-21,Correos CR,TRACK053,,Luis,WhatsApp
+1054,2025-08-21,TSH-001,T-shirt,,Bruma,Camiseta,Negro,M,1,0,,,,En proceso,Majo,,,Proveedor B,Transferencia,54,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsApp
+1055,2025-08-21,TSH-002,T-shirt,,Bruma,Camiseta,Blanco,S,1,0,,,,En proceso,Mari Paz,,,Proveedor B,Transferencia,55,2025-08-21,Pendiente,,Correos CR,,,Luis,WhatsAppF

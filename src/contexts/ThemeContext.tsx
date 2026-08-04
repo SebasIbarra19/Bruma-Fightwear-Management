@@ -224,42 +224,42 @@ export const themes: Record<ThemeName, ThemePalette> = {
   
   warm: {
     name: 'warm',
-    displayName: 'Cálido',
+    displayName: 'BRUMA',
     colors: {
-      background: '#f0e6d2',
-      surface: '#e8dcc6',
-      surfaceHover: '#ddd0b8',
-      surfaceActive: '#d2c5a9',
-      
-      textPrimary: '#3e2723',
-      textSecondary: '#5d4037',
-      textTertiary: '#795548',
-      textInverse: '#f0e6d2',
-      
-      border: '#c7b896',
-      borderHover: '#b8a882',
-      
-      primary: '#c56c00',
-      primaryHover: '#a55a00',
-      secondary: '#d4810f',
-      secondaryHover: '#c56c00',
-      success: '#2e7d32',
-      successHover: '#1b5e20',
-      warning: '#f57c00',
-      warningHover: '#ef6c00',
-      error: '#d32f2f',
-      errorHover: '#c62828',
-      info: '#0288d1',
-      infoHover: '#0277bd',
-      
-      shadow: '0 4px 6px -1px rgba(62, 39, 35, 0.2)',
-      overlay: 'rgba(62, 39, 35, 0.7)',
-      
+      background: '#1a1208',
+      surface: '#231a0a',
+      surfaceHover: '#2c1f0d',
+      surfaceActive: '#3a2a15',
+
+      textPrimary: '#CEC19C',
+      textSecondary: '#d4c9a8',
+      textTertiary: '#b8ad88',
+      textInverse: '#1a1208',
+
+      border: 'rgba(206, 193, 156, 0.15)',
+      borderHover: 'rgba(206, 193, 156, 0.25)',
+
+      primary: '#F46734',
+      primaryHover: '#d9521f',
+      secondary: '#1a2e1a',
+      secondaryHover: '#243a2d',
+      success: '#22c55e',
+      successHover: '#16a34a',
+      warning: '#fbbf24',
+      warningHover: '#f59e0b',
+      error: '#dc2626',
+      errorHover: '#b91c1c',
+      info: '#06b6d4',
+      infoHover: '#0891b2',
+
+      shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+      overlay: 'rgba(26, 18, 8, 0.85)',
+
       chart: {
-        primary: '#c56c00',
-        secondary: '#2e7d32',
-        tertiary: '#f57c00',
-        quaternary: '#d32f2f'
+        primary: '#F46734',
+        secondary: '#22c55e',
+        tertiary: '#fbbf24',
+        quaternary: '#dc2626'
       }
     }
   }

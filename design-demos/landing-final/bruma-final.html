@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRUMA — Home, Login & Register</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts: Fraunces (serif for Display/Headline) & Geist (sans-serif for interface & body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,700;1,9..144,900&family=Geist:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#1a1208',
+            bone: '#CEC19C',
+            ember: '#F46734',
+            surface: '#231a0a',
+            muted: '#2c200e',
+            moss: '#1a2e1a',
+            glass: 'rgba(35, 26, 10, 0.4)'
+          },
+          fontFamily: {
+            fraunces: ['Fraunces', 'serif'],
+            geist: ['Geist', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style type="text/tailwindcss">
+    @layer base {
+      body {
+        @apply bg-obsidian text-bone font-geist overflow-x-hidden;
+      }
+      /* Custom scrollbar matching design system */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #120d06;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(240, 232, 213, 0.2);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #F46734;
+      }
+    }
+
+    /* 1. SISTEMA DE GRADO DE COLOR (Paso 1) - Desaturated Sepia/Duotone */
+    .color-grade-bruma {
+      filter: sepia(0.4) saturate(0.55) contrast(1.15) brightness(0.8) hue-rotate(-5deg);
+      transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Raices cards: strongly B&W when retracted, color grade when active */
+    .raices-card img {
+      filter: grayscale(1) contrast(1.25) brightness(0.7);
+      transition: filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .raices-card.active img {
+      filter: sepia(0.4) saturate(0.55) contrast(1.15) brightness(0.8) hue-rotate(-5deg);
+    }
+    .raices-card.active:hover img {
+      filter: sepia(0.3) saturate(0.75) contrast(1.2) brightness(0.92) hue-rotate(-5deg);
+    }
+    /* Permanent bottom scrim to hide bright edges of photos */
+    .raices-card::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 45%;
+      background: linear-gradient(to top, rgba(18, 13, 6, 0.85), transparent);
+      z-index: 10;
+      pointer-events: none;
+    }
+    .raices-card.active::after {
+      height: 30%;
+      background: linear-gradient(to top, rgba(18, 13, 6, 0.55), transparent);
+    }
+
+    /* Background structures */
+    .tactical-grid {
+      background-image: linear-gradient(rgba(240, 232, 213, 0.03) 1px, transparent 1px), 
+                        linear-gradient(90deg, rgba(240, 232, 213, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+    .tactical-grid-dark {
+      background-image: linear-gradient(rgba(26, 18, 8, 0.05) 1px, transparent 1px), 
+                        linear-gradient(90deg, rgba(26, 18, 8, 0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+    
+    /* Bruma Fog/Wash system */
+    .bruma-wash {
+      background: radial-gradient(circle at 20% 15%, rgba(240, 232, 213, 0.1) 0%, transparent 60%),
+                  radial-gradient(circle at 80% 70%, rgba(240, 232, 213, 0.06) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(255, 77, 28, 0.02) 0%, transparent 70%);
+    }
+
+    /* Flora Glass Components */
+    .flora-glass {
+      position: relative;
+      overflow: hidden;
+      background: rgba(35, 26, 10, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(240, 232, 213, 0.12);
+    }
+    .flora-glass::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('../../public/brand/brackgrounds/Rainfores-02.jpg');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.12;
+      mix-blend-mode: overlay;
+      z-index: -1;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .flora-glass:hover::before {
+      opacity: 0.25;
+    }
+
+    /* Solid Pattern Wall navigation - Transparent by default! (Paso 1) */
+    .nav-horizontal-wall {
+      background-color: transparent;
+      border-bottom: 1px solid transparent;
+      box-shadow: none;
+      transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+    }
+    .nav-horizontal-wall::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('../../public/brand/patterns/Bruma-Pattern-01.png');
+      background-size: 180px;
+      opacity: 0; /* hidden when transparent */
+      mix-blend-mode: color-dodge;
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Scrolled State (Solid / Patterned) */
+    .nav-horizontal-wall.scrolled {
+      background-color: #120d06;
+      border-bottom: 1px solid rgba(240, 232, 213, 0.15);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    }
+    .nav-horizontal-wall.scrolled::before {
+      opacity: 0.12; /* visible when scrolled */
+    }
+
+    /* Custom Animations & Easings */
+    .ease-out-expo {
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .portal-transition {
+      transition: transform 550ms cubic-bezier(0.32, 0.72, 0, 1), opacity 550ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .portal-form-transition {
+      transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes rotateSlow {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+    .animate-rotate-slow {
+      animation: rotateSlow 30s linear infinite;
+    }
+
+    /* Header buttons default state (transparent header) */
+    .header-btn {
+      background-color: #2c200e !important;
+      color: #CEC19C !important;
+      border-radius: 999px !important;
+      padding: 10px 22px !important;
+      border: 2px solid transparent !important;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .header-btn.active {
+      border: 2px solid #F46734 !important;
+    }
+    .header-btn:hover {
+      transform: scale(1.05) !important;
+    }
+    
+    /* Header buttons scrolled state (solid header - Capture 5 Style) */
+    .nav-horizontal-wall.scrolled .header-btn {
+      background-color: #CEC19C !important;
+      color: #1a1208 !important;
+      border-radius: 999px !important;
+      padding: 10px 22px !important;
+      border: 1px solid rgba(26, 18, 8, 0.15) !important;
+    }
+    .nav-horizontal-wall.scrolled .header-btn.active {
+      border: 2px solid #F46734 !important;
+    }
+    .nav-horizontal-wall.scrolled .header-btn:hover {
+      background-color: #1a1208 !important;
+      color: #CEC19C !important;
+      border-color: rgba(240, 232, 213, 0.2) !important;
+    }
+
+    /* Interactive CSS Grid for Raices Section (React-like component) */
+    .raices-grid {
+      display: grid;
+      gap: 0.75rem; /* gap-3 */
+      width: 100%;
+      /* Smoothly transition grid-template rows and columns */
+      transition: grid-template-columns 500ms cubic-bezier(0.16, 1, 0.3, 1), grid-template-rows 500ms cubic-bezier(0.16, 1, 0.3, 1);
+      /* Use custom CSS variables driven by JS, fallback to 5fr for first item on mobile */
+      grid-template-rows: var(--grid-rows, 5fr 1fr 1fr);
+      grid-template-columns: 1fr; /* Single column on mobile */
+    }
+    @media (min-width: 768px) {
+      .raices-grid {
+        grid-template-rows: 1fr; /* Single row on desktop */
+        grid-template-columns: var(--grid-cols, 5fr 1fr 1fr); /* 5fr for active on desktop */
+      }
+    }
+    
+    /* Rotate text for collapsed cards on desktop */
+    .vertical-text {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    /* Text scroll reveal helper */
+    .reveal-word {
+      transition: color 0.4s ease, opacity 0.4s ease;
+    }
+
+    /* Button styles */
+    .btn-bruma-primary {
+      @apply bg-ember text-obsidian px-8 py-3 rounded-[4px] font-bold hover:bg-ember/90 transition-all uppercase text-[10px] tracking-[0.2em] shadow-[0_0_20px_rgba(255,77,28,0.25)] hover:shadow-[0_0_30px_rgba(255,77,28,0.4)] focus:outline-none focus:ring-1 focus:ring-ember/50 active:scale-[0.98] duration-300;
+    }
+    .btn-bruma-ghost {
+      @apply text-bone/70 hover:text-bone border border-bone/20 hover:border-bone/50 px-6 py-2.5 rounded-[4px] transition-all uppercase text-[10px] tracking-widest focus:outline-none duration-300 active:scale-[0.98];
+    }
+    .input-bruma {
+      @apply bg-obsidian/80 border border-bone/15 rounded-[2px] px-4 py-3 text-bone placeholder:text-bone/30 focus:outline-none focus:border-ember/60 focus:ring-1 focus:ring-ember/30 transition-all text-xs tracking-wider font-light w-full;
+    }
+    @keyframes sweep {
+      0% { transform: translateX(-100%) skewX(-15deg); }
+      100% { transform: translateX(200%) skewX(-15deg); }
+    }
+  </style>
+</head>
+<body class="relative bg-obsidian text-bone selection:bg-ember selection:text-obsidian overflow-x-hidden min-h-screen">
+
+  <!-- BASE LAYERS (Tactical environment) -->
+  <div class="fixed inset-0 z-0 bg-obsidian pointer-events-none"></div>
+  <div class="fixed inset-0 z-0 tactical-grid pointer-events-none opacity-80"></div>
+  <div class="fixed inset-0 z-0 bruma-wash pointer-events-none"></div>
+
+  <!-- MAIN WRAPPER (Home View) -->
+  <div id="home-view" class="relative z-10 transition-opacity duration-700 ease-out-expo opacity-100">
+    
+    <!-- HEADER / NAVIGATION -->
+    <header class="nav-horizontal-wall fixed top-0 left-0 w-full z-50 px-6 md:px-12 py-4 flex justify-between items-center">
+      <!-- Wordmark Logo as real text -->
+      <a href="#" class="font-fraunces font-black text-2xl tracking-tighter uppercase cursor-pointer hover:text-ember transition-colors duration-300 relative z-10">BRUMA</a>
+      
+      <!-- Center navigation -->
+      <nav class="hidden md:flex gap-3 relative z-10">
+        <a href="#" class="header-btn active font-geist text-[9px] uppercase tracking-[0.2em] font-bold select-none block">Inicio</a>
+        <a href="#filosofia" class="header-btn font-geist text-[9px] uppercase tracking-[0.2em] font-bold select-none block">Filosofía</a>
+        <a href="#raices" class="header-btn font-geist text-[9px] uppercase tracking-[0.2em] font-bold select-none block">Raíces</a>
+        <a href="#contacto" class="header-btn font-geist text-[9px] uppercase tracking-[0.2em] font-bold select-none block">Contacto</a>
+      </nav>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-4 md:gap-6 relative z-10">
+        <button id="open-portal-btn-nav" class="header-btn font-geist text-[9px] uppercase tracking-[0.2em] font-bold select-none block">Iniciar Sesión</button>
+      </div>
+    </header>
+
+    <!-- SECTION 1: HERO -->
+    <section class="relative min-h-screen flex flex-col justify-center items-center px-6 text-center overflow-hidden">
+      <!-- Background cascade aérea oscura -->
+      <div class="absolute inset-0 z-0">
+        <img src="../../public/brand/photography/costa-rica/opt3.jpg" class="w-full h-full object-cover scale-105" alt="Cascada Aérea Costa Rica">
+        <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-obsidian/30 to-transparent opacity-100 z-10 pointer-events-none"></div>
+      </div>
+
+      <div class="relative z-10 max-w-5xl mx-auto flex flex-col items-center -mt-12 md:-mt-20">
+        <!-- Floating brand name wordmark as real text - Giant Monolithic Edition -->
+        <div class="mb-16 md:mb-24 transform translate-y-4 opacity-0 animate-fade-in-up duration-1000 flex flex-col items-center" style="animation-fill-mode: forwards;">
+          <h1 class="font-fraunces font-black text-7xl md:text-[11rem] lg:text-[13rem] tracking-tighter uppercase text-bone select-none drop-shadow-[0_20px_45px_rgba(0,0,0,0.98)] leading-none">
+            BRUMA
+          </h1>
+          <p class="font-geist text-sm md:text-2xl lg:text-3xl text-bone/50 uppercase tracking-[0.55em] font-black -mt-2 md:-mt-4">
+            fightwear
+          </p>
+        </div>
+        
+        <!-- Tagline -->
+        <p class="font-fraunces italic font-light text-2xl md:text-3xl text-bone/85 tracking-wide mb-10 max-w-2xl leading-relaxed transform translate-y-4 opacity-0 animate-fade-in-up duration-1000 delay-300" style="animation-fill-mode: forwards;">
+          “Ante la bruma, mente serena.”
+        </p>
+
+        <!-- CTA button -->
+        <div class="transform translate-y-4 opacity-0 animate-fade-in-up duration-1000 delay-500" style="animation-fill-mode: forwards;">
+          <button id="open-portal-btn-hero" class="bg-ember text-obsidian px-8 py-4 rounded-[2px] font-bold uppercase text-xs tracking-[0.2em] hover:bg-ember/90 transition-all shadow-[0_0_20px_rgba(255,77,28,0.3)] duration-300">
+            Iniciar Sesión
+          </button>
+        </div>
+      </div>
+
+      <!-- Chevron indicating scroll -->
+      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 opacity-40 animate-pulse">
+        <span class="text-[8px] uppercase tracking-[0.25em] text-bone">Explorar</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-bounce"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </section>
+
+    
+
+    <!-- SECTION 3: BALANCE PERFECTO -->
+    <section id="filosofia" class="relative py-12 md:py-16 px-6 md:px-12 bg-obsidian border-y border-bone/5 overflow-hidden">
+      <!-- Ambient wash -->
+      <div class="absolute -right-32 top-10 w-[500px] h-[500px] bg-ember/5 rounded-full filter blur-[120px] pointer-events-none"></div>
+      
+      <!-- MAIN CONTAINER CARD (página -> tarjeta -> imagen structure) -->
+      <div class="max-w-[1300px] mx-auto bg-surface/20 border border-bone/10 p-6 md:p-10 rounded-[12px] shadow-2xl relative z-10">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-14 items-stretch">
+          
+          <!-- LEFT: Image Card (tarjeta -> imagen) - CLEAN NEUTRAL DARK GLASS (No Green Tint) -->
+          <div class="col-span-12 lg:col-span-6 flex flex-col justify-center">
+            
+            <img src="../../public/brand/logos/balance-negative.png" class="w-full max-w-[390px] md:max-w-[450px] object-contain relative z-10 transition-transform duration-700 ease-out-expo group-hover:scale-103 filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)]" alt="Balance Perfecto - Dos Jaguares">
+            
+          </div>
+
+          <!-- RIGHT: Text details organized like Gradient visual structure - Teaser Edition -->
+          <div class="col-span-12 lg:col-span-6 flex flex-col justify-center">
+            <!-- Header Title -->
+            <h3 class="font-fraunces text-4xl md:text-5xl font-black text-bone tracking-tight mb-5 leading-tight">
+              Balance <span> Perfecto</span>
+            </h3>
+
+            <!-- Fixed / Static Quote (Always Visible) -->
+            <div class="mb-6">
+              <p class="font-fraunces text-lg md:text-xl text-bone/85 font-light leading-relaxed italic mb-4">
+                “Dos jaguares en posición de pelea: un homenaje al balance del camino marcial.”
+              </p>
+              <a href="#" class="font-geist text-xs text-ember uppercase tracking-[0.2em] font-semibold hover:underline inline-flex items-center gap-1.5 transition-all">
+                Conoce el origen
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    
+
+    <!-- SECTION 6: BALANCE (Custodiada - Light Version) -->
+    <section class="relative py-12 md:py-16 px-6 overflow-hidden border-t border-obsidian/10 bg-[#CEC19C] text-[#1a1208]">
+      <!-- Tactical grid dark for light context -->
+      <div class="absolute inset-0 tactical-grid-dark opacity-[0.06] pointer-events-none"></div>
+
+      <div class="max-w-[1800px] mx-auto text-center relative flex flex-col items-center">
+        <div class="flex items-center gap-3 mb-12">
+        </div>
+
+        <!-- Dominant Circle Emblem Layout with Rotating Circular Text (Paso 1) -->
+        <div class="relative w-full max-w-[1100px] min-h-[420px] md:min-h-[680px] flex items-center justify-center mb-10 select-none">
+          
+          <!-- ROTATING CIRCULAR TEXT -->
+          <div class="absolute z-10 w-[390px] h-[340px] md:w-[640px] md:h-[640px] flex items-center justify-center animate-rotate-slow pointer-events-none">
+            <svg viewBox="0 0 200 200" class="w-full h-full">
+              <!-- Perfect circle path centered at (100,100) with radius 84 -->
+              <path id="circlePath" d="M 100,16 A 84,84 0 1,1 99.99,16 Z" fill="none" />
+              <text class="font-geist text-[5.0px] md:text-[7.1px] uppercase tracking-[0.24em] fill-[#1a1208] font-black" style="fill-opacity: 0.65;">
+                <textPath href="#circlePath" startOffset="0%">
+                  En la niebla se esconde una silueta  •  Invisible para muchos, inevitable para quien lo ve                     
+                </textPath>
+              </text>
+            </svg>
+          </div>
+
+          <!-- CENTER: Massive Emblema circular -->
+          <div class="relative z-20 w-[310px] h-[310px] md:w-[480px] md:h-[480px] flex items-center justify-center transition-transform duration-1000 ease-out-expo hover:scale-105">
+            <img src="../../public/brand/logos/logo-circle-original-no-background.png" class="w-full h-full object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(26,18,8,0.12)]" alt="Emblema Circular BRUMA">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 4: IDENTIDAD/RAÍCES (Homy Style Redesign - Rediseño de Raíces - Full Bleed) -->
+    <section id="raices" class="relative pt-12 md:pt-14 pb-12 md:pb-16 px-6 md:px-12 w-full overflow-hidden bg-[#1a1208]">
+      <!-- Section background image with color grading filter and dark gradient on top (Paso 1) - FULL BLEED -->
+      <div class="absolute inset-0 z-0 select-none pointer-events-none">
+        
+        
+      </div>
+
+      <!-- Flora glass ambient lighting -->
+      
+
+      <!-- Inner Content Wrapper (ALWAYS ON TOP of Background - relative z-10) -->
+      <div class="max-w-[1100px] mx-auto relative z-10 w-full">
+
+        <!-- Centered/Stacked Header Section -->
+        <div class="max-w-4xl mb-6">
+          <h3 class="font-fraunces text-[1.95rem] md:text-[2.65rem] font-black text-bone tracking-tight mb-3 leading-tight">
+            Más que una marca
+          </h3>
+          <p class="font-fraunces text-xl md:text-[1.55rem] text-bone/90 font-light leading-relaxed italic leading-snug">
+            “Una forma de ser auténticos, firmes y conectados a nuestras raíces.”
+          </p>
+        </div>
+
+        <!-- 3-CARD INTERACTIVE ACCORDION (CSS Grid implementation - React Component Style) -->
+        <div id="raices-grid" class="raices-grid min-h-[385px] md:h-[505px] select-none mt-4">
+        
+        <!-- CARD .01 -->
+        <div class="raices-card group active relative rounded-[8px] overflow-hidden border border-bone/10 cursor-pointer flex flex-col justify-between bg-[#120d06] shadow-xl min-w-0 min-h-0" data-index="0">
+          
+          <!-- Card Image - Grayscale when inactive, Color when active -->
+          <img src="../../public/brand/photography/jiu-jitsu/Nogi-set-model-01.PNG" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700 ease-out-expo z-0" alt="Ritual de Combate">
+          
+          <!-- Dark gradient overlay for text readability (only visible when active) -->
+          <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 opacity-0 group-[.active]:opacity-100 transition-opacity duration-500 ease-out-expo pointer-events-none"></div>
+          
+          <!-- ACTIVE CONTENT (Bottom of Card - Staggered Reveal) -->
+          <div class="absolute inset-0 z-20 p-6 md:p-8 flex flex-col justify-end pointer-events-none">
+            <div class="translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-75 pointer-events-none">
+              <span class="text-[9px] font-bold text-ember uppercase tracking-[0.2em] mb-1.5 block">CONCENTRACIÓN</span>
+            </div>
+            
+            <h4 class="font-fraunces text-2xl md:text-3xl font-black text-bone leading-tight mb-3 translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-100 pointer-events-none">
+              Ritual de Combate
+            </h4>
+            
+            <p class="font-geist text-xs md:text-sm text-bone/75 font-light leading-relaxed max-w-sm translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-150 pointer-events-none">
+              No hacemos prendas desechables. Forjamos armaduras biológicas preparadas para resistir las sesiones de entrenamiento más demandantes, inspirados en la persistencia de la fauna costarricense.
+            </p>
+          </div>
+
+          <!-- COLLAPSED CONTENT (Vertical text - desktop only) -->
+          <div class="absolute inset-0 z-20 p-6 flex flex-col justify-between pointer-events-none">
+            <span class="font-fraunces text-4xl font-black text-bone/20 group-[.active]:opacity-0 transition-opacity duration-300">.01</span>
+            
+            <div class="hidden md:flex mt-auto group-[.active]:opacity-0 transition-opacity duration-300 origin-top-left vertical-text ml-4 mb-4">
+              <span class="font-fraunces text-base font-bold text-bone/80 tracking-wide whitespace-nowrap">Ritual de Combate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD .02 -->
+        <div class="raices-card group relative rounded-[8px] overflow-hidden border border-bone/10 cursor-pointer flex flex-col justify-between bg-[#120d06] shadow-xl min-w-0 min-h-0" data-index="1">
+          
+          <!-- Card Image - Grayscale when inactive, Color when active -->
+          <img src="../../public/brand/photography/jiu-jitsu/Nogi-set-model-02.png" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700 ease-out-expo z-0" alt="Mente Serena">
+          
+          <!-- Dark gradient overlay for text readability (only visible when active) -->
+          <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 opacity-0 group-[.active]:opacity-100 transition-opacity duration-500 ease-out-expo pointer-events-none"></div>
+          
+          <!-- ACTIVE CONTENT (Bottom of Card - Staggered Reveal) -->
+          <div class="absolute inset-0 z-20 p-6 md:p-8 flex flex-col justify-end pointer-events-none">
+            <div class="translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-75 pointer-events-none">
+              <span class="text-[9px] font-bold text-ember uppercase tracking-[0.2em] mb-1.5 block">PRESENCIA</span>
+            </div>
+            
+            <h4 class="font-fraunces text-2xl md:text-3xl font-black text-bone leading-tight mb-3 translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-100 pointer-events-none">
+              Mente Serena
+            </h4>
+            
+            <p class="font-geist text-xs md:text-sm text-bone/75 font-light leading-relaxed max-w-sm translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-150 pointer-events-none">
+              Representamos el balance de la naturaleza: la calma y el caos en perfecta armonía.
+            </p>
+          </div>
+
+          <!-- COLLAPSED CONTENT (Vertical text - desktop only) -->
+          <div class="absolute inset-0 z-20 p-6 flex flex-col justify-between pointer-events-none">
+            <span class="font-fraunces text-4xl font-black text-bone/20 group-[.active]:opacity-0 transition-opacity duration-300">.02</span>
+            
+            <div class="hidden md:flex mt-auto group-[.active]:opacity-0 transition-opacity duration-300 origin-top-left vertical-text ml-4 mb-4">
+              <span class="font-fraunces text-base font-bold text-bone/80 tracking-wide whitespace-nowrap">Mente Serena</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD .03 -->
+        <div class="raices-card group relative rounded-[8px] overflow-hidden border border-bone/10 cursor-pointer flex flex-col justify-between bg-[#120d06] shadow-xl min-w-0 min-h-0" data-index="2">
+          
+          <!-- Card Image - Grayscale when inactive, Color when active -->
+          <img src="../../public/brand/photography/jiu-jitsu/Nogi-set-model-03.png" class="absolute inset-0 w-full h-full object-cover object-top transition-all duration-700 ease-out-expo z-0" alt="Identidad Forjada">
+          
+          <!-- Dark gradient overlay for text readability (only visible when active) -->
+          <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 opacity-0 group-[.active]:opacity-100 transition-opacity duration-500 ease-out-expo pointer-events-none"></div>
+          
+          <!-- ACTIVE CONTENT (Bottom of Card - Staggered Reveal) -->
+          <div class="absolute inset-0 z-20 p-6 md:p-8 flex flex-col justify-end pointer-events-none">
+            <div class="translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-75 pointer-events-none">
+              <span class="text-[9px] font-bold text-ember uppercase tracking-[0.2em] mb-1.5 block">DETALLE</span>
+            </div>
+            
+            <h4 class="font-fraunces text-2xl md:text-3xl font-black text-bone leading-tight mb-3 translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-100 pointer-events-none">
+              Identidad Forjada
+            </h4>
+            
+            <p class="font-geist text-xs md:text-sm text-bone/75 font-light leading-relaxed max-w-sm translate-y-8 opacity-0 group-[.active]:translate-y-0 group-[.active]:opacity-100 transition-all duration-500 ease-out-expo delay-150 pointer-events-none">
+              Nacidos de las montañas de Cartago, nuestro equipamiento absorbe la humedad y resiste la torsión extrema, protegiendo al atleta bajo las condiciones más adversas.
+            </p>
+          </div>
+
+          <!-- COLLAPSED CONTENT (Vertical text - desktop only) -->
+          <div class="absolute inset-0 z-20 p-6 flex flex-col justify-between pointer-events-none">
+            <span class="font-fraunces text-4xl font-black text-bone/20 group-[.active]:opacity-0 transition-opacity duration-300">.03</span>
+            
+            <div class="hidden md:flex mt-auto group-[.active]:opacity-0 transition-opacity duration-300 origin-top-left vertical-text ml-4 mb-4">
+              <span class="font-fraunces text-base font-bold text-bone/80 tracking-wide whitespace-nowrap">Identidad Forjada</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div> <!-- Close Inner Content Wrapper -->
+  </section>
+
+    <!-- SECTION 7: CONTÁCTANOS (Cierre de página) -->
+    <section id="contacto" class="relative py-28 md:py-36 px-6 md:px-12 border-t border-bone/10 bg-[#120d06] overflow-hidden">
+      <!-- Pattern background wall overlay for structural closure -->
+      <div class="absolute inset-0 z-0 bg-cover bg-center opacity-[0.06] mix-blend-color-dodge pointer-events-none" style="background-image: url('../../public/brand/patterns/Bruma-Pattern-01.png'); background-size: 200px;"></div>
+      <div class="absolute inset-0 z-0 bg-gradient-to-t from-obsidian via-transparent to-transparent"></div>
+
+      <div class="max-w-[1300px] mx-auto relative z-10 grid grid-cols-12 gap-12 items-start">
+        
+        <!-- Left details (col-span-12 lg:col-span-5) -->
+        <div class="col-span-12 lg:col-span-5 flex flex-col justify-between h-full min-h-[300px]">
+          <div>
+            <div class="font-fraunces font-black text-2xl tracking-tighter uppercase text-bone mb-8 select-none">BRUMA</div>
+            <h4 class="font-fraunces text-3xl font-light italic text-bone mb-6">
+              Ante la bruma, mente serena.
+            </h4>
+            
+            <div class="space-y-6 font-geist text-xs tracking-wider font-light text-bone/60">
+              <div class="flex items-start gap-4">
+                <svg class="text-ember shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div>
+                  <span class="text-bone/80 font-semibold block mb-0.5">Ubicación</span>
+                  <span>Cartago, Costa Rica (9.8601° N, 83.9178° W)</span>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-4">
+                <svg class="text-ember shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                <div>
+                  <span class="text-bone/80 font-semibold block mb-0.5">Comunidad</span>
+                  <a href="https://www.instagram.com/brumafightwear/" target="_blank" rel="noopener noreferrer" class="text-ember hover:underline">@brumafightwear</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-12 pt-6 border-t border-bone/10 text-bone/35 text-[9px] uppercase tracking-[0.25em] leading-loose">
+            © 2026 BRUMA Fightwear.<br>
+            Cerrando el círculo. Forjado en Costa Rica.
+          </div>
+        </div>
+
+        <!-- Right contact form as a gorgeous Flora Glass container (col-span-12 lg:col-span-7) -->
+        <div class="col-span-12 lg:col-span-7">
+          <div class="flora-glass rounded-[4px] p-6 md:p-10 shadow-2xl">
+            <h4 class="font-fraunces text-2xl font-bold text-bone mb-2">Conéctate al Manto</h4>
+            <p class="font-geist text-xs text-bone/50 tracking-wide font-light mb-8">Escríbenos para unirte a la legión del balance.</p>
+            
+            <form id="contact-form" class="space-y-6" onsubmit="event.preventDefault(); alert('Mensaje registrado bajo la bruma.');">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="label-bruma" for="contact-name">Nombre</label>
+                  <input type="text" id="contact-name" class="input-bruma" placeholder="TU NOMBRE" required>
+                </div>
+                <div>
+                  <label class="label-bruma" for="contact-email">Correo Electrónico</label>
+                  <input type="email" id="contact-email" class="input-bruma" placeholder="EMAIL@DIRECCION.COM" required>
+                </div>
+              </div>
+
+              <div>
+                <label class="label-bruma" for="contact-message">Mensaje</label>
+                <textarea id="contact-message" rows="4" class="input-bruma !resize-none" placeholder="REVELA TU MENSAJE..." required></textarea>
+              </div>
+
+              <div class="flex justify-end">
+                <button type="submit" class="btn-bruma-primary">
+                  Enviar Mensaje
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SOLID FOOTER (Ember Orange giant branding - Paso 4) -->
+    <footer class="bg-ember text-obsidian py-16 md:py-24 px-6 md:px-12 relative overflow-hidden select-none border-t border-ember/20 z-10">
+      <div class="max-w-[1600px] mx-auto flex flex-col items-center justify-center text-center">
+        <!-- Giant Monolithic Wordmark -->
+        <h2 class="font-fraunces font-black text-7xl md:text-[11rem] lg:text-[14rem] tracking-tighter uppercase leading-none">
+          BRUMA
+        </h2>
+        <p class="font-geist text-sm md:text-xl lg:text-2xl font-black uppercase tracking-[0.6em] -mt-2 md:-mt-5 mb-8">
+          fightwear
+        </p>
+        <div class="w-full h-[1px] bg-obsidian/10 my-8"></div>
+        <!-- Meta details -->
+        <div class="flex flex-col md:flex-row justify-between items-center w-full gap-4 text-[10px] uppercase tracking-[0.2em] font-black text-obsidian/65">
+          <div>© 2026 BRUMA Fightwear. Todos los derechos reservados.</div>
+          <div>Cerrando el círculo. Forjado en Costa Rica.</div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+
+  <!-- PORTAL OVERLAY (Login & Register View) -->
+  <div id="portal-view" class="fixed inset-0 z-50 flex opacity-0 pointer-events-none transition-all duration-700 ease-out-expo bg-obsidian">
+    
+    <!-- LEFT COLUMN: Cream Brand Panel with Emblem (Desktop Only) -->
+    <div class="hidden lg:flex relative w-1/2 h-full bg-[#CEC19C] items-center justify-center select-none">
+      <div class="absolute inset-0 tactical-grid-dark opacity-[0.06] pointer-events-none"></div>
+      <img src="../../public/brand/logos/logo-circle-original-no-background.png" class="relative z-10 w-64 md:w-80 lg:w-96 object-contain drop-shadow-[0_20px_50px_rgba(26,18,8,0.12)]" alt="Emblema Circular BRUMA">
+    </div>
+
+    <!-- RIGHT COLUMN: Form Panel -->
+    <div class="w-full lg:w-1/2 h-full relative flex items-center justify-center bg-obsidian border-l border-bone/5">
+      
+      <!-- Portal Close Button -->
+      <button id="close-portal-btn" class="absolute top-6 right-6 md:top-8 md:right-8 z-50 text-bone/60 hover:text-bone hover:rotate-90 transition-all duration-500 flex items-center justify-center p-2 rounded-full border border-bone/10 hover:border-bone/40 bg-surface">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <!-- FORMS WRAPPER -->
+      <div class="relative w-full max-w-md px-6">
+        
+      <!-- 2. LOGIN FORM PANEL -->
+      <div id="login-panel" class="relative z-30 w-full portal-form-transition flex flex-col justify-center">
+        <!-- Tiny logo name negative inside form for brand anchor -->
+        <div class="flex flex-col items-center mb-8">
+          <span class="font-fraunces font-black text-3xl tracking-tighter uppercase text-bone select-none">BRUMA</span>
+          <span class="text-[8px] text-ember uppercase tracking-[0.3em] font-bold mt-1">Inicia la Expedición</span>
+        </div>
+
+        <form id="login-form" class="space-y-5" onsubmit="event.preventDefault(); alert('Iniciando sesión...');">
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <label class="label-bruma" for="login-email">Usuario o Email</label>
+            <div class="relative">
+              <input type="text" id="login-email" class="input-bruma" placeholder="TU@CORREO.COM" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="label-bruma !mb-0" for="login-password">Contraseña</label>
+              <a href="#" class="text-[8px] text-bone/40 hover:text-ember tracking-wider uppercase transition-colors">¿Olvidaste tu acceso?</a>
+            </div>
+            <div class="relative">
+              <input type="password" id="login-password" class="input-bruma" placeholder="******" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="btn-bruma-primary w-full text-center py-4 relative overflow-hidden group/btn">
+              <span class="relative z-10">Entrar / Conectar</span>
+              <div class="absolute inset-0 -translate-x-full group-hover/btn:animate-[sweep_1s_ease-out_forwards] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-15deg]"></div>
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-bone/10 text-center">
+          <span class="text-[10px] text-bone/40 font-light tracking-wide">¿Aún sin credenciales?</span>
+          <button id="switch-to-register-btn" class="text-[10px] text-ember font-bold hover:underline tracking-widest uppercase ml-2 focus:outline-none">Regístrate</button>
+        </div>
+      </div>
+
+      <!-- 3. REGISTER FORM PANEL -->
+      <div id="register-panel" class="relative z-30 w-full portal-form-transition flex flex-col justify-center hidden opacity-0 scale-95 pointer-events-none">
+        
+        <div class="flex flex-col items-center mb-6">
+          <span class="font-fraunces font-black text-3xl tracking-tighter uppercase text-bone select-none">BRUMA</span>
+          <span class="text-[8px] text-ember uppercase tracking-[0.3em] font-bold mt-1">Únete a la Legión</span>
+        </div>
+
+        <form id="register-form" class="space-y-4" onsubmit="event.preventDefault(); alert('Cuenta registrada.');">
+          <!-- Name Input -->
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <label class="label-bruma" for="reg-name">Nombre Completo</label>
+            <div class="relative">
+              <input type="text" id="reg-name" class="input-bruma" placeholder="TU NOMBRE" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <!-- Email Input -->
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <label class="label-bruma" for="reg-email">Correo Electrónico</label>
+            <div class="relative">
+              <input type="email" id="reg-email" class="input-bruma" placeholder="EMAIL@DIRECCION.COM" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <label class="label-bruma" for="reg-password">Contraseña</label>
+            <div class="relative">
+              <input type="password" id="reg-password" class="input-bruma" placeholder="******" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <!-- Password Confirm Input -->
+          <div class="relative group rounded-[2px]" onmousemove="const rect = this.getBoundingClientRect(); this.style.setProperty('--x', (event.clientX - rect.left) + 'px');">
+            <label class="label-bruma" for="reg-password-confirm">Confirmar Contraseña</label>
+            <div class="relative">
+              <input type="password" id="reg-password-confirm" class="input-bruma" placeholder="******" required>
+              <div class="absolute top-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 0%, #F46734, transparent);"></div>
+              <div class="absolute bottom-0 left-0 w-full h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style="background: radial-gradient(circle 40px at var(--x, 50%) 100%, #F46734, transparent);"></div>
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="btn-bruma-primary w-full text-center py-4 relative overflow-hidden group/btn">
+              <span class="relative z-10">Crear Cuenta</span>
+              <div class="absolute inset-0 -translate-x-full group-hover/btn:animate-[sweep_1s_ease-out_forwards] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-15deg]"></div>
+            </button>
+          </div>
+        </form>
+
+        <div class="mt-6 pt-5 border-t border-bone/10 text-center">
+          <span class="text-[10px] text-bone/40 font-light tracking-wide">¿Ya eres parte?</span>
+          <button id="switch-to-login-btn" class="text-[10px] text-ember font-bold hover:underline tracking-widest uppercase ml-2 focus:outline-none">Inicia Sesión</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- CORE JAVASCRIPT LOGIC -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      // 0.3 HEADER SCROLL LISTENER (Transparent -> Solid - Paso 1 & 2)
+      const header = document.querySelector('.nav-horizontal-wall');
+      if (header) {
+        const handleHeaderScroll = () => {
+          if (window.scrollY > 80) {
+            header.classList.add('scrolled');
+          } else {
+            header.classList.remove('scrolled');
+          }
+        };
+        window.addEventListener('scroll', handleHeaderScroll);
+        handleHeaderScroll(); // Trigger once on mount
+      }
+
+      // 0. BALANCE PERFECTO ACCORDION (Gradient Style Interaction)
+      const accordionItems = document.querySelectorAll('.balance-accordion-item');
+      if (accordionItems.length > 0) {
+        accordionItems.forEach(item => {
+          item.addEventListener('click', () => {
+            // Remove active states from all items
+            accordionItems.forEach(i => {
+              i.classList.add('opacity-40');
+              i.classList.remove('opacity-100');
+              
+              const desc = i.querySelector('.accordion-desc');
+              desc.classList.add('hidden');
+              desc.classList.remove('block');
+              
+              const dot = i.querySelector('.accordion-dot');
+              dot.classList.remove('bg-ember');
+              dot.classList.add('border', 'border-bone/40');
+            });
+            
+            // Add active state to clicked item
+            item.classList.remove('opacity-40');
+            item.classList.add('opacity-100');
+            
+            const desc = item.querySelector('.accordion-desc');
+            desc.classList.remove('hidden');
+            desc.classList.add('block');
+            
+            const dot = item.querySelector('.accordion-dot');
+            dot.classList.add('bg-ember');
+            dot.classList.remove('border', 'border-bone/40');
+          });
+        });
+      }
+
+      // 0.2 RAÍCES ACCORDION (CSS Grid Interaction - React Style)
+      const raicesGrid = document.getElementById('raices-grid');
+      const raicesCards = document.querySelectorAll('.raices-card');
+      
+      if (raicesGrid && raicesCards.length > 0) {
+        raicesCards.forEach((card, index) => {
+          const activateCard = () => {
+            // Remove active from all
+            raicesCards.forEach(c => c.classList.remove('active'));
+            // Add active to current
+            card.classList.add('active');
+            
+            // Update CSS variables for smooth grid transition
+            if (window.innerWidth >= 768) {
+              raicesGrid.style.gridTemplateRows = '1fr';
+              if (index === 0) raicesGrid.style.gridTemplateColumns = '5fr 1fr 1fr';
+              else if (index === 1) raicesGrid.style.gridTemplateColumns = '1fr 5fr 1fr';
+              else if (index === 2) raicesGrid.style.gridTemplateColumns = '1fr 1fr 5fr';
+            } else {
+              raicesGrid.style.gridTemplateColumns = '1fr';
+              if (index === 0) raicesGrid.style.gridTemplateRows = '5fr 1fr 1fr';
+              else if (index === 1) raicesGrid.style.gridTemplateRows = '1fr 5fr 1fr';
+              else if (index === 2) raicesGrid.style.gridTemplateRows = '1fr 1fr 5fr';
+            }
+          };
+          
+          card.addEventListener('click', activateCard);
+          card.addEventListener('mouseenter', activateCard);
+        });
+      }
+
+      // DOM Elements
+      const homeView = document.getElementById('home-view');
+      const portalView = document.getElementById('portal-view');
+      const loginPanel = document.getElementById('login-panel');
+      const registerPanel = document.getElementById('register-panel');
+      
+      const openPortalHeroBtn = document.getElementById('open-portal-btn-hero');
+      const openPortalNavBtn = document.getElementById('open-portal-btn-nav');
+      const closePortalBtn = document.getElementById('close-portal-btn');
+      const switchToRegisterBtn = document.getElementById('switch-to-register-btn');
+      const switchToLoginBtn = document.getElementById('switch-to-login-btn');
+      
+      // 1. SCROLL REVEAL (Paso 3.2)
+      // Reveal the words or paragraphs of Section 2 smoothly based on page scroll
+      const textToReveal = document.getElementById('scroll-reveal-text');
+      if (textToReveal) {
+        const words = textToReveal.querySelectorAll('span');
+
+        const handleScrollReveal = () => {
+          const triggerPoint = window.innerHeight * 0.75;
+          const rect = textToReveal.getBoundingClientRect();
+          
+          // Calculate scroll percentage through the element
+          const elementHeight = rect.height;
+          const progress = Math.min(Math.max((triggerPoint - rect.top) / (triggerPoint + elementHeight/2), 0), 1);
+
+          // Map progress to each word revealing gradually
+          const totalWords = words.length;
+          words.forEach((word, idx) => {
+            const wordThreshold = idx / totalWords;
+            if (progress > wordThreshold) {
+              // Smoothly reveal
+              word.style.color = '#CEC19C'; // bone
+              word.style.opacity = '1';
+              word.style.transform = 'translateY(0px)';
+            } else {
+              // Unrevealed state
+              if (word.classList.contains('text-ember/40')) {
+                word.style.color = 'rgba(255, 77, 28, 0.25)';
+              } else {
+                word.style.color = 'rgba(240, 232, 213, 0.2)';
+              }
+              word.style.opacity = '0.4';
+            }
+          });
+        };
+
+        // Set initial state for reveal words
+        words.forEach(word => {
+          word.style.transition = 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+          word.style.transform = 'translateY(4px)';
+        });
+
+        window.addEventListener('scroll', handleScrollReveal);
+        handleScrollReveal(); // Trigger once on mount
+      }
+
+
+      // Opening the portal:
+      const openPortal = (startWithRegister = false) => {
+        document.body.style.overflow = 'hidden';
+
+        // 1. Reveal Overlay container immediately
+        portalView.classList.remove('pointer-events-none');
+        portalView.classList.add('opacity-100');
+        homeView.classList.add('opacity-30'); // dim home page
+
+        // Ensure panels are hidden initially
+        loginPanel.classList.add('hidden', 'pointer-events-none', 'opacity-0', 'scale-95');
+        loginPanel.classList.remove('flex', 'opacity-100', 'scale-100');
+        registerPanel.classList.add('hidden', 'pointer-events-none', 'opacity-0', 'scale-95');
+        registerPanel.classList.remove('flex', 'opacity-100', 'scale-100');
+
+        const activePanel = startWithRegister ? registerPanel : loginPanel;
+        activePanel.classList.remove('hidden');
+        activePanel.classList.add('flex');
+        
+        // Slight delay to allow display:flex to apply before transitioning opacity/scale
+        setTimeout(() => {
+          activePanel.classList.remove('pointer-events-none', 'opacity-0', 'scale-95');
+          activePanel.classList.add('opacity-100', 'scale-100');
+        }, 50);
+      };
+
+      // Closing the portal:
+      const closePortal = () => {
+        const activePanel = !loginPanel.classList.contains('hidden') ? loginPanel : registerPanel;
+
+        // Hide form
+        activePanel.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+        activePanel.classList.remove('opacity-100', 'scale-100');
+        
+        // Wait for form to fade before hiding overlay
+        setTimeout(() => {
+           activePanel.classList.add('hidden');
+           activePanel.classList.remove('flex');
+           
+           portalView.classList.add('pointer-events-none');
+           portalView.classList.remove('opacity-100');
+           homeView.classList.remove('opacity-30');
+           document.body.style.overflow = '';
+        }, 400);
+      };
+
+      // Swapping between login & register
+      const swapPortalView = (toRegister) => {
+        const outgoingPanel = toRegister ? loginPanel : registerPanel;
+        const incomingPanel = toRegister ? registerPanel : loginPanel;
+
+        // Hide outgoing
+        outgoingPanel.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+        outgoingPanel.classList.remove('opacity-100', 'scale-100');
+        
+        setTimeout(() => {
+          outgoingPanel.classList.add('hidden');
+          outgoingPanel.classList.remove('flex');
+          
+          incomingPanel.classList.remove('hidden');
+          incomingPanel.classList.add('flex');
+          
+          setTimeout(() => {
+            incomingPanel.classList.remove('pointer-events-none', 'opacity-0', 'scale-95');
+            incomingPanel.classList.add('opacity-100', 'scale-100');
+          }, 50);
+        }, 400); // wait for fade out
+      };
+
+
+      // Event Listeners
+      openPortalHeroBtn.addEventListener('click', () => openPortal(false));
+      openPortalNavBtn.addEventListener('click', () => openPortal(false));
+      closePortalBtn.addEventListener('click', closePortal);
+
+      switchToRegisterBtn.addEventListener('click', () => swapPortalView(true));
+      switchToLoginBtn.addEventListener('click', () => swapPortalView(false));
+
+      // Close portal on escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !portalView.classList.contains('pointer-events-none')) {
+          closePortal();
+        }
+      });
+
+    });
+  </script>
+
+  <!-- CUSTOM FADE IN ANIMATION UTIL -->
+  <style>
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in-up {
+      animation-name: fadeInUp;
+      animation-fill-mode: forwards;
+    }
+  </style>
+
+</body>
+</html>

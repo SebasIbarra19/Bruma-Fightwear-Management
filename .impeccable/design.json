@@ -1,0 +1,105 @@
+{
+  "name": "BRUMA Fightwear",
+  "description": "Estado real del sistema de diseño implementado en el código actual. Tokens base en globals.css / tailwind.config.js; sistema de temas alternos en ThemeContext; prototipo Home/Login/Register independiente en design-demos.",
+  "colors": {
+    "primary": "#F46734",
+    "obsidian": "#1a1208",
+    "background": "#1a1208",
+    "foreground": "#CEC19C",
+    "secondary": "#1a2e1a",
+    "accent": "#d4a017",
+    "muted": "#2c200e",
+    "border": "rgba(240, 232, 213, 0.15)",
+    "glass": "rgba(35, 26, 10, 0.4)",
+    "wall": "#120d06",
+    "surface": "#231a0a",
+    "moss": "#1a2e1a",
+    "primary-foreground": "#0a0a08",
+    "secondary-foreground": "#7ddb7d",
+    "destructive": "#d4183d",
+    "blur-sm": "8px",
+    "blur-md": "16px",
+    "blur-lg": "20px",
+    "fog-light": "rgba(240, 232, 213, 0.15)",
+    "fog-dark": "rgba(240, 232, 213, 0.08)"
+  },
+  "typography": {
+    "display": {
+      "fontFamily": "Fraunces, serif",
+      "source": "next/font/google (variable --font-fraunces)",
+      "usage": "h1 y marca",
+      "fontWeight": 900,
+      "lineHeight": 1.1,
+      "letterSpacing": "-0.02em"
+    },
+    "body": {
+      "fontFamily": "Geist, sans-serif",
+      "source": "geist/font/sans (variable --font-geist-sans)",
+      "usage": "body, h2, h3, h4",
+      "baseSize": "16px"
+    }
+  },
+  "radius": "4px",
+  "fontsLoaded": ["Fraunces", "GeistSans"],
+  "components": {
+    "flora-glass": {
+      "backgroundColor": "rgba(35, 26, 10, 0.4)",
+      "backdropFilter": "blur(20px)",
+      "border": "1px solid rgba(240, 232, 213, 0.15)",
+      "borderRadius": "4px",
+      "imageOverlay": "/brand/brackgrounds/Rainfores-02.jpg",
+      "textureOpacity": "0.15",
+      "hoverTextureOpacity": "0.3",
+      "blend": "overlay"
+    },
+    "fauna": {
+      "mobileStrategies": ["hide", "scale-down", "reposition"],
+      "imageQuality": 85,
+      "shadow": "drop-shadow-2xl"
+    },
+    "nav-horizontal-wall": {
+      "backgroundColor": "#120d06",
+      "pattern": "/brand/patterns/Bruma-Pattern-01.png",
+      "patternOpacity": 0.15,
+      "blend": "color-dodge"
+    },
+    "nav-vertical-glass": {
+      "backgroundColor": "rgba(35, 26, 10, 0.4)",
+      "backdropFilter": "blur(16px)"
+    },
+    "button-primary": {
+      "backgroundColor": "{colors.primary}",
+      "textColor": "{colors.background}",
+      "borderRadius": "4px"
+    }
+  },
+  "animation": {
+    "tailwind-keyframes": ["accordion-down", "accordion-up", "bruma-pulse", "shimmer"],
+    "prototype": {
+      "file": "design-demos/landing-final/bruma-final.html",
+      "easeOutExpo": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "portalTransition": "550ms",
+      "portalFormTransition": "450ms/400ms",
+      "rotateSlow": "30s linear infinite",
+      "fadeInUp": "translateY(24px) -> 0",
+      "sweep": "1s ease-out skewX(-15deg)",
+      "headerScrollThreshold": 80,
+      "raicesGridTransition": "500ms",
+      "scrollReveal": "palabra a palabra (JS vanilla)"
+    }
+  },
+  "themes": {
+    "provider": "ThemeContext",
+    "themes": ["light", "dark", "forest", "ocean", "warm"],
+    "defaultInProvider": "warm",
+    "defaultPassedByLayout": "canopy",
+    "note": "'canopy' no existe en este conjunto; ver FINDINGS"
+  },
+  "prototype": {
+    "path": "design-demos/landing-final/bruma-final.html",
+    "state": "PROTOTIPO HTML/CSS/JS vanilla autocontenido, completo e iterado a satisfaccion",
+    "sections": ["header-nav", "hero", "balance-perfecto-filosofia", "balance-light-emblema", "raices-identidad", "contacto-form", "footer", "portal-login-register"],
+    "integrationStatus": "NO portado a Next.js/React; no existe en src/; archivo HTML aislado",
+    "interactions": ["header scroll transparent->solid", "raices-css-grid-accordion", "portal-open-close-swap", "scroll-reveal-word", "input-glare-radial", "button-sweep", "escape-close"]
+  }
+}

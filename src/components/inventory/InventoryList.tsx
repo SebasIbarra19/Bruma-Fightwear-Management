@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useInventory } from '@/hooks/useInventory'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import InventoryForm from './InventoryForm'
+// @ts-ignore
 import type { Inventory, InventoryWithDetails } from '@/types/database'
 
 interface InventoryListProps {
