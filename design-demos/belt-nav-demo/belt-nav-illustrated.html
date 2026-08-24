@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRUMA · BeltNavigation — ilustrado (sin fotos)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@100..900&display=swap" rel="stylesheet">
+<style>
+  /* ==========================================================
+     BeltNavigation — variante ilustrada (CSS/SVG puro, cero fotos)
+     Alcance reducido a un solo grado (blanco) a pedido explícito —
+     todo el esfuerzo que iba a repartirse entre 5 cinturones se
+     concentra en este y en la cinta. Ver comentarios inline para
+     qué se verificó contra las fotos reales (Whitebelt-Photoroom.png,
+     Tape.png) y qué se corrigió después de mirarlas.
+
+     Fuente de la geometría panel/patch: src/components/navigation/
+     belts.ts → BELTS.white (fracciones exactas, sin tocar). Sin
+     cinco cinturones que conciliar, no hace falta ningún sangrado/
+     escala compartida — panel y patch se mapean 1:1 contra el marco
+     (fracción × 100 = % del marco) y los dos quedan completos a la
+     vista, no solo el panel.
+     ========================================================== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* Canopy (paleta real vigente hoy en globals.css / tailwind.config.js —
+       no la pareja ff4d1c/f0e8d5 que DESIGN.md documenta como "canopy":
+       ese valor no aparece en ningún lugar de src/ actualmente). */
+    --obsidian: #1a1208;
+    --bone: #CEC19C;
+    --ember: #F46734;
+    /* Blanco real (swatch de BELTS.white en belts.ts). */
+    --belt-white: #E8E4DA;
+    /* Barra de grados: negro cálido, medido a ojo contra la foto real. */
+    --rank-bar: #161310;
+    /* Parche de marca (zona `patch`): azul-negro, distinto del negro cálido
+       de la barra de grados — así lo muestra la foto real (Whitebelt-
+       Photoroom.png), dos parches oscuros pero no del mismo tono. */
+    --brand-patch: #13141c;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--obsidian);
+    color: var(--bone);
+    font-family: 'Geist', Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .page { display: flex; height: 100vh; }
+
+  /* ===================== COLUMNA DEL CINTURÓN ===================== */
+  /* 220px, igual que <aside className="... lg:w-[220px]"> en BeltNavigation.tsx */
+  .belt-column {
+    position: relative;
+    width: 220px;
+    height: 100vh;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--obsidian);
+  }
+
+  /* El cuerpo del cinturón. Llena el marco exacto (sin sangrado: con un
+     solo grado no hace falta la escala compartida que usaba la versión de
+     5 cinturones para forzar un panel más grande a costa de esconder
+     `patch` fuera de vista — aquí panel Y patch entran completos). */
+  .belt-shape {
+    position: absolute;
+    inset: 0;
+    background-color: var(--belt-white);
+  }
+  /* Sombreado: un único gradiente (más oscuro en los bordes, realce suave
+     al centro) — "textura pero ilustrado", no intento de tejido
+     fotorrealista (eso se descartó a propósito, ver nota de la cinta). */
+  .belt-shape::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.32) 0%,
+      rgba(0, 0, 0, 0) 15%,
+      rgba(255, 255, 255, 0.16) 50%,
+      rgba(0, 0, 0, 0) 85%,
+      rgba(0, 0, 0, 0.32) 100%
+    );
+  }
+
+  /* Costura doble al centro, corrida en toda la altura del cinturón —
+     visible en Whitebelt-Photoroom.png (dos líneas finas y muy juntas).
+     Es una costura física: cruza también la barra de grados (por eso va
+     encima de .panel-bar/.patch, z-index 2) aunque ahí case negro-sobre-
+     negro y case casi invisible — así se ve en la foto real también. */
+  .center-seam {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    transform: translateX(-50%);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .center-seam::before, .center-seam::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(26, 18, 8, 0.28);
+  }
+  .center-seam::before { left: 0; }
+  .center-seam::after { left: 4px; }
+
+  /* Barra de grados: negra, NO a todo el ancho — deja un margen delgado de
+     tela blanca a cada lado (confirmado contra la foto real; antes se
+     había construido a ancho completo, que sí es como luce en una primera
+     mirada rápida pero no es exacto). El nav-track (íconos, más abajo)
+     sigue a ancho completo — el margen es solo del elemento visual. */
+  .panel-bar {
+    position: absolute;
+    left: 3%;
+    width: 94%;
+    z-index: 1;
+    background: var(--rank-bar);
+    border-radius: 1px;
+  }
+
+  /* Parche de marca (zona `patch`): rectángulo chico, bien adentro del
+     ancho del cinturón (mucho más inset que la barra de grados — así se
+     ve en la foto real, es un parche cosido encima, no una franja
+     teñida), esquinas limpias, tono azul-negro distinto del negro cálido
+     de la barra. */
+  .patch {
+    position: absolute;
+    left: 17%;
+    width: 66%;
+    z-index: 1;
+    background: var(--brand-patch);
+    border-radius: 2px;
+  }
+
+  /* ===================== NAV TRACK (panel de grados funcional) ===================== */
+  .nav-track {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nav-item {
+    position: relative;
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    text-decoration: none;
+    color: rgba(206, 193, 156, 0.55);
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-item svg.icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke-width 150ms ease;
+  }
+  .nav-item .label {
+    font-family: 'Geist', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    /* 60% contra el 55% del ícono/color heredado — igual que
+       NavigationButton.tsx real (text-bone/55 en el ícono, text-bone/60
+       en el label, no el mismo número para los dos). */
+    color: rgba(206, 193, 156, 0.6);
+    transition: color 150ms ease;
+  }
+  .nav-item:hover { color: var(--bone); }
+  .nav-item:hover .label { color: var(--bone); }
+  .nav-item.active {
+    /* El activo se lee sobre la cinta clara: tinta oscura, igual que
+       NavigationButton.tsx (text-obsidian, sin condicionar por cinturón). */
+    color: var(--obsidian);
+  }
+  .nav-item.active .label { color: var(--obsidian); }
+  .nav-item.active svg.icon { stroke-width: 2.5; }
+  .nav-item:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--ember);
+  }
+
+  /* ===================== CINTA (marcador de ruta activa) ===================== */
+  /* Corrección real, verificada contra Tape.png: NO es cinta de enmascarar.
+     Es una tira de tela con borde dentado/zigzag en los dos lados largos
+     (tipo tijera de picos) y textura de tejido tipo canasta — sin
+     esquinas redondeadas, sin sombra de post-it, sin líneas de
+     perforado, sin rotación (la foto real la muestra perfectamente
+     recta). Reconstruida como SVG: un polígono en zigzag relleno, más un
+     patrón de líneas horizontales/verticales encima que sugiere el
+     tejido sin caer en ruido fotorrealista. */
+  .tape-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 12.5%; /* 100/8 slots — un slot exacto, igual que BeltMarker.tsx */
+    z-index: 10;
+    pointer-events: none;
+    transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .tape {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* 62%, no el ancho completo del marco: con proporción 300/112 fiel a
+       Tape.png (~2.68:1) y un panel de grados sin sangrado (33.6% del
+       marco, para que `patch` entre completo — ver .patch), una cinta a
+       ancho completo (92-100%) mide más del doble que un slot y tapa por
+       completo la etiqueta del ítem vecino (verificado en navegador:
+       Inventory quedaba ilegible bajo la cinta de Dashboard). 62% deja
+       margen limpio contra las dos etiquetas vecinas en viewports de
+       ~800px+ de alto. */
+    width: 62%;
+    aspect-ratio: 300 / 112;
+    transform: translate(-50%, -50%); /* sin rotación — cinta recta, como la foto */
+    filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.5));
+    overflow: visible;
+  }
+
+  /* ===================== CONTENIDO (contexto, no el foco del demo) ===================== */
+  .content {
+    flex: 1 1 auto;
+    height: 100%;
+    overflow: auto;
+    background-image:
+      linear-gradient(rgba(206, 193, 156, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(206, 193, 156, 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .content-inner { max-width: 640px; padding: 64px 56px; }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 18px;
+  }
+  .hint {
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(206, 193, 156, 0.65);
+    max-width: 46ch;
+  }
+  .hint strong { color: var(--bone); font-weight: 600; }
+  .legend {
+    margin-top: 40px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(206, 193, 156, 0.15);
+    font-size: 12px;
+    line-height: 1.8;
+    color: rgba(206, 193, 156, 0.5);
+  }
+  .legend b { color: var(--bone); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <aside class="belt-column">
+    <div class="belt-shape"></div>
+    <div class="center-seam"></div>
+    <div class="panel-bar" style="top: 19.1%; height: 33.6%;"></div>
+    <div class="patch" style="top: 78.9%; height: 18.5%;"></div>
+
+    <nav class="nav-track" id="navTrack" aria-label="Navegación principal" style="top: 19.1%; height: 33.6%;">
+      <div class="tape-marker" id="tapeMarker">
+        <svg class="tape" viewBox="0 0 300 112" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="weave" width="9" height="9" patternUnits="userSpaceOnUse">
+              <path d="M0 4.5H9M4.5 0V9" stroke="#7d6f52" stroke-width="1" opacity="0.4"/>
+            </pattern>
+          </defs>
+          <polygon
+            points="0,22 10,0 20,22 30,0 40,22 50,0 60,22 70,0 80,22 90,0 100,22 110,0 120,22 130,0 140,22 150,0 160,22 170,0 180,22 190,0 200,22 210,0 220,22 230,0 240,22 250,0 260,22 270,0 280,22 290,0 300,22 300,90 290,112 280,90 270,112 260,90 250,112 240,90 230,112 220,90 210,112 200,90 190,112 180,90 170,112 160,90 150,112 140,90 130,112 120,90 110,112 100,90 90,112 80,90 70,112 60,90 50,112 40,90 30,112 20,90 10,112 0,90"
+            fill="#CEC19C"
+          />
+          <polygon
+            points="0,22 10,0 20,22 30,0 40,22 50,0 60,22 70,0 80,22 90,0 100,22 110,0 120,22 130,0 140,22 150,0 160,22 170,0 180,22 190,0 200,22 210,0 220,22 230,0 240,22 250,0 260,22 270,0 280,22 290,0 300,22 300,90 290,112 280,90 270,112 260,90 250,112 240,90 230,112 220,90 210,112 200,90 190,112 180,90 170,112 160,90 150,112 140,90 130,112 120,90 110,112 100,90 90,112 80,90 70,112 60,90 50,112 40,90 30,112 20,90 10,112 0,90"
+            fill="url(#weave)"
+          />
+        </svg>
+      </div>
+
+      <a class="nav-item" data-index="0" data-route="Dashboard" href="#" aria-label="Dashboard">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span class="label">Dashboard</span>
+      </a>
+      <a class="nav-item" data-index="1" data-route="Inventory" href="#" aria-label="Inventory">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>
+        <span class="label">Inventory</span>
+      </a>
+      <a class="nav-item" data-index="2" data-route="Movements" href="#" aria-label="Movements">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M7 3v18"/><path d="M4 6l3-3 3 3"/><path d="M17 21V3"/><path d="M14 18l3 3 3-3"/></svg>
+        <span class="label">Movements</span>
+      </a>
+      <a class="nav-item" data-index="3" data-route="Orders" href="#" aria-label="Orders">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L22 7H6"/></svg>
+        <span class="label">Orders</span>
+      </a>
+      <a class="nav-item" data-index="4" data-route="Invoicing" href="#" aria-label="Invoicing">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+        <span class="label">Invoicing</span>
+      </a>
+      <a class="nav-item" data-index="5" data-route="Catalog" href="#" aria-label="Catalog">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2h7a1 1 0 0 1 1 1v7a1 1 0 0 1-.3.7l-9 9a1 1 0 0 1-1.4 0l-7-7a1 1 0 0 1 0-1.4l9-9a1 1 0 0 1 .7-.3z"/><circle cx="16.5" cy="7.5" r="1.5"/></svg>
+        <span class="label">Catalog</span>
+      </a>
+      <a class="nav-item" data-index="6" data-route="Activity Log" href="#" aria-label="Activity Log">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 0 2.6-6.3"/><path d="M3 4v5h5"/><path d="M12 7v5l4 2"/></svg>
+        <span class="label">Activity Log</span>
+      </a>
+      <a class="nav-item" data-index="7" data-route="Statistics" href="#" aria-label="Statistics">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M12 20V4"/><path d="M20 20v-7"/></svg>
+        <span class="label">Statistics</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <div class="content-inner">
+      <p class="eyebrow">BeltNavigation — variante ilustrada</p>
+      <h1 id="routeLabel">Dashboard</h1>
+      <p class="hint">
+        Sin fotos: cinturón, barra de grados, parche de marca y cinta son
+        formas planas en CSS/SVG. Alcance de esta pasada:
+        <strong>un solo grado (blanco)</strong>, con costura central,
+        parche de grado inset (no a todo lo ancho) y parche de marca en
+        tono azul-negro — la cinta es tela con borde dentado, sin
+        rotación, no cinta de enmascarar. Click en un ítem del riel para
+        mover la cinta.
+      </p>
+      <div class="legend">
+        Geometría: fracciones <b>panel</b> (19.1%–52.7%) y <b>patch</b>
+        (78.9%–97.4%) tomadas tal cual de <b>belts.ts → BELTS.white</b>,
+        mapeadas 1:1 contra el marco — con un solo cinturón no hace falta
+        el sangrado/escala compartida que exigía encajar cinco.
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var tapeMarker = document.getElementById('tapeMarker');
+  var routeLabel = document.getElementById('routeLabel');
+  var navItems = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
+
+  function applyActiveIndex(i) {
+    tapeMarker.style.transform = 'translateY(' + (i * 100) + '%)';
+    navItems.forEach(function (el) {
+      var active = Number(el.dataset.index) === i;
+      el.classList.toggle('active', active);
+      if (active) {
+        el.setAttribute('aria-current', 'page');
+        routeLabel.textContent = el.dataset.route;
+      } else {
+        el.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  navItems.forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      applyActiveIndex(Number(el.dataset.index));
+    });
+  });
+
+  applyActiveIndex(0); /* Dashboard */
+})();
+</script>
+
+</body>
+</html>

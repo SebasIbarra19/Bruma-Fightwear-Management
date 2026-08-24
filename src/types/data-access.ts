@@ -103,45 +103,6 @@ export interface Category {
   updated_at: string
 }
 
-export interface Supplier {
-  id: string
-  project_id: string
-  name: string
-  company_name: string
-  tax_id: string
-  email?: string | null
-  phone?: string | null
-  website?: string | null
-  contact_person?: string | null
-  address?: string | null
-  city?: string | null
-  state?: string | null
-  country?: string | null
-  postal_code?: string | null
-  payment_terms: string
-  credit_limit?: number | null
-  notes?: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface Customer {
-  id: string
-  project_id: string
-  email: string
-  first_name: string
-  last_name: string
-  phone?: string | null
-  date_of_birth?: string | null
-  gender?: string | null
-  customer_group?: string | null
-  notes?: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
 export interface Order {
   id: string
   project_id: string
@@ -215,26 +176,6 @@ export interface CreateProductParams {
   sort_order?: number | null
 }
 
-export interface CreateSupplierParams {
-  project_id: string
-  name: string
-  company_name: string
-  tax_id: string
-  email?: string | null
-  phone?: string | null
-  website?: string | null
-  contact_person?: string | null
-  address?: string | null
-  city?: string | null
-  state?: string | null
-  country?: string | null
-  postal_code?: string | null
-  payment_terms?: string
-  credit_limit?: number | null
-  notes?: string | null
-  is_active?: boolean
-}
-
 export interface CreateOrderParams {
   project_id: string
   customer_id?: string | null
@@ -263,13 +204,6 @@ export interface ProductFilters {
   min_price?: number
   max_price?: number
   track_inventory?: boolean
-}
-
-export interface SupplierFilters {
-  project_id: string
-  is_active?: boolean
-  country?: string
-  search?: string
 }
 
 export interface OrderFilters {

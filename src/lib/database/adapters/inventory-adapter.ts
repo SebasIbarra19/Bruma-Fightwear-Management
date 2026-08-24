@@ -4,6 +4,8 @@
 // ================================================
 
 import { SupabaseServiceClient } from '@/lib/api/client'
+import { ValidationError } from '@/lib/api/error-handler'
+import { resolveDefaultProviderId, resolveTallaProveedorId } from './catalog-adapter'
 
 // ================================================
 // INTERFACES
@@ -19,6 +21,8 @@ export interface InventoryItemExtended {
   category_name: string | null;
   variant_name: string | null;
   variant_sku: string | null;
+  size: string | null;
+  collection: string | null;
   current_stock: number;
   price: number;
   status: 'critical' | 'warning' | 'normal';
@@ -73,6 +77,7 @@ export class InventoryAdapter {
     _projectId?: string,
     options: {
       includeZeroStock?: boolean;
+      includeUnstocked?: boolean;
       categoryFilter?: number | null;
       limit?: number;
       offset?: number;
@@ -80,6 +85,7 @@ export class InventoryAdapter {
   ): Promise<InventoryItemExtended[]> {
     const {
       includeZeroStock = false,
+      includeUnstocked = false,
       categoryFilter = null,
       limit = 100,
       offset = 0
@@ -90,7 +96,8 @@ export class InventoryAdapter {
       p_incluir_stock_cero: includeZeroStock,
       p_id_categoria: categoryFilter,
       p_limit: limit,
-      p_offset: offset
+      p_offset: offset,
+      p_incluir_sin_stock_row: includeUnstocked
     });
 
     if (error) {
@@ -102,12 +109,16 @@ export class InventoryAdapter {
       inventory_id: item.id_producto_talla,
       product_id: item.id_producto,
       variant_id: item.id_variante,
-      sku: item.variante_codigo || item.producto_codigo,
+      sku: item.id_producto_talla
+        ? (item.variante_codigo || item.producto_codigo) + (item.talla_codigo ? `-${item.talla_codigo}` : '')
+        : `${item.producto_codigo} — No size set`,
       product_name: item.producto_nombre,
       product_sku: item.producto_codigo,
       category_name: item.categoria_nombre,
       variant_name: item.variante_nombre,
       variant_sku: item.variante_codigo,
+      size: item.talla_codigo || null,
+      collection: item.coleccion_nombre || null,
       current_stock: item.stock,
       price: Number(item.precio),
       status: item.status as any
@@ -170,22 +181,53 @@ export class InventoryAdapter {
   async adjustInventory(
     inventoryId: number,
     quantityChange: number,
-    reason: string = 'ajuste manual'
+    reason: string = 'ajuste manual',
+    tipoMovimiento?: string | null,
+    forzar: boolean = false
   ): Promise<AdjustmentResult> {
     const supabase = this.client.getClient();
 
     const { data, error } = await (supabase as any).rpc('adjust_inventory', {
       p_id_producto_talla: inventoryId,
       p_cantidad_cambio: quantityChange,
-      p_motivo: reason
+      p_motivo: reason,
+      p_tipo_movimiento: tipoMovimiento || null,
+      p_forzar: forzar
     });
 
     if (error) {
       console.error('Error adjusting inventory:', error);
-      throw error;
+      throw new ValidationError(error.message);
     }
 
     return data;
+  }
+
+  async createStockAndAdjust(idVariante: number, initialQuantity: number, motivo: string): Promise<AdjustmentResult> {
+    const providerId = await resolveDefaultProviderId();
+    const tallaProveedorId = await resolveTallaProveedorId(providerId, 'OS');
+
+    const supabase = this.client.getClient();
+    const { data: variantRow, error: variantErr } = await (supabase as any)
+      .from('productovariante')
+      .select('precio_variante')
+      .eq('id_variante', idVariante)
+      .maybeSingle();
+    if (variantErr) throw new ValidationError(variantErr.message);
+
+    const { data: stockRow, error: stockErr } = await (supabase as any)
+      .from('productotallastock')
+      .insert({
+        id_variante: idVariante,
+        id_talla_proveedor: tallaProveedorId,
+        stock: 0,
+        precio: variantRow?.precio_variante || 0,
+      })
+      .select('id_producto_talla')
+      .single();
+    if (stockErr) throw new ValidationError(stockErr.message);
+
+    return this.adjustInventory(stockRow.id_producto_talla, initialQuantity, motivo, 'entrada', false);
   }
 
   async getInventoryValuation(_projectId?: string): Promise<InventoryStats> {

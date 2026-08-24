@@ -3,14 +3,12 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
 }
 
-// Formatear moneda
-export function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('es-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)
+// Colones CR: punto de millar, sin decimales (₡971.500) — mismo formato que
+// InvoicePdfDocument.tsx (aprobado para el PDF de factura). Fuente única para
+// todo el admin, no cada pantalla arma su propio string.
+export function formatColones(amount: number | string): string {
+  const entero = Math.round(Number(amount))
+  return `₡${entero.toLocaleString('en-US').replace(/,/g, '.')}`
 }
 
 // Formatear fecha

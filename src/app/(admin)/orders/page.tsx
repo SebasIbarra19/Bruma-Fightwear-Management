@@ -1,46 +1,43 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { 
-  Plus, 
-  Search, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  X, 
-  Package, 
-  ChevronRight, 
-  Truck, 
-  FileText 
+import {
+  Plus,
+  Search,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  X,
+  Package,
+  FileText
 } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/figma-shared/Common";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const ORDERS = [
-  { id: "ORD-7842", customer: "Kenji Morales", email: "kenji@email.com", items: 3, total: 234.97, status: "shipped", date: "2025-07-10", products: ["Ryū Oversized Hoodie", "Tiger Palm Tee", "Koi Snapback"] },
-  { id: "ORD-7841", customer: "Valentina Cruz", email: "val.cruz@email.com", items: 2, total: 164.98, status: "processing", date: "2025-07-09", products: ["Dragon Back Bomber", "Gold Tiger Beanie"] },
-  { id: "ORD-7840", customer: "Daisuke Quesada", email: "dai.q@email.com", items: 1, total: 109.99, status: "pending", date: "2025-07-09", products: ["Sensei Gi Top"] },
-  { id: "ORD-7839", customer: "Sofía Nakamura", email: "sofia.n@email.com", items: 4, total: 312.96, status: "shipped", date: "2025-07-08", products: ["Bruma Windbreaker", "Kumite Gi Pants", "Ceiba Spirit Tee", "Warrior Waist Bag"] },
-  { id: "ORD-7838", customer: "Mateo Tanaka", email: "m.tanaka@email.com", items: 2, total: 174.98, status: "cancelled", date: "2025-07-07", products: ["Kata Track Jacket", "Monteverde Cargo Pants"] },
-  { id: "ORD-7837", customer: "Yuki Solano", email: "yuki.s@email.com", items: 1, total: 94.99, status: "shipped", date: "2025-07-07", products: ["Flame Script Hoodie"] },
-  { id: "ORD-7836", customer: "Andrés Kim", email: "andres.k@email.com", items: 3, total: 197.97, status: "processing", date: "2025-07-06", products: ["Rising Sun Crewneck", "Pura Vida Shorts", "Dojo Long Sleeve"] },
-  { id: "ORD-7835", customer: "Lucía Watanabe", email: "lucia.w@email.com", items: 2, total: 82.98, status: "pending", date: "2025-07-06", products: ["Jungle Noise Tee", "Gold Tiger Beanie"] },
-];
+import { useOrdersData } from "@/hooks/useOrdersData";
+import { NewOrderModal, OrderLineOption, StatusOption } from "@/components/orders/NewOrderModal";
+import { formatColones } from "@/lib/utils";
 
 export default function OrdersPage() {
-  const [selected, setSelected] = useState(ORDERS[0]);
+  const { orders, loading, error, refetch, createOrder, statuses, updateStatus } = useOrdersData({ limit: 50 });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  // `producto_nombre`/`sku` los agrega el SP `get_order_details` (migración
+  // 20260821000000). Opcionales porque salen de LEFT JOINs: una línea que
+  // apunte a un producto borrado los trae en null.
+  const [orderDetail, setOrderDetail] = useState<{ items: Array<{ id_producto_talla: number; cantidad: number; precio_unitario: number; producto_nombre?: string | null; sku?: string | null }> } | null>(null);
+  const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    if (selectedId === null && orders.length > 0) {
+      setSelectedId(orders[0].id_pedido);
+    }
+  }, [orders, selectedId]);
 
   function toggleStatus(s: string) {
     setStatusFilter(prev => { 
@@ -51,13 +48,64 @@ export default function OrdersPage() {
   }
 
   const filtered = useMemo(() => {
-    return ORDERS.filter(o => {
+    return orders.filter(o => {
       const q = search.toLowerCase();
-      const matchSearch = !q || o.id.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q) || o.email.toLowerCase().includes(q);
-      const matchStatus = statusFilter.size === 0 || statusFilter.has(o.status);
+      const matchSearch = !q
+        || String(o.id_pedido).includes(q)
+        || (o.cliente_nombre || '').toLowerCase().includes(q)
+        || (o.cliente_email || '').toLowerCase().includes(q);
+      const matchStatus = statusFilter.size === 0 || statusFilter.has((o.estado_nombre || '').toLowerCase());
       return matchSearch && matchStatus;
     });
-  }, [search, statusFilter]);
+  }, [search, statusFilter, orders]);
+
+  const selected = filtered.find(o => o.id_pedido === selectedId) ?? filtered[0];
+
+  const availableStatuses = useMemo(() => {
+    const set = new Set<string>();
+    orders.forEach(o => { if (o.estado_nombre) set.add(o.estado_nombre.toLowerCase()); });
+    return Array.from(set);
+  }, [orders]);
+
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [lineOptions, setLineOptions] = useState<OrderLineOption[]>([]);
+
+  const statusOptions: StatusOption[] = useMemo(
+    () => statuses.map((s) => ({ id: s.id_estado, label: s.nombre })),
+    [statuses]
+  );
+
+  useEffect(() => {
+    if (!showNewOrderModal) return;
+    fetch("/api/inventory/items?limit=200")
+      .then((res) => res.json())
+      .then((result) => {
+        const items = result.data ?? [];
+        setLineOptions(
+          items.map((i: any) => ({
+            id: i.inventory_id,
+            label: `${i.sku} — ${i.product_name}`,
+            price: Number(i.price) || 0,
+            stock: Number(i.current_stock) || 0,
+          }))
+        );
+      });
+  }, [showNewOrderModal]);
+
+  useEffect(() => {
+    const targetId = selected?.id_pedido;
+    if (!targetId) { setOrderDetail(null); setOrderDetailError(null); return; }
+    setOrderDetailLoading(true);
+    setOrderDetailError(null);
+    fetch(`/api/orders/${targetId}`)
+      .then(res => res.json())
+      .then((result) => {
+        if (result.success) setOrderDetail(result.data);
+        else setOrderDetailError(result.error?.message || result.error || 'Error cargando detalle');
+      })
+      .catch((e) => setOrderDetailError(String(e)))
+      .finally(() => setOrderDetailLoading(false));
+  }, [selected?.id_pedido]);
 
   const statusIcon = (s: string) => {
     if (s === "shipped") return <CheckCircle size={15} className="text-green-400" />;
@@ -82,6 +130,19 @@ export default function OrdersPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="w-full max-w-[1400px] mx-auto">
+        <EmptyState
+          title="Error cargando pedidos"
+          description={error}
+          actionLabel="Reintentar"
+          onAction={refetch}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-4">
       <PageHeader
@@ -90,7 +151,16 @@ export default function OrdersPage() {
         sub="Manage and track all customer orders in real time."
         actionLabel="+ New Order"
         actionIcon={<Plus size={16} />}
+        onAction={() => setShowNewOrderModal(true)}
         bgImage="https://images.unsplash.com/photo-1587293852726-70cdb56c2866?w=1200&h=300&fit=crop&auto=format"
+      />
+
+      <NewOrderModal
+        open={showNewOrderModal}
+        onOpenChange={setShowNewOrderModal}
+        lineOptions={lineOptions}
+        statusOptions={statusOptions}
+        onSubmit={createOrder}
       />
 
       <div className="flex flex-col gap-3">
@@ -117,7 +187,7 @@ export default function OrdersPage() {
               >
                 All
               </button>
-              {["pending", "processing", "shipped", "cancelled"].map(s => (
+              {availableStatuses.map(s => (
                 <button
                   key={s}
                   onClick={() => toggleStatus(s)}
@@ -144,20 +214,20 @@ export default function OrdersPage() {
           <div className="max-h-[600px] overflow-y-auto tactical-scrollbar flex flex-col">
             {filtered.map(order => (
               <button
-                key={order.id}
-                onClick={() => setSelected(order)}
+                key={order.id_pedido}
+                onClick={() => setSelectedId(order.id_pedido)}
                 className={`w-full text-left px-6 py-5 border-b border-bone/5 transition-all hover:bg-bone/5 ${
-                  selected?.id === order.id ? "bg-bone/10 border-l-[3px] border-l-ember" : "border-l-[3px] border-l-transparent"
+                  selected?.id_pedido === order.id_pedido ? "bg-bone/10 border-l-[3px] border-l-ember" : "border-l-[3px] border-l-transparent"
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-geist text-[10px] font-bold tracking-widest text-bone/50 uppercase">{order.id}</span>
-                  <StatusBadge status={order.status} />
+                  <span className="font-geist text-[10px] font-bold tracking-widest text-bone/50 uppercase">#{order.id_pedido}</span>
+                  <StatusBadge status={(order.estado_nombre || '').toLowerCase()} />
                 </div>
-                <p className="text-lg text-bone font-fraunces font-bold mb-1">{order.customer}</p>
+                <p className="text-lg text-bone font-fraunces font-bold mb-1">{order.cliente_nombre}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-bone/50 uppercase tracking-widest">{order.items} unit{order.items !== 1 ? "s" : ""}</span>
-                  <span className="font-geist text-sm text-bone font-medium">${order.total.toFixed(2)}</span>
+                  <span className="text-[10px] text-bone/50 uppercase tracking-widest">{order.items_count} unit{order.items_count !== 1 ? "s" : ""}</span>
+                  <span className="font-geist text-sm text-bone font-medium">{formatColones(order.total)}</span>
                 </div>
               </button>
             ))}
@@ -178,19 +248,27 @@ export default function OrdersPage() {
         </FloraGlass>
 
         {/* Right column - Order Detail */}
+        {!selected && (
+          <FloraGlass className="lg:col-span-3 flex items-center justify-center p-8">
+            <EmptyState
+              title="No Order Selected"
+              description="Select an order from the list to view its details."
+            />
+          </FloraGlass>
+        )}
         {selected && (
           <FloraGlass className="lg:col-span-3 p-8 md:p-10 flex flex-col justify-between">
             <div>
               <div className="flex items-start justify-between mb-8 border-b border-bone/10 pb-6">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="text-ember">{statusIcon(selected.status)}</div>
-                    <span className="font-geist text-[10px] uppercase tracking-widest text-bone/50 font-bold">{selected.id}</span>
+                    <div className="text-ember">{statusIcon((selected.estado_nombre || '').toLowerCase())}</div>
+                    <span className="font-geist text-[10px] uppercase tracking-widest text-bone/50 font-bold">#{selected.id_pedido}</span>
                   </div>
-                  <h2 className="font-fraunces text-4xl font-bold text-bone">{selected.customer}</h2>
-                  <p className="text-sm text-bone/60 font-geist mt-1">{selected.email}</p>
+                  <h2 className="font-fraunces text-4xl font-bold text-bone">{selected.cliente_nombre}</h2>
+                  <p className="text-sm text-bone/60 font-geist mt-1">{selected.cliente_email}</p>
                 </div>
-                <StatusBadge status={selected.status} />
+                <StatusBadge status={(selected.estado_nombre || '').toLowerCase()} />
               </div>
 
               {/* Opaque Scrim behind detailed data for 100% legibility */}
@@ -202,37 +280,105 @@ export default function OrdersPage() {
                 <div className="absolute bottom-2 right-2 w-1 h-1 bg-bone/20"></div>
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  {[["Date", selected.date], ["Units", String(selected.items)], ["Total", `$${selected.total.toFixed(2)}`]].map(([k, v]) => (
+                  {[["Date", new Date(selected.fecha).toLocaleDateString()], ["Units", String(selected.items_count)], ["Total", formatColones(selected.total)]].map(([k, v]) => (
                     <div key={k} className="bg-bone/5 border border-bone/10 rounded-[2px] p-4 flex flex-col justify-center">
                       <p className="text-[10px] text-bone/40 font-geist uppercase tracking-widest mb-1">{k}</p>
                       <p className="text-lg font-geist text-bone">{v}</p>
                     </div>
                   ))}
                 </div>
+              </div>
 
-                <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-4">Requisition Details</p>
-                <div className="space-y-2">
-                  {selected.products.map((p, i) => (
-                    <div key={i} className="flex items-center gap-4 py-3 px-4 bg-obsidian/60 border border-bone/5 rounded-[2px]">
-                      <div className="w-8 h-8 bg-bone/5 rounded-[2px] border border-bone/10 flex items-center justify-center flex-shrink-0">
-                        <Package size={14} className="text-bone/40" />
-                      </div>
-                      <span className="text-sm text-bone font-geist flex-1">{p}</span>
+              <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-4">Requisition Details</p>
+              <div className="space-y-2 mb-8">
+                {orderDetailError && (
+                  <p className="text-xs text-ember font-geist">{orderDetailError}</p>
+                )}
+                {!orderDetailError && (orderDetail?.items ?? []).map((item) => (
+                  <div key={item.id_producto_talla} className="flex items-center gap-4 py-3 px-4 bg-obsidian/60 border border-bone/5 rounded-[2px]">
+                    <div className="w-8 h-8 bg-bone/5 rounded-[2px] border border-bone/10 flex items-center justify-center flex-shrink-0">
+                      <Package size={14} className="text-bone/40" />
                     </div>
-                  ))}
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-bone font-geist truncate">
+                        {item.producto_nombre ?? `Producto #${item.id_producto_talla}`}
+                      </p>
+                      {/* `sku` viene del SP `get_order_details` (migración
+                          20260821000000). Queda null solo si la línea apunta a
+                          un producto borrado — ahí no se muestra nada en vez de
+                          un "SKU" vacío. */}
+                      {item.sku && (
+                        <p className="text-[10px] text-bone/40 font-geist uppercase tracking-widest">
+                          {item.sku}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs text-bone/50 font-geist">x{item.cantidad}</span>
+                    <span className="text-sm text-bone font-geist">{formatColones(item.precio_unitario)}</span>
+                  </div>
+                ))}
+                {!orderDetailError && orderDetailLoading && (
+                  <p className="text-xs text-bone/40 font-geist">Cargando detalle...</p>
+                )}
               </div>
             </div>
 
-            <div className="flex gap-4 border-t border-bone/10 pt-6 mt-auto">
-              <button className="flex items-center gap-2 px-6 py-3 bg-ember text-obsidian rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-ember/90 transition-all shadow-[0_0_15px_rgba(255,77,28,0.2)]">
-                <Truck size={14} />
-                Mark Dispatched
-              </button>
-              <button className="flex items-center gap-2 px-6 py-3 bg-transparent border border-bone/30 text-bone rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-bone hover:text-obsidian hover:border-bone transition-all">
-                <FileText size={14} />
-                Generate Invoice
-              </button>
+            <div className="border-t border-bone/10 pt-6 mt-auto">
+              <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-3">Change Status</p>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {statuses.map((s) => (
+                  <button
+                    key={s.id_estado}
+                    type="button"
+                    disabled={statusUpdating}
+                    onClick={async () => {
+                      if (s.id_estado === selected.id_estado) return;
+                      setStatusUpdating(true);
+                      try {
+                        await updateStatus(selected.id_pedido, s.id_estado);
+                      } catch (e: any) {
+                        alert(e.message || 'Error al actualizar el estado');
+                      } finally {
+                        setStatusUpdating(false);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-[2px] text-[10px] uppercase tracking-widest font-geist font-bold transition-all border disabled:opacity-50 ${
+                      selected.id_estado === s.id_estado
+                        ? "bg-ember text-obsidian border-ember"
+                        : "bg-bone/5 border-bone/20 text-bone/60 hover:border-bone/50 hover:text-bone"
+                    }`}
+                  >
+                    {s.nombre}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  disabled={generatingInvoice}
+                  onClick={async () => {
+                    setGeneratingInvoice(true);
+                    try {
+                      const res = await fetch("/api/invoicing", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id_pedido: selected.id_pedido }),
+                      });
+                      const result = await res.json();
+                      if (!result.success) throw new Error(result.error?.message || "Error al generar la factura");
+                      window.location.href = "/invoicing";
+                    } catch (e: any) {
+                      alert(e.message || "Error al generar la factura");
+                    } finally {
+                      setGeneratingInvoice(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-transparent border border-bone/30 text-bone rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-bone hover:text-obsidian hover:border-bone transition-all disabled:opacity-50"
+                >
+                  <FileText size={14} />
+                  {generatingInvoice ? "Generating..." : "Generate Invoice"}
+                </button>
+              </div>
             </div>
           </FloraGlass>
         )}

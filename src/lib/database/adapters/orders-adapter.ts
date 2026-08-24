@@ -73,6 +73,8 @@ export class OrdersAdapter {
       p_id_cliente: params.id_cliente,
       p_cliente_nombre: params.cliente_nombre,
       p_cliente_email: params.cliente_email,
+      p_cliente_telefono: params.cliente_telefono,
+      p_cliente_instagram: params.cliente_instagram,
       p_id_estado: params.id_estado || 1, // Default estado
       p_total: params.total,
       p_notas: params.notas,
@@ -82,6 +84,23 @@ export class OrdersAdapter {
     return data?.[0] || null;
   }
 
+  async addOrderItem(params: {
+    id_pedido: number;
+    id_producto_talla: number;
+    cantidad: number;
+    precio_unitario: number;
+  }): Promise<number> {
+    const supabase = this.client.getClient();
+    const { data, error } = await (supabase as any).rpc('add_order_item', {
+      p_id_pedido: params.id_pedido,
+      p_id_producto_talla: params.id_producto_talla,
+      p_cantidad: params.cantidad,
+      p_precio_unitario: params.precio_unitario,
+    });
+    if (error) throw new DatabaseError('Failed to add order item', { originalError: error });
+    return data;
+  }
+
   async updateOrderStatus(id: number, statusId: number): Promise<void> {
     const supabase = this.client.getClient();
     const { error } = await (supabase as any).rpc('update_order_status', {
@@ -89,5 +108,15 @@ export class OrdersAdapter {
       p_id_estado: statusId
     });
     if (error) throw new DatabaseError('Failed to update order status', { originalError: error });
+  }
+
+  async listStatuses(): Promise<{ id_estado: number; nombre: string }[]> {
+    const supabase = this.client.getClient();
+    const { data, error } = await (supabase as any)
+      .from('estado')
+      .select('id_estado, nombre')
+      .order('id_estado');
+    if (error) throw new DatabaseError('Failed to list order statuses', { originalError: error });
+    return data ?? [];
   }
 }

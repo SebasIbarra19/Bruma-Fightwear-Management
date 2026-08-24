@@ -1,9 +1,9 @@
+import type { Viewport } from 'next'
 import './globals.css'
 import { Fraunces } from 'next/font/google'
 import { GeistSans } from 'geist/font/sans'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
-import { NavigationProvider } from '@/contexts/NavigationContext'
 import { GlobalBackground } from '@/components/layout/GlobalBackground'
 
 const fraunces = Fraunces({ 
@@ -39,6 +39,11 @@ export const metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -49,12 +54,10 @@ export default function RootLayout({
       <body className="font-geist min-h-[100vh] bg-background text-foreground overflow-x-hidden antialiased">
         <ThemeProvider defaultTheme="warm">
           <AuthProvider>
-            <NavigationProvider>
-              <GlobalBackground />
-              <div id="root" className="relative z-10 flex flex-col min-h-screen">
-                {children}
-              </div>
-            </NavigationProvider>
+            <GlobalBackground />
+            <div id="root" className="relative z-10 flex flex-col min-h-screen">
+              {children}
+            </div>
           </AuthProvider>
         </ThemeProvider>
       </body>

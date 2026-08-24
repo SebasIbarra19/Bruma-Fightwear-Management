@@ -7,7 +7,7 @@ export function useInventory(projectId?: string) {
   const [inventory, setInventory] = useState<any[]>([])
   const [inventoryDetails, setInventoryDetails] = useState<any | null>(null)
   const [totalInventory, setTotalInventory] = useState(0)
-  const [loadingInventory, setLoadingInventory] = useState(false)
+  const [loadingInventory, setLoadingInventory] = useState(true)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,21 +70,14 @@ export function useInventory(projectId?: string) {
   // ================================================
   // CARGAR LISTA DE INVENTARIO
   // ================================================
-  // Nuevo fetchInventory para SP agrupado
   const fetchInventory = async () => {
-    if (!projectId) {
-      setError('No projectId')
-      return
-    }
     setLoadingInventory(true)
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/grouped?projectId=${projectId}`)
+      const response = await fetch(`/api/inventory/items?limit=100&includeZeroStock=true`)
       const result = await response.json()
-      console.log('[Inventory] Grouped API response:', result)
 
       if (!response.ok) {
-        console.error('[Inventory] Error cargando inventario agrupado:', result.error)
         setError(result.error?.message || result.error || 'Error cargando inventario')
         setInventory([])
         setTotalInventory(0)
@@ -94,10 +87,8 @@ export function useInventory(projectId?: string) {
         const items = result.data || []
         setInventory(Array.isArray(items) ? items : [])
         setTotalInventory(items.length)
-        console.log('[Inventory] Grouped items loaded:', items)
       }
     } catch (err) {
-      console.error('[Inventory] Grouped items fetch error:', err)
       setError(err instanceof Error ? err.message : 'Error cargando inventario')
       setInventory([])
       setTotalInventory(0)

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { BeltNavigation } from "@/components/navigation/BeltNavigation";
+import { BrumaPatternBackground } from "@/components/figma-shared/BrumaPatternBackground";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,7 +29,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <aside>, no su ancestro, así que recortar ahí es seguro.
       */}
       <main className="flex-1 flex flex-col gap-12 relative z-20 w-full min-w-0 pt-4 pb-12 overflow-hidden">
-        {children}
+        <BrumaPatternBackground />
+        <div className="relative z-10 flex flex-col gap-12">{children}</div>
       </main>
     </div>
   );

@@ -5,12 +5,11 @@ import {
 } from '@/lib/database/adapters/inventory-movements-adapter';
 
 export async function GET(req: NextRequest) {
-  const projectId = req.nextUrl.searchParams.get('projectId') ?? '';
   const includeItems = req.nextUrl.searchParams.get('includeItems') === 'true';
   try {
     const [movements, items] = await Promise.all([
-      listInventoryMovements(projectId),
-      includeItems ? listInventoryItems(projectId) : Promise.resolve([]),
+      listInventoryMovements(),
+      includeItems ? listInventoryItems() : Promise.resolve([]),
     ]);
     return NextResponse.json({ data: movements, inventoryItems: items });
   } catch (e: any) {

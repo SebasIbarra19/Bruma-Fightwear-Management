@@ -4,7 +4,7 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { withErrorHandling, withProjectValidation } from '@/lib/api/middleware'
+import { withErrorHandling } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { InventoryAdapter } from '@/lib/database/adapters/inventory-adapter'
 import { ValidationError } from '@/lib/api/error-handler'
@@ -12,7 +12,6 @@ import { ValidationError } from '@/lib/api/error-handler'
 /**
  * POST /api/inventory/adjust
  * Body:
- * - projectId: string (requerido)
  * - variantId: string (requerido)
  * - quantityChange: number (requerido)
  * - unitCost: number (opcional)
@@ -21,23 +20,38 @@ import { ValidationError } from '@/lib/api/error-handler'
  * - referenceType: string (opcional)
  * - notes: string (opcional)
  * - reason: string (opcional)
+ * - tipoMovimiento: string (opcional) - override explícito, ej. 'ajuste'
  */
 async function adjustInventoryHandler(request: NextRequest) {
   const body = await request.json()
-  const inventoryId = parseInt(body.inventoryId || body.id_producto_talla, 10)
-  const quantityChange = parseInt(body.quantityChange || body.cantidad_cambio, 10)
+  const idVariante = body.idVariante ? parseInt(body.idVariante, 10) : null
   const reason = body.reason || body.motivo || 'ajuste manual'
+  const tipoMovimiento = body.tipoMovimiento || body.tipo_movimiento || null
+  const forzar = body.forzar === true
+
+  const adapter = new InventoryAdapter()
+
+  if (idVariante) {
+    const quantityChange = parseInt(body.quantityChange ?? body.cantidad_cambio, 10)
+    if (isNaN(quantityChange) || quantityChange <= 0) {
+      throw new ValidationError('quantityChange debe ser un número positivo para un SKU sin stock previo')
+    }
+    const result = await adapter.createStockAndAdjust(idVariante, quantityChange, reason)
+    return ApiResponse.success(result)
+  }
+
+  const inventoryId = parseInt(body.inventoryId || body.id_producto_talla, 10)
+  const quantityChange = parseInt(body.quantityChange ?? body.cantidad_cambio, 10)
 
   if (isNaN(inventoryId)) throw new ValidationError('inventoryId es requerido y debe ser numérico')
   if (isNaN(quantityChange)) throw new ValidationError('quantityChange es requerido y debe ser numérico')
 
-  console.log('🔷 [API] POST /api/inventory/adjust', { inventoryId, quantityChange, reason })
-
-  const adapter = new InventoryAdapter()
   const result = await adapter.adjustInventory(
     inventoryId,
     quantityChange,
-    reason
+    reason,
+    tipoMovimiento,
+    forzar
   )
 
   return ApiResponse.success(result)
@@ -47,6 +61,4 @@ async function adjustInventoryHandler(request: NextRequest) {
 // EXPORTS CON MIDDLEWARE
 // ================================================
 
-export const POST = withErrorHandling(
-  withProjectValidation(adjustInventoryHandler)
-)
+export const POST = withErrorHandling(adjustInventoryHandler)

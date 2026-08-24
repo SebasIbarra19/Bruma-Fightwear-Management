@@ -14,6 +14,7 @@ export type MovementWithInventory = {
   created_at: string;
   // Del join/extra
   sku: string | null;
+  size: string | null;
   product_name: string | null;
 };
 
@@ -27,7 +28,7 @@ const db = () => SupabaseServiceClient.getInstance().getClient();
 
 // ── Read ───────────────────────────────────────────────────────────────────────
 
-export async function listInventoryMovements(_projectId?: string): Promise<MovementWithInventory[]> {
+export async function listInventoryMovements(): Promise<MovementWithInventory[]> {
   const { data, error } = await (db() as any).rpc('get_inventory_movements', {
     p_limit: 100
   });
@@ -42,11 +43,12 @@ export async function listInventoryMovements(_projectId?: string): Promise<Movem
     notes: m.motivo,
     created_at: m.fecha,
     sku: m.variante_codigo || m.producto_codigo,
+    size: m.talla_codigo || null,
     product_name: m.producto_nombre
   }));
 }
 
-export async function listInventoryItems(_projectId?: string): Promise<InventoryItemForFilter[]> {
+export async function listInventoryItems(): Promise<InventoryItemForFilter[]> {
   const { data, error } = await (db() as any).rpc('list_inventory_items', {
     p_limit: 1000
   });

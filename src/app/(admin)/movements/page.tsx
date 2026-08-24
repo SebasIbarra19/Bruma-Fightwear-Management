@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Search, ArrowUpCircle, ArrowDownCircle, Scale } from "lucide-react";
-import { createClient } from '@/lib/supabase/client';
 import { PageHeader } from "@/components/figma-shared/Common";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TacticalTable, Column } from "@/components/ui/TacticalTable";
+import { useInventoryMovementsData } from "@/hooks/useInventoryMovementsData";
 
 interface Movement {
   id_movimiento: number;
@@ -15,7 +16,7 @@ interface Movement {
   motivo: string | null;
   fecha: string;
   producto_nombre: string;
-  variante_nombre: string;
+  size: string;
   producto_codigo: string;
 }
 
@@ -35,36 +36,23 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export default function MovementsView() {
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { movements: rawMovements, loading, error, refetch } = useInventoryMovementsData();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
   const PER_PAGE = 10;
-  const supabase = createClient();
 
-  useEffect(() => {
-    const fetchMovements = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_inventory_movements', {
-          p_limit: 100,
-          p_offset: 0
-        });
-
-        if (error) {
-          console.error("Error fetching movements:", error);
-        } else {
-          setMovements(data || []);
-        }
-      } catch (err) {
-        console.error("Failed to load movements", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMovements();
-  }, [supabase]);
+  const movements: Movement[] = useMemo(() => rawMovements.map((m: any) => ({
+    id_movimiento: m.id,
+    id_producto_talla: m.inventory_id,
+    tipo_movimiento: m.movement_type,
+    cantidad: m.quantity,
+    motivo: m.notes,
+    fecha: m.created_at,
+    producto_nombre: m.product_name || 'Desconocido',
+    size: m.size || '',
+    producto_codigo: m.sku || ''
+  })), [rawMovements]);
 
   const filtered = useMemo(() => movements.filter(m => {
     const matchSearch = 
@@ -99,7 +87,7 @@ export default function MovementsView() {
       render: (m) => (
         <div>
           <p className="font-fraunces text-base font-bold text-bone">{m.producto_nombre}</p>
-          <p className="font-geist text-[10px] text-bone/50 uppercase tracking-widest mt-0.5">{m.producto_codigo} • {m.variante_nombre}</p>
+          <p className="font-geist text-[10px] text-bone/50 uppercase tracking-widest mt-0.5">{m.producto_codigo}{m.size ? ` • ${m.size}` : ''}</p>
         </div>
       )
     },
@@ -125,6 +113,19 @@ export default function MovementsView() {
       render: (m) => m.motivo || '-'
     }
   ];
+
+  if (error) {
+    return (
+      <div className="w-full max-w-[1400px] mx-auto">
+        <EmptyState
+          title="Error cargando movimientos"
+          description={error}
+          actionLabel="Reintentar"
+          onAction={refetch}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

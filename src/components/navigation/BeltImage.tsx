@@ -23,8 +23,8 @@ interface BeltImageProps {
  * original de la foto es matemáticamente imposible de romper.
  */
 export function BeltImage({ belt, geometry, priority }: BeltImageProps) {
-  const { src, canvas } = BELTS[belt]
-  const { imageHeight, imageTop, imageShiftX } = geometry
+  const { src, canvas, filter } = BELTS[belt]
+  const { imageHeight, imageMinWidth, imageTop, imageShiftX } = geometry
 
   return (
     <Image
@@ -35,12 +35,14 @@ export function BeltImage({ belt, geometry, priority }: BeltImageProps) {
       height={canvas[1]}
       priority={priority}
       draggable={false}
-      className="absolute left-1/2 max-w-none select-none pointer-events-none"
+      className="absolute left-1/2 max-w-none select-none pointer-events-none object-cover"
       style={{
-        height: `${imageHeight}%`,
+        height: imageHeight,
         width: 'auto',
-        top: `${imageTop}%`,
+        minWidth: `${imageMinWidth}%`,
+        top: imageTop,
         transform: `translateX(${imageShiftX}%)`,
+        filter,
       }}
     />
   )

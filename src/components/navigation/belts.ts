@@ -51,7 +51,10 @@ export const TAPE_BBOX = [76, 39, 722, 279] as const
 
 /**
  * Proporción de la cinta *visible* (647/241), no la del canvas (2.3901).
- * Es la que gobierna la altura de la cinta y, por tanto, `k`.
+ * Gobierna el ALTO de la cinta una vez fijado su ancho (100% del marco, ver
+ * `BeltMarker.tsx`). Es la proporción real del PNG: respetarla es lo que
+ * mantiene intactos los bordes dentados de arriba y abajo — cualquier
+ * esquema que fije el alto por otra vía obliga a recortarlos.
  */
 export const TAPE_ASPECT =
   (TAPE_BBOX[2] - TAPE_BBOX[0] + 1) / (TAPE_BBOX[3] - TAPE_BBOX[1] + 1)
@@ -76,6 +79,14 @@ interface BeltSpec {
   /** Color del punto en el selector de grado. */
   swatch: string
   label: string
+  /**
+   * Filtro CSS opcional aplicado a la foto. Hoy solo lo usa `blue` (color
+   * percibido como demasiado brillante/saturado) — no es un mecanismo
+   * genérico de "corrección de color" para los cinco, es un ajuste puntual.
+   * Valor de partida, no medido a píxel como bbox/panel/patch — ajustable
+   * editando esta única línea si hace falta más o menos.
+   */
+  filter?: string
 }
 
 /**
@@ -130,6 +141,7 @@ export const BELTS: Record<BeltId, BeltSpec> = {
     patch: [0.783, 0.978],
     swatch: '#2F4E9E',
     label: 'Cinturón azul',
+    filter: 'brightness(0.9) saturate(0.88)',
   },
   purple: {
     src: '/brand/BJJ-belts/Purplebelt-Photoroom.png',
@@ -170,9 +182,37 @@ export const DEFAULT_BELT: BeltId = 'black'
 /** Fracción del alto del marco que se recorta del borde superior del cinturón. */
 export const TOP_CROP = 0.1
 
+/**
+ * Multiplicador global aplicado a `beltScale` para que el panel de grados
+ * (la franja funcional donde van los botones de navegación) ocupe más
+ * proporción del marco visible.
+ *
+ * Es un factor único compartido por los cinco cinturones, no un objetivo
+ * independiente por cinturón — así el ancho renderizado sigue siendo
+ * idéntico entre blanco/azul/morado/marrón (la garantía que `WIDTH_TARGET`
+ * ya construye para esos cuatro — ver `beltScale` más abajo para por qué
+ * el negro queda excluido de esa garantía), en vez de romperla. Con este
+ * valor, el panel pasa de ~47–50% a ~56–60% del alto del marco según el
+ * cinturón (ver docs/superpowers/specs/2026-08-14-beltnav-redesign-design.md
+ * para la tabla completa por cinturón).
+ */
+export const PANEL_BOOST = 1.2
+
+/**
+ * Relación que gobierna el ANCHO renderizado por unidad de escala. No es la
+ * proporción del bbox (`bboxW/bboxH`) — se probó así originalmente y produce
+ * anchos desiguales entre cinturones (hasta 2.3x de diferencia, medido en
+ * DOM real, 2026-08-14). La causa: `<Image>` renderiza el canvas COMPLETO
+ * del PNG (fijado por `height`, con `width: auto`), no un recorte al bbox —
+ * el bbox solo se usa para centrar (`imageShiftX`) y posicionar el panel,
+ * nunca para cortar la fuente. El ancho real en pantalla es entonces
+ * `beltScale(id) * canvasW / bboxH`, así que igualar canvasW/bboxH entre
+ * cinturones es lo que realmente iguala el ancho — no bboxW/bboxH.
+ */
 function beltAspect(id: BeltId): number {
-  const [x0, y0, x1, y1] = BELTS[id].bbox
-  return (x1 - x0 + 1) / (y1 - y0 + 1)
+  const [, y0, , y1] = BELTS[id].bbox
+  const bboxH = y1 - y0 + 1
+  return BELTS[id].canvas[0] / bboxH
 }
 
 /**
@@ -196,18 +236,29 @@ const WIDTH_TARGET = ((1 + TOP_CROP) / BELTS.black.patch[0]) * beltAspect('white
  *   porque cada uno usa su propio patch[0]).
  *
  *   widthScale: lo necesario para que el ancho renderizado de este cinturón
- *   iguale WIDTH_TARGET. Fotos con aspect ratio más angosto (blue: 0.1373
- *   vs. 0.1527-0.1542 de white/purple/black) necesitan más escala para
- *   llegar al mismo ancho — y al escalar sube proporcionalmente también su
- *   alto, nunca se deforma un eje solo.
+ *   iguale WIDTH_TARGET (ver `beltAspect` arriba para qué relación gobierna
+ *   ese ancho). Blanco/azul/morado/marrón quedan con el ancho exactamente
+ *   igual entre sí por este mecanismo.
+ *
+ * El NEGRO es un caso aparte, excluido a propósito de `widthScale`: su
+ * canvas (842×1264, portrait) tiene tanto margen vacío alrededor de la
+ * franja real que igualar su ancho contra los otros cuatro por canvas
+ * completo exige una escala tan grande que el panel se desborda del marco
+ * (medido: 136% de alto de marco, en vez de <=100%) — un cinturón
+ * inutilizable, ya que es además el que se ve por defecto (`DEFAULT_BELT`).
+ * Se decidió (2026-08-14, con el usuario) dejarlo con un ancho propio,
+ * gobernado solo por su seguridad de recorte, en vez de forzar la igualdad.
  *
  * Ver docs/superpowers/specs/2026-08-04-belt-width-normalization.md para
- * los valores medidos y la tabla de resultados por cinturón.
+ * los valores originales, y
+ * docs/superpowers/specs/2026-08-14-beltnav-redesign-design.md para este
+ * ajuste.
  */
 function beltScale(id: BeltId): number {
   const safetyScale = (1 + TOP_CROP) / BELTS[id].patch[0]
+  if (id === 'black') return safetyScale * PANEL_BOOST
   const widthScale = WIDTH_TARGET / beltAspect(id)
-  return Math.max(safetyScale, widthScale)
+  return Math.max(safetyScale, widthScale) * PANEL_BOOST
 }
 
 /**
@@ -218,14 +269,34 @@ function beltScale(id: BeltId): number {
  * en % del marco, sin medición en JS.
  */
 export interface BeltGeometry {
-  /** Alto de la imagen, en % del alto del marco. */
-  imageHeight: number
-  /** Desplazamiento vertical de la imagen, en % del alto del marco. */
-  imageTop: number
+  /**
+   * Alto de la imagen como expresión CSS (no un número): el cinturón se
+   * escala con un piso en `px` para que su panel negro siempre pueda alojar
+   * las 8 filas — ver `MIN_SLOT_PX` y `beltGeometry`.
+   */
+  imageHeight: string
+  /**
+   * Ancho MÍNIMO de la imagen, en % del ancho del marco (220px). Normalmente
+   * el ancho que resulta de `imageHeight` (vía `width: auto` + aspect ratio
+   * del canvas) desborda el marco por un margen enorme, así que este piso no
+   * hace nada. Pero `imageHeight` es una fracción de la ALTURA del marco
+   * (100vh), y el ancho del marco es un `220px` literal — dos ejes que no
+   * escalan igual bajo zoom real del navegador (vh se achica con el zoom, el
+   * px literal no). Por debajo de cierta altura de viewport (~795px medido
+   * para el morado, a 175% de zoom real) el ancho derivado de la altura cae
+   * por debajo del ancho del marco, y como el PNG tiene fondo transparente
+   * (recorte tipo Photoroom), eso deja ver el fondo de la página a los
+   * costados — la cinta, que sí es 100% ancho fijo, entonces "sobresale" del
+   * cinturón. Ver `BeltImage.tsx` para cómo se aplica junto con
+   * `object-fit: cover` (evita que este piso estire la foto).
+   */
+  imageMinWidth: number
+  /** Desplazamiento vertical de la imagen, como expresión CSS. */
+  imageTop: string
   /** Centrado horizontal: translateX en % del ancho de la propia imagen. */
   imageShiftX: number
-  /** Rect del panel de grados, en % del marco. */
-  panel: { top: number; height: number }
+  /** Rect del panel de grados, como expresiones CSS. */
+  panel: { top: string; height: string }
 }
 
 export function beltGeometry(id: BeltId): BeltGeometry {
@@ -233,19 +304,72 @@ export function beltGeometry(id: BeltId): BeltGeometry {
   const [canvasW, canvasH] = canvas
   const [x0, y0, x1, y1] = bbox
   const bboxH = y1 - y0 + 1
+  const bboxW = x1 - x0 + 1
   const crop = TOP_CROP * 100
-  const belt = beltScale(id) * 100
+  const panelFrac = panel[1] - panel[0]
+
+  // Alto del cinturón (su bbox) en unidades del marco. Ya no es un número:
+  // es una expresión CSS que mezcla `vh` (el reparto proporcional de
+  // siempre) con `px` (el piso de MIN_SLOT_PX y la reserva del picker),
+  // unidades que solo el navegador puede comparar en tiempo de layout.
+  const beltFloorPx = (NAV.length * MIN_SLOT_PX) / panelFrac
+  const belt =
+    `min(max(${beltScale(id) * 100}vh, ${beltFloorPx}px), ` +
+    `calc((100vh - ${PICKER_RESERVE_PX}px) / ${panelFrac}))`
+
+  const panelHeight = `calc(${panelFrac} * ${belt})`
+
+  // Posición natural del panel, pero sin dejar que se salga de la banda útil
+  // del marco: al crecer el cinturón, el panel se correría hacia abajo y la
+  // última opción terminaría fuera del negro. El `min` lo sube lo justo para
+  // que su borde inferior toque la franja del picker; el `max` evita que en
+  // el extremo opuesto se recorte por arriba.
+  const panelTop =
+    `max(0px, min(calc(${-crop}vh + ${panel[0]} * ${belt}), ` +
+    `calc(100vh - ${PICKER_RESERVE_PX}px - ${panelHeight})))`
 
   return {
-    imageHeight: belt * (canvasH / bboxH),
-    imageTop: -crop - belt * (y0 / bboxH),
+    imageHeight: `calc(${canvasH / bboxH} * ${belt})`,
+    imageMinWidth: (canvasW / bboxW) * 100,
+    // La foto se ancla al panel, no al revés: así el desplazamiento vertical
+    // acompaña a `panelTop` y el panel siempre cae donde van los ítems. Se
+    // resta también `y0/bboxH` porque el bbox del cinturón no empieza en el
+    // borde del canvas: sin ese término la tela negra queda corrida respecto
+    // de las filas.
+    imageTop: `calc(${panelTop} - ${panel[0] + y0 / bboxH} * ${belt})`,
     imageShiftX: -(((x0 + x1) / 2 / canvasW) * 100),
-    panel: {
-      top: -crop + panel[0] * belt,
-      height: (panel[1] - panel[0]) * belt,
-    },
+    panel: { top: panelTop, height: panelHeight },
   }
 }
+
+/**
+ * Alto minimo de un slot, en pixeles literales.
+ *
+ * El contenido de cada ítem (ícono 16px + texto 12px) está en `px`: NO se
+ * achica cuando baja la altura de viewport. El slot, en cambio, es una
+ * fracción del panel del cinturón, que es una fracción del marco (`100vh`)
+ * — con zoom real del navegador el viewport en px CSS se achica, así que el
+ * slot se achica mientras el contenido se queda igual, y los ítems quedan
+ * apretados contra sus vecinos (a 175% de zoom real, medido con el usuario:
+ * slot 39.6px para un contenido de ~16px, contra los 69px que tiene a 100%).
+ *
+ * Se aplica escalando el CINTURÓN (ver `beltGeometry`), no estirando el
+ * track: el panel negro es lo que tiene que crecer, porque los ítems viven
+ * dentro de él. Estirar solo el track dejaba la última opción fuera del
+ * negro y tela negra sin usar arriba.
+ *
+ * Valor elegido para no alterar nada en desktop a 100% de zoom (donde el
+ * reparto proporcional ya da ~63-69px por slot, holgadamente por encima).
+ */
+export const MIN_SLOT_PX = 56
+
+/**
+ * Banda inferior del marco reservada al `BeltPicker` (vive en `bottom-5`,
+ * ver BeltNavigation.tsx): sus 20px de margen + 16px de alto propio. Es la
+ * huella exacta del picker — el panel puede llegar a tocar su borde
+ * superior. En `px` porque el picker se posiciona en `px`, no en %.
+ */
+const PICKER_RESERVE_PX = 36
 
 /**
  * Coincidencia exacta o de segmento completo. `startsWith` a secas haría que

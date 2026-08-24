@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Plus, Search } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import { getUserProject } from "@/lib/project-resolver";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Fauna } from "@/components/ui/Fauna";
-import { FloraGlass } from "@/components/ui/FloraGlass";
 import { TacticalTable, Column } from "@/components/ui/TacticalTable";
 import { PageHeader, StatusBadge } from "@/components/figma-shared/Common";
+import { useInventory } from "@/hooks/useInventory";
+import { StockMovementModal } from "@/components/inventory/StockMovementModal";
+import { logInventoryMovement } from "@/lib/inventory-movements-client";
+import { formatColones } from "@/lib/utils";
 
 interface InventoryItem {
   id: string;
@@ -29,14 +28,6 @@ interface InventoryItem {
 const mapInventoryImage = (sku: string) => {
   return "/imports/image-3.png"; // Default fallback
 };
-
-const FALLBACK_INVENTORY = [
-  { sku: "BFW-002-BLK-L",  name: "Bruma Tee - Black",      category: "T-Shirts",     collection: "BRUMA",    size: "L",  stock: 8,  price: 39.99,  status: "low",      img: "/imports/image-3.png" },
-  { sku: "BFW-003-RED-S",  name: "Kata Track Jacket",      category: "Jackets",      collection: "TARCOLES", size: "S",  stock: 0,  price: 129.99, status: "out",      img: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&h=580&fit=crop&auto=format" },
-  { sku: "BFW-004-GRN-M",  name: "Monteverde Cargo Pants", category: "Bottoms",      collection: "TARCOLES", size: "M",  stock: 31, price: 74.99,  status: "in-stock", img: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&h=580&fit=crop&auto=format" },
-  { sku: "BFW-005-BLK-OS", name: "Koi Snapback",           category: "Headwear",     collection: "BRUMA",    size: "OS", stock: 55, price: 34.99,  status: "in-stock", img: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&h=580&fit=crop&auto=format" },
-  { sku: "BFW-006-ONG-M",  name: "Sensei Gi Top",          category: "Martial Arts", collection: "TARCOLES", size: "M",  stock: 6,  price: 109.99, status: "low",      img: "https://images.unsplash.com/photo-1555597673-b21d5c935865?w=500&h=580&fit=crop&auto=format" },
-];
 
 function CollectionFilterBar({ active, onToggle, onClear, collections }: { active: Set<string>; onToggle: (c: string) => void; onClear: () => void; collections: string[] }) {
   return (
@@ -106,61 +97,52 @@ function SizeFilterBar({ active, onToggle, onClear }: { active: Set<string>; onT
 }
 
 export default function InventoryView() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { inventory: rawInventory, loadingInventory, error, fetchInventory } = useInventory();
   const [search, setSearch] = useState("");
   const [colFilter, setColFilter] = useState<Set<string>>(new Set());
   const [catFilter, setCatFilter] = useState<Set<string>>(new Set());
   const [sizeFilter, setSizeFilter] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const PER_PAGE = 8;
-  const router = useRouter();
-  const supabase = createClient();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const project = await getUserProject();
-        if (!project) {
-          console.error("No project found");
-          setLoading(false);
-          return;
-        }
+  React.useEffect(() => {
+    fetchInventory();
+  }, []);
 
-        // @ts-ignore - Supabase RPC types may be incomplete
-        const { data, error } = await supabase.rpc('list_inventory_items', {
-          p_incluir_stock_cero: true,
-          p_limit: 100,
-          p_offset: 0
-        });
+  const inventory: InventoryItem[] = useMemo(() => rawInventory.map((item: any) => ({
+    id: String(item.inventory_id),
+    sku: item.sku || 'SIN-SKU',
+    name: item.product_name || 'Desconocido',
+    category: item.category_name || 'Sin Categoría',
+    collection: item.collection || 'Sin colección',
+    size: item.size || item.variant_name || 'OS',
+    stock: item.current_stock || 0,
+    price: item.price || 0,
+    status: item.status,
+    img: mapInventoryImage(item.sku)
+  })), [rawInventory]);
 
-        if (error || !data || (data as any[]).length === 0) {
-          console.error("Error fetching inventory or no data:", error);
-          setInventory(FALLBACK_INVENTORY as any);
-        } else if (data) {
-          const formatted = (data as any[]).map((item: any) => ({
-            id: item.inventory_id,
-            sku: item.sku,
-            name: item.product_name || 'Desconocido',
-            category: item.category_name || 'Sin Categoría',
-            collection: 'BRUMA',
-            size: item.variant_name || 'OS',
-            stock: item.current_stock || 0,
-            price: item.price || 0,
-            status: item.current_stock > 0 ? (item.current_stock > 10 ? 'in-stock' : 'low') : 'out',
-            img: mapInventoryImage(item.sku)
-          }));
-          setInventory(formatted);
-        }
-      } catch (err) {
-        console.error("Failed to load inventory", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [showMovementModal, setShowMovementModal] = useState(false);
 
-    fetchData();
-  }, [supabase, router]);
+  const [movementSkuOptions, setMovementSkuOptions] = useState<{ id: number | null; idVariante: number; sku: string; productName: string; currentStock: number }[]>([]);
+
+  React.useEffect(() => {
+    if (!showMovementModal) return;
+    fetch('/api/inventory/items?limit=200&includeZeroStock=true&includeUnstocked=true')
+      .then((res) => res.json())
+      .then((result) => {
+        const items = result.data ?? [];
+        setMovementSkuOptions(
+          items.map((i: any) => ({
+            id: i.inventory_id,
+            idVariante: i.variant_id,
+            sku: i.sku,
+            productName: i.product_name,
+            currentStock: i.current_stock,
+          }))
+        );
+      });
+  }, [showMovementModal]);
 
   function toggleCol(c: string) { setColFilter(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; }); setPage(0); }
   function toggleCat(c: string) { setCatFilter(prev => { const next = new Set(prev); next.has(c) ? next.delete(c) : next.add(c); return next; }); setPage(0); }
@@ -223,7 +205,7 @@ export default function InventoryView() {
     {
       key: 'price',
       header: 'Price',
-      render: (item) => `$${item.price.toFixed(2)}`
+      render: (item) => formatColones(item.price)
     },
     {
       key: 'status',
@@ -232,7 +214,20 @@ export default function InventoryView() {
     }
   ];
 
-  if (loading) {
+  if (error) {
+    return (
+      <div className="w-full max-w-[1400px] mx-auto">
+        <EmptyState
+          title="Error cargando inventario"
+          description={error}
+          actionLabel="Reintentar"
+          onAction={fetchInventory}
+        />
+      </div>
+    );
+  }
+
+  if (loadingInventory) {
     return (
       <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto">
         <Skeleton className="w-full h-32 rounded-[2px]" />
@@ -260,9 +255,20 @@ export default function InventoryView() {
         label="Stock Control"
         title="Inventory"
         sub="Track every SKU across the pack. Filter, sort, and spot low stock before the jungle runs dry."
-        actionLabel="+ Add Product"
+        actionLabel="+ Log Movement"
         actionIcon={<Plus size={16} />}
+        onAction={() => setShowMovementModal(true)}
         bgImage="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=300&fit=crop&auto=format"
+      />
+
+      <StockMovementModal
+        open={showMovementModal}
+        onOpenChange={setShowMovementModal}
+        skuOptions={movementSkuOptions}
+        onSubmit={async (payload) => {
+          await logInventoryMovement(payload);
+          await fetchInventory();
+        }}
       />
 
       {/* Grid: Main Column Left (containing Search + Table), Filters Right */}
