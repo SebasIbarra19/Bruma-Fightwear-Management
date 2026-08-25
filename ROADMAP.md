@@ -273,14 +273,28 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       conectar, no antes.
       Verificado: `tsc` 0 errores, build de producción OK, las 13 rutas siguen.
 
-- [ ] **2.4 Dependencias sin usar** (secuela de 2.3) — al irse los componentes de
-      shadcn quedaron 8 paquetes que ya nadie importa: `embla-carousel-react`,
-      `react-day-picker`, `cmdk`, `vaul`, `sonner`, `input-otp`,
-      `react-resizable-panels` y `recharts`.
-      ⚠️ **`recharts` conviene dejarlo**: es el que se va a usar para graficar
-      cuando haya volumen de pedidos (ver 2.1/2.2). Los otros 7 se pueden
-      desinstalar; no bajan el bundle —el tree-shaking ya los excluía— pero sí
-      acortan `npm install` y la superficie de `npm audit`.
+- [x] **2.4 Dependencias sin usar — HECHA. 41 paquetes desinstalados.**
+      No eran 8 como se estimó: al medir contra los imports reales del código
+      vivo, de **58 dependencias solo 13 se importaban**. Quedaron **17**
+      (las 13 + `react-dom`, `recharts`, `dotenv`, `tailwindcss-animate`).
+      El grueso eran **25 paquetes `@radix-ui/*`**, primitivos de los componentes
+      shadcn borrados en 2.3. Sobreviven solo tres: `react-dialog`,
+      `react-select` y `react-slot`, que usan `Modal.tsx`, `button.tsx` y
+      `dialog.tsx`.
+      ⚠️ **Cuatro trampas que la búsqueda por imports no detecta**, y que se
+      verificaron una por una antes de desinstalar:
+      · `tailwindcss-animate` → `require()` en `tailwind.config.js:121`. Quitarlo
+        rompe el build de Tailwind.
+      · `dotenv` → `scripts/seed-db.ts:3`. Quitarlo rompe `npm run seed`.
+      · `react-dom` → lo exige React/Next; una app de App Router nunca lo importa
+        a mano.
+      · `recharts` → decisión de roadmap, se guarda para graficar con volumen.
+      `@fontsource/fraunces` y `@fontsource/geist` sí se fueron: Fraunces llega
+      por `next/font/google` y Geist por el paquete `geist` (`layout.tsx:3-4`).
+      No baja el bundle —el tree-shaking ya los excluía— pero `node_modules` pasa
+      a 428 carpetas y `npm audit --omit=dev` baja de ~10 avisos a 9.
+      Verificado: build de producción OK, `tsc` limpio, landing con sus 6
+      imágenes y consola sin errores de módulo.
 
 ---
 
