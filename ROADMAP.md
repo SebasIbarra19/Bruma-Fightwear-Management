@@ -300,11 +300,67 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ## 🟢 Fase 3 — Construcción nueva
 
-- [ ] **3.1 Auditoría y logs de sistema** — **no hay ni tabla ni un solo trigger**
-      (`grep "CREATE TRIGGER"` → 0). Lo único parecido es `inventario_movimiento`,
-      que se escribe **a mano** desde 2 SPs y desde un `.insert()` en
-      `catalog-adapter.ts:284`, y **no tiene campo de usuario**. No es un log de
-      sistema: es historial de stock. Diseñar la tabla primero.
+- [~] **3.1 Auditoría y logs de sistema — BASE DE DATOS HECHA (etapa 1).**
+      Migración `20260826000000`. Antes no había ni tabla ni un solo trigger.
+
+      **Diseño acordado con el usuario.** Cada fila lleva una `descripcion`
+      legible ("Factura FAC-2026-0002 pasó de pending a paid") **y** el diff
+      técnico en `datos_antes`/`datos_despues` (jsonb). Arriba se lee, abajo se
+      investiga.
+
+      **6 tablas auditadas** por trigger `AFTER`, elegidas por el criterio "si
+      esto cambia sin que lo sepas, tenés un problema": `pedido`,
+      `pedidodetalle`, `factura`, `productotallastock`, `producto`,
+      `productovariante`. **Fuera a propósito** las de referencia (`color`,
+      `tallabase`, `estado`, `metodopago`, `proveedor`, `cliente`…): casi no
+      cambian y solo enterrarían lo importante bajo ruido.
+      Marca `severidad='alerta'` en los casos que ameritan mirar: borrados,
+      cambio de total de un pedido y **stock que queda negativo** — el camino
+      exacto por el que el Rashguard llegó a −2 sin dejar rastro.
+
+      ⚠️ **`id_usuario` queda NULL en esta etapa, y no es un olvido.** El token
+      de servicio no trae claim `sub` (verificado decodificándolo: solo
+      `exp/iat/iss/ref/role`), así que `auth.uid()` dentro de un trigger es
+      SIEMPRE NULL. La identidad existe en `withAuth` y se pierde antes de
+      llegar a Postgres.
+
+      **Etapa 2 (pendiente):** hacer viajar el usuario. Cada SP que muta recibe
+      `p_id_usuario` y hace `set_config('app.user_id', …, true)` —local a la
+      transacción—; el helper `actor()` ya lo lee, así que **el esquema no
+      cambia**: solo se empiezan a llenar columnas que hoy quedan vacías.
+      Toca `withAuth` (hoy obtiene el usuario y lo descarta), los adaptadores y
+      ~15 stored procedures.
+
+      **Etapa 3 (pendiente):** eventos que un trigger no puede ver. Supabase sí
+      audita las sesiones, pero en el esquema `auth`, que PostgREST no expone
+      (`Only the following schemas are exposed: public, graphql_public`) — se
+      ven en el dashboard, no desde la app. Se registran con `registrar_evento`
+      desde la aplicación: inicio/cierre/fallo de sesión, y acciones destacadas
+      (PDF descargado, ajuste forzado, pedido cancelado). Estos **sí nacen
+      diciendo quién**, porque el login ya conoce al usuario.
+
+      **Etapa 4 (pendiente):** conectar la pantalla `/reporting` (Activity Log),
+      que hoy es placeholder, al SP `list_actividad` ya creado.
+
+      No duplica `inventario_movimiento`: ese es el libro mayor del stock con
+      significado de negocio (`motivo`, `referencia_pedido`); este es el registro
+      técnico de quién tocó qué. Una venta genera los dos, a propósito.
+
+- [x] **3.1.b Hueco de privilegios cerrado** (hallazgo de 3.1) — migración
+      `20260826010000`. Fase 0 dejó `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE
+      ON ROUTINES FROM PUBLIC`, pero **solo de `PUBLIC`**, y Supabase mantiene
+      sus propios defaults que CONCEDEN execute a `anon` y `authenticated`.
+      Resultado: **toda función realmente nueva nacía abierta.**
+      No se notó antes porque entre Fase 0 y hoy las migraciones solo usaron
+      `CREATE OR REPLACE` sobre funciones existentes, y eso **preserva** los
+      privilegios de la anterior (por eso `create_category` siguió cerrada).
+      Las primeras funciones nuevas fueron las de la bitácora, y con la anon key
+      se pudo **leer la bitácora completa y además insertar una fila falsa** —
+      lectura de movimientos de dinero y falsificación de auditoría.
+      Arreglado en los dos niveles: revoke explícito ahora, y los defaults
+      futuros nombran a `anon` y `authenticated` (para rutinas y para tablas).
+      ⚠️ **Regla para migraciones futuras:** no alcanza con confiar en los
+      defaults. Toda función nueva debe verificarse contra la anon key.
 - [x] **3.2 Imágenes de producto — HECHA** (adelantada desde Fase 1).
 
       **Lo que había:** la tabla `producto_imagen` y los SPs
