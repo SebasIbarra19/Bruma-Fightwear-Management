@@ -84,18 +84,22 @@ export class OrdersAdapter {
     return data?.[0] || null;
   }
 
+  /**
+   * El precio NO es un parámetro a propósito: lo resuelve el SP desde
+   * `productotallastock.precio` (migración 20260825010000). Aceptarlo permitía
+   * crear pedidos a cualquier monto desde el cliente. El SP también recalcula
+   * `pedido.total` a partir de los detalles, así que nadie tiene que sumarlo.
+   */
   async addOrderItem(params: {
     id_pedido: number;
     id_producto_talla: number;
     cantidad: number;
-    precio_unitario: number;
   }): Promise<number> {
     const supabase = this.client.getClient();
     const { data, error } = await (supabase as any).rpc('add_order_item', {
       p_id_pedido: params.id_pedido,
       p_id_producto_talla: params.id_producto_talla,
       p_cantidad: params.cantidad,
-      p_precio_unitario: params.precio_unitario,
     });
     if (error) throw new DatabaseError('Failed to add order item', { originalError: error });
     return data;

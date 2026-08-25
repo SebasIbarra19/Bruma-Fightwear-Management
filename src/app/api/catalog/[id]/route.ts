@@ -1,11 +1,16 @@
 import { NextRequest } from 'next/server';
-import { withErrorHandling } from '@/lib/api/middleware';
+import { withErrorHandling, withAuth } from '@/lib/api/middleware';
 import { ApiResponse } from '@/lib/api/response-builder';
 import { ValidationError, NotFoundError } from '@/lib/api/error-handler';
 import {
   getCatalogProductDetail,
   updateCatalogProductFull,
 } from '@/lib/database/adapters/catalog-adapter';
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 async function getCatalogProductHandler(request: NextRequest, { params }: { params: { id: string } }) {
   const id = parseInt(params.id, 10);
@@ -24,13 +29,13 @@ async function patchCatalogProductHandler(request: NextRequest, { params }: { pa
 }
 
 export async function GET(request: NextRequest, context: { params: { id: string } }) {
-  return withErrorHandling(async (req: NextRequest) => {
+  return withErrorHandling(withAuth(async (req: NextRequest) => {
     return getCatalogProductHandler(req, context);
-  })(request);
+  }))(request);
 }
 
 export async function PATCH(request: NextRequest, context: { params: { id: string } }) {
-  return withErrorHandling(async (req: NextRequest) => {
+  return withErrorHandling(withAuth(async (req: NextRequest) => {
     return patchCatalogProductHandler(req, context);
-  })(request);
+  }))(request);
 }

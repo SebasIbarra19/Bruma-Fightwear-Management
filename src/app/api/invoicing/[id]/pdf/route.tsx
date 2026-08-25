@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoicingAdapter } from "@/lib/database/adapters/invoicing-adapter";
 import { InvoicePdfDocument } from "@/components/invoicing/InvoicePdfDocument";
+import { requireAuth } from '@/lib/api/middleware';
 
 // Next cachea los GET de route handlers por defecto. Sin esto, editar una factura
 // y volver a descargar el PDF devuelve la versión vieja (verificado: el PDF seguía
@@ -10,6 +11,9 @@ import { InvoicePdfDocument } from "@/components/invoicing/InvoicePdfDocument";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   const id = parseInt(params.id, 10);
   if (isNaN(id)) {
     return NextResponse.json({ success: false, error: { message: "id debe ser numérico" } }, { status: 400 });

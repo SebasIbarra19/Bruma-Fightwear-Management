@@ -7,10 +7,15 @@
 // ================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withErrorHandling } from '@/lib/api/middleware';
+import { withErrorHandling, withAuth } from '@/lib/api/middleware';
 import { ApiResponse } from '@/lib/api/response-builder';
 import { CategoriesAdapter, CreateCategoryParams, UpdateCategoryParams } from '@/lib/database/adapters/categories-adapter';
 import { ValidationError } from '@/lib/api/error-handler';
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 async function getCategoriesHandler(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -64,6 +69,6 @@ async function updateCategoryHandler(request: NextRequest) {
   return ApiResponse.success(updatedCategory);
 }
 
-export const GET = withErrorHandling(getCategoriesHandler);
-export const POST = withErrorHandling(createCategoryHandler);
-export const PATCH = withErrorHandling(updateCategoryHandler);
+export const GET = withErrorHandling(withAuth(getCategoriesHandler));
+export const POST = withErrorHandling(withAuth(createCategoryHandler));
+export const PATCH = withErrorHandling(withAuth(updateCategoryHandler));

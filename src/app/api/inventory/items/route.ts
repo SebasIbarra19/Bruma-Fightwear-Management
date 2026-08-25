@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server'
-import { withErrorHandling } from '@/lib/api/middleware'
+import { withErrorHandling, withAuth } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { InventoryAdapter } from '@/lib/database/adapters/inventory-adapter'
 import { ValidationError } from '@/lib/api/error-handler'
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 async function getInventoryItemsHandler(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -41,4 +46,4 @@ async function getInventoryItemsHandler(request: NextRequest) {
   )
 }
 
-export const GET = withErrorHandling(getInventoryItemsHandler)
+export const GET = withErrorHandling(withAuth(getInventoryItemsHandler))

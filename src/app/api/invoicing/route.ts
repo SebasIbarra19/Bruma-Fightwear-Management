@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server';
-import { withErrorHandling } from '@/lib/api/middleware';
+import { withErrorHandling, withAuth } from '@/lib/api/middleware';
 import { ApiResponse } from '@/lib/api/response-builder';
 import { ValidationError } from '@/lib/api/error-handler';
 import { InvoicingAdapter } from '@/lib/database/adapters/invoicing-adapter';
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 async function getInvoicesHandler(request: NextRequest) {
   const idPedidoParam = request.nextUrl.searchParams.get('id_pedido');
@@ -24,5 +29,5 @@ async function postInvoiceHandler(request: NextRequest) {
   return ApiResponse.success(invoice);
 }
 
-export const GET = withErrorHandling(getInvoicesHandler);
-export const POST = withErrorHandling(postInvoiceHandler);
+export const GET = withErrorHandling(withAuth(getInvoicesHandler));
+export const POST = withErrorHandling(withAuth(postInvoiceHandler));

@@ -4,10 +4,15 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { withErrorHandling } from '@/lib/api/middleware'
+import { withErrorHandling, withAuth } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { ProductsAdapter } from '@/lib/database/adapters/products-adapter'
 import { ValidationError, NotFoundError } from '@/lib/api/error-handler'
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 /**
  * GET /api/products/[productId]
@@ -50,7 +55,7 @@ export async function GET(
   request: NextRequest,
   context: { params: { productId: string } }
 ) {
-  return withErrorHandling(async (req: NextRequest) => {
+  return withErrorHandling(withAuth(async (req: NextRequest) => {
     return getProductByIdHandler(req, context)
-  })(request)
+  }))(request)
 }

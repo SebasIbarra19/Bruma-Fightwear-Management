@@ -4,10 +4,15 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { withErrorHandling } from '@/lib/api/middleware'
+import { withErrorHandling, withAuth } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { InventoryAdapter } from '@/lib/database/adapters/inventory-adapter'
 import { ValidationError } from '@/lib/api/error-handler'
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 /**
  * POST /api/inventory/adjust
@@ -61,4 +66,4 @@ async function adjustInventoryHandler(request: NextRequest) {
 // EXPORTS CON MIDDLEWARE
 // ================================================
 
-export const POST = withErrorHandling(adjustInventoryHandler)
+export const POST = withErrorHandling(withAuth(adjustInventoryHandler))

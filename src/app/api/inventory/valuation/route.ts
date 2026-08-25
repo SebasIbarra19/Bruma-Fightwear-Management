@@ -5,8 +5,17 @@
 
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { requireAuth } from '@/lib/api/middleware';
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 export async function GET(request: NextRequest) {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   try {
     const searchParams = request.nextUrl.searchParams
     const projectId = searchParams.get('projectId')

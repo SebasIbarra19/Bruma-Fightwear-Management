@@ -19,7 +19,12 @@ parecían.
 
 ## 🔴 Fase 0 — Cerrar el acceso (antes de cualquier deploy)
 
-**Estado: NO INICIADA.** Bloquea todo deploy público.
+**Estado: CERRADA EN CÓDIGO Y BASE (2026-08-25).** Quedan dos acciones manuales
+del usuario: 0.2 (crear el admin y cerrar el registro) y 0.7.
+
+⚠️ **BLOQUEANTE ANTES DE USAR LA APP: hay 0 usuarios registrados.** Con la
+autenticación aplicada, hoy nadie puede entrar. Hay que crear el usuario admin
+**antes** de desactivar el registro, o el sistema queda inaccesible para todos.
 
 ### El problema, probado en vivo
 
@@ -53,29 +58,68 @@ Pero el repo es público, así que URL y anon key son obtenibles.
 
 ### Tareas
 
-- [ ] **0.1 Migración REVOKE/GRANT** — nueva en `supabase/migrations/`.
+- [x] **0.1 Migración REVOKE/GRANT** — nueva en `supabase/migrations/`.
       `REVOKE EXECUTE ON ALL ROUTINES IN SCHEMA public FROM PUBLIC, anon,
       authenticated;` + `GRANT ... TO service_role;` + `ALTER DEFAULT PRIVILEGES`
       para que las funciones nuevas nazcan cerradas + `NOTIFY pgrst, 'reload schema';`
       ⚠️ No omitir el GRANT a `service_role`: saltea RLS pero **no** privilegios de EXECUTE.
-- [ ] **0.2 Cerrar registro** — Dashboard Supabase → Authentication → Providers →
+- [ ] **0.2 Cerrar registro** ⚠️ CREAR EL ADMIN PRIMERO (hay 0 usuarios) — Dashboard Supabase → Authentication → Providers →
       Email → desactivar signup. Va junto con 0.1: si el registro queda abierto,
       cualquiera se registra y vuelve a entrar.
-- [ ] **0.3 Restaurar `src/middleware.ts`** — redirige a login en páginas, 401 en
+- [x] **0.3 Restaurar `src/middleware.ts`** — redirige a login en páginas, 401 en
       `/api/*`. **Borrar `middleware.ts` de la raíz**: verificado contra
       `.next/server/middleware-manifest.json` (`name: "src/middleware"`), el de la
       raíz nunca se compila.
-- [ ] **0.4 `withAuth` en las 23 rutas** — helper en `src/lib/api/middleware.ts`,
+- [x] **0.4 `withAuth` en las 24 rutas** (son 24, no 23) — helper en `src/lib/api/middleware.ts`,
       compuesto con el `withErrorHandling` existente. Usar `getUser()` (valida
       contra el servidor), no `getSession()` (solo decodifica cookie).
-- [ ] **0.5 Subir Next a ≥14.2.25** — CVE-2025-29927: bypass de middleware con el
+- [x] **0.5 Subir Next a ≥14.2.25** — quedó en 14.2.33. CVE-2025-29927: bypass de middleware con el
       header `x-middleware-subrequest`. Por esto el chequeo va **también** en cada
       route handler, no solo en el middleware.
-- [ ] **0.6 Precio y total derivados en la DB** — `api/orders/route.ts:52` calcula
+- [x] **0.6 Precio y total derivados en la DB** — `api/orders/route.ts:52` calcula
       el total con `precio_unitario` que manda el cliente. El precio canónico ya
       está en `productotallastock.precio`. No se arregla validando: se arregla
       dejando de aceptar el campo. Sumar `CHECK` cantidad > 0 y ≤100% en descuentos.
 - [ ] **0.7 Confirmar** que el proyecto viejo `qveesfkespwtaeypogaq` está borrado.
+
+
+### Verificado tras aplicar (2026-08-25)
+
+| Prueba | Antes | Ahora |
+|---|---|---|
+| `adjust_inventory` con anon key | `P0001` (se ejecutó) | `42501 permission denied` |
+| `get_order_analytics` con anon | devolvía ingresos | `42501` |
+| Funciones nuevas con anon | — | `PGRST202` (ni figuran) |
+| Rutas de API sin sesión | 200 con datos | **401** las 24 |
+| Páginas sin sesión | cargaban | **307** a `/auth/login?redirectTo=` |
+| Pedido con `precio_unitario: 1` (real ₡50) | total ₡2 | **total ₡100**, precio guardado 50 |
+
+Control inverso (que no se rompió nada): con sesión, las 8 páginas y las 8 rutas
+de datos responden 200; `service_role` ejecuta todo. Probado creando un usuario
+temporal, iniciando sesión real en el navegador y borrándolo después — la base
+quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
+
+### Hallazgos nuevos durante la ejecución
+
+- ⚠️ **Deriva de esquema: las migraciones NO reflejan la base real.**
+  `initial_schema.sql` declara `tipoproducto.codigo` y `nombre` sin límite, pero
+  el remoto tiene `varchar(10)` y `varchar(50)`. Un `npm run build` desde cero
+  produciría un esquema distinto al de producción. **Riesgo sistémico, conviene
+  atacarlo antes de crecer.**
+- **Bug latente derivado de lo anterior:** `create_category` deriva el `codigo`
+  del nombre (`lower(regexp_replace(...))`), así que cualquier categoría cuyo
+  slug supere 10 caracteres falla con un error crudo de Postgres. Probado:
+  "Prueba Revoke Test" → 500. Nombres realistas como "Guantes de Boxeo" (16)
+  también fallarían.
+- **`api/inventory/valuation/route.ts` está muerto:** usa el cliente anon en el
+  servidor y consulta una tabla `inventory` que no existe (la real es
+  `productotallastock`). Candidata para la limpieza de 2.3.
+- **`next/image` con `remotePatterns: hostname: '**'`** (`next.config.js`) es
+  justo el patrón comodín del aviso GHSA-9g9p-9gw9-jx7f (DoS del optimizador de
+  imágenes). Acotarlo a los hosts reales cuando se implemente 3.2.
+- Quedan 10 avisos de `npm audit` sin corrección disponible en la línea 14.x, casi
+  todos DoS. El bypass de middleware (CVE-2025-29927), que era el que motivaba
+  el upgrade, sí quedó cubierto.
 
 ### Decisiones tomadas
 

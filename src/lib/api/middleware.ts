@@ -46,6 +46,57 @@ export function withProjectValidation(
 }
 
 /**
+ * Exige sesión válida para ejecutar el handler.
+ *
+ * ¿Por qué acá si el middleware ya redirige? Porque el middleware de Next se pudo
+ * saltear entero con el header `x-middleware-subrequest` (CVE-2025-29927). La
+ * defensa no puede depender de una sola capa: `src/middleware.ts` resuelve la
+ * experiencia (redirigir a login) y esto resuelve la autorización.
+ *
+ * Usa `getUser()`, que valida el token contra el servidor de Auth, y no
+ * `getSession()`, que solo decodifica la cookie.
+ *
+ * Lanza `AuthenticationError` en vez de devolver una respuesta: `withErrorHandling`
+ * ya lo mapea a 401, así que el formato de error queda consistente con el resto.
+ * Componer siempre con él por fuera:
+ *
+ *     export const GET = withErrorHandling(withAuth(handler))
+ */
+async function getAuthenticatedUser() {
+  const { createRouteHandlerClient } = await import('@supabase/auth-helpers-nextjs')
+  const { cookies } = await import('next/headers')
+
+  const supabase = createRouteHandlerClient({ cookies })
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  return error ? null : user
+}
+
+export function withAuth<T extends Handler | HandlerWithParams<any>>(handler: T): T {
+  return (async (request: NextRequest, params?: any) => {
+    const user = await getAuthenticatedUser()
+    if (!user) throw new AuthenticationError('No autenticado')
+    return (handler as any)(request, params)
+  }) as unknown as T
+}
+
+/**
+ * Variante para las rutas que no usan `withErrorHandling` y traen su propio
+ * try/catch (el de ellas devuelve 500, así que lanzar acá daría el código
+ * equivocado). Se llama al inicio del handler:
+ *
+ *     const denied = await requireAuth();
+ *     if (denied) return denied;
+ */
+export async function requireAuth(): Promise<Response | null> {
+  const user = await getAuthenticatedUser()
+  return user ? null : ApiResponse.unauthorized('No autenticado')
+}
+
+/**
  * Middleware para manejo centralizado de errores
  */
 export function withErrorHandling(handler: Handler): Handler {

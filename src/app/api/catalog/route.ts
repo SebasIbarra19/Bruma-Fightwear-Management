@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api/middleware';
 import {
   listCatalogProducts,
   listCategoriesForFilter,
@@ -9,7 +10,15 @@ import {
   createCatalogProductWithStock,
 } from '@/lib/database/adapters/catalog-adapter';
 
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
+
 export async function GET() {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   try {
     const [products, categories, productLines, collections] = await Promise.all([
       listCatalogProducts(),
@@ -24,6 +33,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   try {
     const input = await req.json();
     const data = await createCatalogProductWithStock(input);
@@ -34,6 +46,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   try {
     const { id, is_active } = await req.json();
     await toggleCatalogProductStatus(id, is_active);
@@ -44,6 +59,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
   const id = req.nextUrl.searchParams.get('id') ?? '';
   try {
     await deleteCatalogProduct(Number(id));

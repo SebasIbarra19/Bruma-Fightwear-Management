@@ -4,10 +4,15 @@
 // ================================================
 
 import { NextRequest } from 'next/server'
-import { withErrorHandling, withProjectValidation } from '@/lib/api/middleware'
+import { withErrorHandling, withProjectValidation, withAuth } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { InventoryAdapter } from '@/lib/database/adapters/inventory-adapter'
 import { ValidationError } from '@/lib/api/error-handler'
+
+// Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
+// Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
+export const dynamic = 'force-dynamic';
+
 
 /**
  * GET /api/inventory/report
@@ -43,6 +48,4 @@ async function getInventoryReportHandler(request: NextRequest) {
 // EXPORTS CON MIDDLEWARE
 // ================================================
 
-export const GET = withErrorHandling(
-  withProjectValidation(getInventoryReportHandler)
-)
+export const GET = withErrorHandling(withAuth(withProjectValidation(getInventoryReportHandler)))
