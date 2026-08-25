@@ -324,27 +324,54 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       SIEMPRE NULL. La identidad existe en `withAuth` y se pierde antes de
       llegar a Postgres.
 
-      **Etapa 2 (pendiente):** hacer viajar el usuario. Cada SP que muta recibe
-      `p_id_usuario` y hace `set_config('app.user_id', …, true)` —local a la
-      transacción—; el helper `actor()` ya lo lee, así que **el esquema no
-      cambia**: solo se empiezan a llenar columnas que hoy quedan vacías.
-      Toca `withAuth` (hoy obtiene el usuario y lo descarta), los adaptadores y
-      ~15 stored procedures.
-
-      **Etapa 3 (pendiente):** eventos que un trigger no puede ver. Supabase sí
-      audita las sesiones, pero en el esquema `auth`, que PostgREST no expone
-      (`Only the following schemas are exposed: public, graphql_public`) — se
-      ven en el dashboard, no desde la app. Se registran con `registrar_evento`
-      desde la aplicación: inicio/cierre/fallo de sesión, y acciones destacadas
-      (PDF descargado, ajuste forzado, pedido cancelado). Estos **sí nacen
-      diciendo quién**, porque el login ya conoce al usuario.
-
-      **Etapa 4 (pendiente):** conectar la pantalla `/reporting` (Activity Log),
-      que hoy es placeholder, al SP `list_actividad` ya creado.
+      ❌ **Fuera de alcance por decisión del usuario (2026-08-25): inicio y
+      cierre de sesión.** Alta frecuencia y bajo valor — enterrarían lo que
+      importa. Si algún día hacen falta, Supabase ya los audita en el esquema
+      `auth` y se ven desde su dashboard.
 
       No duplica `inventario_movimiento`: ese es el libro mayor del stock con
       significado de negocio (`motivo`, `referencia_pedido`); este es el registro
       técnico de quién tocó qué. Una venta genera los dos, a propósito.
+
+  ### 3.1 — lo que falta, en orden de ejecución
+
+  Al quitar los eventos de sesión, las dos ramas pendientes quedaron
+  **independientes**: las acciones destacadas se registran desde la API, donde
+  el usuario ya se conoce, así que **no esperan al trabajo pesado de los SPs**.
+  Lo único compartido es el paso A.
+
+  - [ ] **3.1.A · Exponer el usuario en `withAuth`** — *prerequisito de todo lo
+        demás, ~20 líneas.* Hoy `withAuth` (`src/lib/api/middleware.ts:78`)
+        obtiene el usuario, comprueba que exista y **lo descarta**. Pasa a
+        entregárselo al handler. Cambio compatible: los handlers que no lo usen
+        siguen igual.
+
+  - [ ] **3.1.B · Acciones destacadas** — *barato y de alto valor; el SP
+        `registrar_evento` ya existe y ya acepta `p_id_usuario`/`p_email`.*
+        Solo se registran las que un trigger **estructuralmente no puede ver**:
+
+        | Acción | Por qué el trigger no la ve |
+        |---|---|
+        | Descarga del PDF de una factura | Es una lectura: no modifica ninguna fila |
+        | Ajuste de stock **forzado** (`p_forzar=true`) | El trigger ve el stock nuevo, no que se salteó la guarda de negativos |
+
+        Deliberadamente **no** se duplican acciones que los triggers ya cubren
+        (factura pagada, producto borrado, cambio de estado de pedido).
+        Estas filas **sí nacen diciendo quién**, sin depender de 3.1.C.
+
+  - [ ] **3.1.C · Que los triggers sepan quién** — *la parte cara.* Cada SP que
+        muta recibe `p_id_usuario` y hace `set_config('app.user_id', …, true)`
+        —local a la transacción—; el helper `actor()` ya lo lee, así que **el
+        esquema no cambia**: solo se llenan columnas hoy vacías. Toca los
+        adaptadores y ~15 stored procedures.
+        Mientras no esté, las filas de `categoria='datos'` quedan con usuario
+        NULL, que es exactamente lo que hoy pasa.
+
+  - [ ] **3.1.D · Conectar `/reporting`** — la pantalla Activity Log es un
+        placeholder; el SP `list_actividad` ya está hecho y paginado. Es
+        conectar, igual que fue el dashboard en 2.1.
+        Se puede hacer **en cuanto haya filas**, incluso antes de 3.1.C: la
+        bitácora ya es legible sin la columna de usuario.
 
 - [x] **3.1.b Hueco de privilegios cerrado** (hallazgo de 3.1) — migración
       `20260826010000`. Fase 0 dejó `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE
@@ -539,5 +566,28 @@ Completado antes de escribir este roadmap:
 - [x] **Rotación de la service role key** — verificado: la llave del historial de
       git ya no es la activa.
 
-**Pendiente inmediato:** commitear las migraciones `20260822010000` y los cambios
-de UI del prefijo de categoría.
+### 2026-08-25 — segunda tanda
+
+- [x] **Fase 0 completa.** Se cerró el acceso: la anon key ya no ejecuta ninguna
+      función. El usuario creó el admin **antes** de desactivar el registro (con
+      0 usuarios, el orden inverso habría dejado la app inaccesible) y confirmó
+      el borrado del proyecto viejo.
+- [x] **Fase 1 completa** — descuentos, imágenes y scrollbar.
+- [x] **Fase 2 completa** — dashboard y statistics conectados a cinco SPs que ya
+      existían y nadie llamaba; 74 archivos huérfanos borrados (41% del código) y
+      41 dependencias desinstaladas (de 58 a 17).
+- [x] **Regresión de imágenes, encontrada y corregida.** El middleware de Fase 0
+      interceptaba `public/`: el matcher excluía `public/`, exclusión inútil
+      porque Next sirve esa carpeta desde la raíz. Tres intentos hasta dar con
+      la solución (el segundo rompía solo las extensiones en mayúscula, el
+      tercero tumbaba el build). Lección: **el `matcher` no es una regex
+      completa** — se compila a `RegExp` de JS y no admite flags de grupo.
+- [x] **3.1 etapa 1** — bitácora con 6 triggers y descripciones legibles.
+- [x] **Hueco de privilegios cerrado** (ver 3.1.b) — se descubrió porque con la
+      anon key se podía leer la bitácora entera **e insertar filas falsas**.
+
+**Estado del tablero:** Fases 0, 1 y 2 cerradas. Fase 3 en curso: 3.1 en la
+etapa 1 de 4 (ver el desglose A–D), 3.2 hecha, el resto sin empezar.
+
+**Pendiente inmediato:** pushear (hay ~10 commits locales) y rotar nada más —
+la llave ya se rotó.
