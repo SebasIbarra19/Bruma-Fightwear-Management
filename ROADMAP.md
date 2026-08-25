@@ -63,9 +63,10 @@ Pero el repo es público, así que URL y anon key son obtenibles.
       authenticated;` + `GRANT ... TO service_role;` + `ALTER DEFAULT PRIVILEGES`
       para que las funciones nuevas nazcan cerradas + `NOTIFY pgrst, 'reload schema';`
       ⚠️ No omitir el GRANT a `service_role`: saltea RLS pero **no** privilegios de EXECUTE.
-- [ ] **0.2 Cerrar registro** ⚠️ CREAR EL ADMIN PRIMERO (hay 0 usuarios) — Dashboard Supabase → Authentication → Providers →
-      Email → desactivar signup. Va junto con 0.1: si el registro queda abierto,
-      cualquiera se registra y vuelve a entrar.
+- [x] **0.2 Cerrar registro** — HECHO por el usuario (2026-08-25): admin creado
+      **primero** y recién después desactivado el signup. El orden importaba: con
+      0 usuarios, cerrar el registro antes habría dejado la app inaccesible para
+      todos, incluido el dueño.
 - [x] **0.3 Restaurar `src/middleware.ts`** — redirige a login en páginas, 401 en
       `/api/*`. **Borrar `middleware.ts` de la raíz**: verificado contra
       `.next/server/middleware-manifest.json` (`name: "src/middleware"`), el de la
@@ -93,6 +94,8 @@ Pero el repo es público, así que URL y anon key son obtenibles.
 | Rutas de API sin sesión | 200 con datos | **401** las 24 |
 | Páginas sin sesión | cargaban | **307** a `/auth/login?redirectTo=` |
 | Pedido con `precio_unitario: 1` (real ₡50) | total ₡2 | **total ₡100**, precio guardado 50 |
+| Assets de `public/` (incluida extensión `.PNG`) | 307 al login | **200 `image/*`** |
+| Landing `/` sin sesión | 307 al login | **200** |
 
 Control inverso (que no se rompió nada): con sesión, las 8 páginas y las 8 rutas
 de datos responden 200; `service_role` ejecuta todo. Probado creando un usuario
@@ -138,6 +141,32 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 - Quedan 10 avisos de `npm audit` sin corrección disponible en la línea 14.x, casi
   todos DoS. El bypass de middleware (CVE-2025-29927), que era el que motivaba
   el upgrade, sí quedó cubierto.
+- [x] ⚠️ **REGRESIÓN introducida por 0.3 y corregida — todas las imágenes rotas.**
+  El `matcher` del middleware excluía `public/`, exclusión que **no hace nada**:
+  Next sirve `public/` desde la RAÍZ, así que `public/brand/x.png` se pide como
+  `/brand/x.png` y una URL con `/public/` no existe jamás. Consecuencia: el
+  middleware interceptaba cada imagen y respondía **307 hacia el login**;
+  `next/image` fallaba con *"received null"* porque recibía HTML esperando un PNG.
+  Rompía cinturones, cinta, y hasta los logos de login y register, que son
+  páginas públicas. Confirmado con petición real, no por lectura del patrón.
+  El primer intento de arreglo **volvió a fallar de otra forma**: excluir por
+  extensión en el matcher es sensible a mayúsculas, y el proyecto mezcla
+  `Nogi-set-model-01.PNG` con `Nogi-set-model-02.png` — quedó rota justo la
+  tarjeta "Ritual de Combate" del landing. El segundo intento (`(?i:...)`) tumbó
+  el build entero: el matcher se compila a un `RegExp` de JavaScript, que **no**
+  admite flags de grupo inline.
+  **Solución final:** la exclusión vive dentro de la función (`STATIC_ASSET`,
+  `src/middleware.ts`), donde el flag `i` sí funciona. Lección: el `matcher` no es
+  una regex completa; lo que necesite lógica real va adentro.
+- [x] **Landing público.** `/` redirigía al login. Se corrigió tras notar que el
+  grupo `(landing)` es marketing de verdad —`HomeHero`, `RaicesSection`,
+  `PhilosophySection`, `EmblemSection`, `ContactSection`—, no una antesala del
+  login: un visitante sin cuenta tiene que poder verlo. Se separó `AUTH_PATHS`
+  (a quien ya tiene sesión se lo manda al panel) de `PUBLIC_PATHS` (abierto a
+  todos, con o sin sesión). Comparación por igualdad exacta: un `startsWith`
+  con `'/'` habría abierto la aplicación entera.
+- **`/favicon.svg` no existe** aunque `layout.tsx:23-25` lo declara → 404 y la
+  pestaña muestra el ícono genérico. Cosmético y preexistente.
 
 ### Decisiones tomadas
 
