@@ -245,24 +245,42 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
   hay **2 pedidos y los dos son del 13 de agosto**. Cualquier serie temporal es un
   punto. Un gráfico vacío se ve peor que no tenerlo. Revisitar cuando haya
   volumen real — el paquete ya está pago.
-- [ ] **2.3 Limpieza de huérfanos** — **medición actualizada 2026-08-25** (la
-      anterior contaba solo primer nivel): recorriendo el grafo desde los puntos
-      de entrada reales (`page.tsx`, `layout.tsx`, `route.ts`, `middleware.ts`),
-      hay **75 archivos inalcanzables · 8 532 líneas · 43% del código**. Sin
-      importador directo son 59; la diferencia son cadenas donde A importa B pero
-      nadie importa A.
-      **48 de los 75 son `src/components/ui/`** — shadcn/ui instalado entero y
-      usado a medias (`chart-container.tsx` 775, `sidebar.tsx` 727, `menubar`,
-      `context-menu`, `dropdown-menu`, `carousel`, `select`…).
-      Los otros 27 son residuo de la reestructuración: `lib/supabase.ts`,
-      `lib/supabase/service.ts`, `components/auth/ProtectedRoute.tsx` (lo
-      reemplazó el middleware), `components/layout/VerticalNav.tsx` y
-      `GlobalHeader.tsx` (los reemplazó BeltNavigation), 8 hooks, `lib/theme/*`
-      (5), `types/*` (2), `utils/*` (3).
-      ⚠️ **No borrar a ciegas.** Tres grupos distintos: (1) lo reemplazado, que no
-      vuelve — borrar ya; (2) librería sin usar, borrar con criterio por si se
-      quiere después; (3) lo que espera su turno. `useDashboardData` estaba en la
-      lista y **ya salió** al conectarse el dashboard.
+- [x] **2.3 Limpieza de huérfanos — HECHA. 74 archivos borrados, cero muertos.**
+
+      | | Antes | Después |
+      |---|---|---|
+      | Archivos `.ts/.tsx` | 180 | **106** |
+      | Líneas | 20 354 | **11 857** |
+      | Inalcanzables | 74 (41%) | **0** |
+
+      **Método:** recorrido del grafo desde los puntos de entrada reales
+      (`page.tsx`, `layout.tsx`, `route.ts`, `middleware.ts`), no "sin importador
+      directo" — la diferencia son cadenas donde A importa B pero nadie importa A
+      (59 contra 74). Script en el scratchpad de la sesión.
+      **48 eran `src/components/ui/`**: la app usaba **9 de 57**. El sistema de
+      diseño real es BRUMA (`FloraGlass`, `TacticalTable`, `Fauna`, `EmptyState`,
+      `button`, `dialog`, `skeleton`, `layout`, `utils`), no shadcn — que estaba
+      instalado entero y sin usar.
+      Se verificó antes de borrar que solo 1 de los 48 tenía diseño propio
+      (`typography.tsx`), y resultó obsoleto igual: usaba `useTheme` con estilos
+      inline, el enfoque viejo que reemplazaron las clases Tailwind.
+      Los otros 26 eran residuo de la reestructuración: `lib/supabase.ts` (el
+      cliente anon que Fase 0 dejó sin sentido), `ProtectedRoute` (lo reemplazó el
+      middleware), `VerticalNav`/`GlobalHeader` (los reemplazó BeltNavigation),
+      8 hooks, `lib/theme/*`, `utils/*`.
+      ⚠️ **`useDashboardData` NO se borró**: estaba en la lista de muertos y salió
+      sola al conectarse el dashboard en 2.1. Por eso la limpieza fue después de
+      conectar, no antes.
+      Verificado: `tsc` 0 errores, build de producción OK, las 13 rutas siguen.
+
+- [ ] **2.4 Dependencias sin usar** (secuela de 2.3) — al irse los componentes de
+      shadcn quedaron 8 paquetes que ya nadie importa: `embla-carousel-react`,
+      `react-day-picker`, `cmdk`, `vaul`, `sonner`, `input-otp`,
+      `react-resizable-panels` y `recharts`.
+      ⚠️ **`recharts` conviene dejarlo**: es el que se va a usar para graficar
+      cuando haya volumen de pedidos (ver 2.1/2.2). Los otros 7 se pueden
+      desinstalar; no bajan el bundle —el tree-shaking ya los excluía— pero sí
+      acortan `npm install` y la superficie de `npm audit`.
 
 ---
 
