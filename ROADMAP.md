@@ -101,19 +101,37 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ### Hallazgos nuevos durante la ejecución
 
-- ⚠️ **Deriva de esquema: las migraciones NO reflejan la base real.**
-  `initial_schema.sql` declara `tipoproducto.codigo` y `nombre` sin límite, pero
-  el remoto tiene `varchar(10)` y `varchar(50)`. Un `npm run build` desde cero
-  produciría un esquema distinto al de producción. **Riesgo sistémico, conviene
-  atacarlo antes de crecer.**
-- **Bug latente derivado de lo anterior:** `create_category` deriva el `codigo`
-  del nombre (`lower(regexp_replace(...))`), así que cualquier categoría cuyo
-  slug supere 10 caracteres falla con un error crudo de Postgres. Probado:
-  "Prueba Revoke Test" → 500. Nombres realistas como "Guantes de Boxeo" (16)
-  también fallarían.
-- **`api/inventory/valuation/route.ts` está muerto:** usa el cliente anon en el
-  servidor y consulta una tabla `inventory` que no existe (la real es
-  `productotallastock`). Candidata para la limpieza de 2.3.
+- [x] ⚠️ **Deriva de esquema — RESUELTA, y era peor de lo detectado.** No eran 2
+  columnas sino **29**: `initial_schema.sql` omite el límite de `varchar` en
+  *todas* las columnas de texto, mientras la base real sí los tiene
+  (`cliente.telefono(20)`, `producto.codigo(20)`, `color.hex_code(7)`,
+  `productovariante.codigo_variante(30)`, …). Un despliegue desde cero habría
+  producido un esquema distinto al de producción en 29 puntos, y el bug solo
+  aparecería al promover.
+  Migración `20260825030000` codifica los 29 límites. Es no-op contra la base
+  actual (verificado: `tipoproducto` sigue en 10/50/3); su valor es que de acá en
+  más las migraciones describen la realidad.
+  ⚠️ `supabase db pull` **no sirve en esta máquina**: necesita Docker para la base
+  sombra. La comparación se hizo contra el spec OpenAPI de PostgREST. Eso cubre
+  tablas y columnas, **no** funciones ni índices — si algún día hay Docker, vale
+  correr un `db pull` real para cerrar el resto.
+- [x] **Bug de `create_category` — RESUELTO.** Derivaba el `codigo` slugificando
+  el nombre contra una columna `varchar(10)`: "Guantes de Boxeo" → 500.
+  Los datos mostraron que el slug nunca fue la convención — las 6 categorías
+  reales tienen `codigo` = prefijo (RSH, PSL, TSH…); solo las 2 creadas
+  automáticamente traían slug, y `coleprueba` medía exactamente 10, a un carácter
+  de fallar. Migración `20260825020000`: **`codigo` es el prefijo**. Nunca pasa de
+  3 caracteres, así que el desborde desaparece por construcción en vez de por un
+  truncado que dejaría colisiones silenciosas.
+  Beneficio lateral: `codigo` ya era `UNIQUE`, así que ahora esa restricción
+  garantiza lo que hacía falta — **dos categorías no pueden compartir prefijo**, y
+  por lo tanto no comparten serie de SKU. Verificado: "Guantes de Boxeo" → GDB,
+  "Gorros" tras "Gorras" da un mensaje accionable en vez de un 500 crudo, y con
+  prefijo explícito GRO entra bien.
+- [x] **`api/inventory/valuation/route.ts` — ELIMINADA.** Usaba el cliente anon en
+  el servidor y consultaba una tabla `inventory` inexistente. Se fue con ella
+  `useInventoryData.ts` (405 líneas), su único llamador, también huérfano: la
+  página real usa `useInventory`.
 - **`next/image` con `remotePatterns: hostname: '**'`** (`next.config.js`) es
   justo el patrón comodín del aviso GHSA-9g9p-9gw9-jx7f (DoS del optimizador de
   imágenes). Acotarlo a los hosts reales cuando se implemente 3.2.
@@ -170,7 +188,9 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       **conectar**, no de construir. Graficar con `recharts` — ya instalado
       (`^3.9.2`) y sin usar en ningún lado.
 - [ ] **2.2 Statistics** — mismos SPs. Sin OLAP (ver descartados).
-- [ ] **2.3 Limpieza de huérfanos** — **54 archivos, 7 564 líneas = 39% del código**
+- [ ] **2.3 Limpieza de huérfanos** — quedan ~52 (se fueron `valuation/route.ts` y
+      `useInventoryData.ts` en la pasada de Fase 0). Medición original:
+      **54 archivos, 7 564 líneas = 39% del código**
       (19 550 totales), verificado por importadores. Los gordos:
       `chart-container.tsx` (774, librería de charts en SVG hecha a mano),
       `sidebar.tsx` (726), `useInventoryData.ts` (405), `useCategoriesData.ts` (394),
