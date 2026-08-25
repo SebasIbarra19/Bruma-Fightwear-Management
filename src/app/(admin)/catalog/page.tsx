@@ -4,7 +4,8 @@ import React, { useState, useMemo } from "react";
 import {
   Plus,
   Search,
-  Eye
+  Eye,
+  ImageIcon
 } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/figma-shared/Common";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
@@ -136,11 +137,23 @@ export default function CatalogPage() {
                 className="group cursor-pointer hover:border-ember/40 transition-colors"
               >
                 <div className="relative overflow-hidden bg-obsidian/80" style={{ aspectRatio: "3/3.5" }}>
-                  <ImageWithFallback
-                    src="/imports/image-3.png"
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  {/* Antes: src="/imports/image-3.png" hardcodeado para TODOS los
+                      productos, y ese archivo no existe en public/ — cada tarjeta
+                      rendereaba el SVG de imagen rota. Ahora viene de
+                      producto_imagen (imagen principal), y si el producto no tiene
+                      ninguna se muestra un vacío honesto en vez de un error. */}
+                  {product.image_url ? (
+                    <ImageWithFallback
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-bone/25">
+                      <ImageIcon size={28} strokeWidth={1.5} />
+                      <span className="font-geist text-[9px] uppercase tracking-widest">Sin imagen</span>
+                    </div>
+                  )}
                   <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
 
                   <div className="absolute top-3 left-3">

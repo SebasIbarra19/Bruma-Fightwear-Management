@@ -127,7 +127,20 @@ export default function InvoicingPage() {
   };
 
   const updateDiscountField = (idx: number, field: "descripcion" | "tipo" | "valor", value: string) => {
-    setEditDescuentos((prev) => prev.map((d, i) => (i === idx ? { ...d, [field]: value } : d)));
+    setEditDescuentos((prev) =>
+      prev.map((d, i) => {
+        if (i !== idx) return d;
+        // Cambiar de tipo LIMPIA el valor: un mismo número significa cosas
+        // distintas en cada modo y el arrastre pasaba desapercibido. De ₡ a %,
+        // 5000 se volvía 5000% (visible, molesto). Al revés —20% tipeado que
+        // queda como ₡20— no lo detecta nada, ni la UI ni la base: se factura
+        // mal y en silencio. Por eso se limpia en ambos sentidos.
+        if (field === "tipo" && value !== d.tipo) {
+          return { ...d, tipo: value as DiscountKind, valor: "" };
+        }
+        return { ...d, [field]: value };
+      })
+    );
   };
 
   const addDiscount = () => {
@@ -403,7 +416,13 @@ export default function InvoicingPage() {
                         ))}
                       </div>
                       <input
-                        type="number" min="0" step="0.01" value={d.valor} placeholder={d.tipo === "porcentaje" ? "10" : "0.00"}
+                        type="number" min="0" step="0.01"
+                        // Techo de 100 solo en porcentaje. Es la misma regla que
+                        // el CHECK `factura_descuento_porcentaje_max` de la base
+                        // (migración 20260825010000): la UI avisa temprano, la
+                        // base garantiza que no entre por ningún otro camino.
+                        max={d.tipo === "porcentaje" ? 100 : undefined}
+                        value={d.valor} placeholder={d.tipo === "porcentaje" ? "10" : "0.00"}
                         onChange={(e) => updateDiscountField(idx, "valor", e.target.value)}
                         className="col-span-2 px-2 py-1.5 bg-bone/5 border border-bone/20 rounded-[2px] text-bone text-xs font-geist focus:outline-none focus:border-ember"
                       />

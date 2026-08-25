@@ -80,7 +80,7 @@ Pero el repo es público, así que URL y anon key son obtenibles.
       el total con `precio_unitario` que manda el cliente. El precio canónico ya
       está en `productotallastock.precio`. No se arregla validando: se arregla
       dejando de aceptar el campo. Sumar `CHECK` cantidad > 0 y ≤100% en descuentos.
-- [ ] **0.7 Confirmar** que el proyecto viejo `qveesfkespwtaeypogaq` está borrado.
+- [x] **0.7** Proyecto viejo `qveesfkespwtaeypogaq` **borrado** (confirmado por el usuario, 2026-08-25).
 
 
 ### Verificado tras aplicar (2026-08-25)
@@ -160,19 +160,28 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ## 🟠 Fase 1 — Bugs visibles
 
-- [ ] **1.1 Descuentos: cambiar tipo no reinicia el valor** —
+- [x] **1.1 Descuentos: cambiar tipo no reinicia el valor** — RESUELTO. Ahora
+      `updateDiscountField` limpia `valor` al cambiar de tipo, y el input toma
+      `max=100` en modo porcentaje (misma regla que el CHECK
+      `factura_descuento_porcentaje_max` de la base). Contexto original:
       `invoicing/page.tsx:129-131`. `updateDiscountField` es un setter genérico:
       al setear `tipo` deja `valor` intacto. Falta además techo de 100%: el
       `<input>` (L405) no tiene `max`, la API (`invoicing/[id]/route.ts:33-43`)
       valida `>= 0` sin tope, y el `CHECK` de `factura_descuento` tampoco.
       ⚠️ El caso peligroso es **el inverso**: un `20` tipeado como porcentaje que
       queda como `fijo` se guarda como ₡20 y nada lo detecta.
-- [ ] **1.2 Imágenes rotas** — `catalog/page.tsx:139` renderiza
+- [x] **1.2 Imágenes — RESUELTO con la feature completa** (se adelantó 3.2 por
+      decisión del usuario). Ver "Imágenes de producto" más abajo. Contexto
+      original: `catalog/page.tsx:139` renderiza
       `/imports/image-3.png` **hardcodeado para todos los productos**, y ese
       archivo no existe: hoy cada tarjeta muestra el SVG de error. En inventario,
       `mapInventoryImage` (`inventory/page.tsx:28`) devuelve ese mismo path y un
       guard en L171 lo excluye, así que siempre se ve el texto "IMG".
-- [ ] **1.3 Barra de scroll de `TacticalTable`** — `TacticalTable.tsx:54,90` es el
+- [x] **1.3 Barra de scroll de `TacticalTable`** — RESUELTO: se aplicó
+      `tactical-scrollbar` (ya existía en `globals.css:133`, con la paleta Canopy)
+      a los dos scrolls de `TacticalTable.tsx:54,90`. `table.tsx` y `tabs.tsx`
+      resultaron **huérfanos** (0 importadores), así que la clase `scrollbar-hide`
+      indefinida es irrelevante — se van con 2.3. Contexto original: `TacticalTable.tsx:54,90` es el
       único scroll horizontal vivo sin estilar (usado en inventory y movements).
       Ya existen `scrollbar-none` y `tactical-scrollbar` en `globals.css:111,133`.
       Aparte: `tabs.tsx:35` usa `scrollbar-hide`, clase que **no está definida**.
@@ -205,10 +214,39 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       que se escribe **a mano** desde 2 SPs y desde un `.insert()` en
       `catalog-adapter.ts:284`, y **no tiene campo de usuario**. No es un log de
       sistema: es historial de stock. Diseñar la tabla primero.
-- [ ] **3.2 Imágenes de producto con CDN** — la tabla `producto_imagen` y los SPs
-      `add_product_image`/`get_product_images` **ya existen** (initial_schema L81,
-      L242, L1244) y no los usa nadie. Falta: bucket de Supabase Storage (no existe
-      ninguno), campo en los modales, y reemplazar el path hardcodeado.
+- [x] **3.2 Imágenes de producto — HECHA** (adelantada desde Fase 1).
+
+      **Lo que había:** la tabla `producto_imagen` y los SPs
+      `add_product_image`/`get_product_images` existían desde el esquema inicial y
+      **nadie los llamaba**. Mientras tanto la UI mostraba
+      `/imports/image-3.png` hardcodeado para todos los productos — residuo de una
+      exportación de Figma, y el archivo no existe en `public/`. Resultado: cada
+      tarjeta del catálogo rendereaba el SVG de imagen rota, y en inventario
+      alguien parcheó el síntoma con un guard que comparaba contra esa misma ruta
+      (`item.img !== "/imports/image-3.png"`) en vez de quitarla.
+
+      **Lo construido:**
+      - Bucket `product-images` en Supabase Storage: público, 5 MB, solo
+        JPEG/PNG/WebP/AVIF. Público porque las imágenes de producto no son
+        sensibles y una URL directa se cachea sin firmar nada.
+      - Migración `20260825040000`: `list_products` devuelve `imagen_url` (la
+        principal, mismo orden que `get_product_images`) para no pedir imágenes
+        producto por producto al pintar la grilla; y `delete_product_image`, que
+        devuelve la url para poder borrar también el archivo del bucket.
+      - Migración `20260825050000`: `set_primary_product_image`, para cambiar la
+        portada sin re-subir el archivo (la alternativa duplicaba la imagen).
+      - `/api/catalog/[id]/images` con GET/POST/PATCH/DELETE. **La subida pasa por
+        el servidor a propósito**: el bucket solo acepta escrituras con
+        `service_role`, así que la anon key del bundle no puede llenarlo
+        (verificado: da 400).
+      - `ProductImages.tsx` en el modal de edición: subir, ver, marcar portada,
+        borrar. Solo al editar, no al crear — `add_product_image` necesita un
+        `id_producto` que no existe hasta guardar.
+
+      **Decisión de alcance:** inventario NO muestra la imagen todavía.
+      `list_inventory_items` tendría que devolverla, y ese SP ya se redefinió 5
+      veces y tiene un `UNION ALL` — tocarlo por una miniatura de 12px no vale el
+      riesgo. Ahí quedó el placeholder honesto en vez de la ruta fantasma.
 - [ ] **3.3 Perfil de usuario** — depende de auth aplicada (Fase 0).
 - [ ] **3.4 Responsive** — el nav mobile ya se hizo. Falta el resto de pantallas.
 - [ ] **3.5 SSR** — las 8 páginas admin son `"use client"`. Convertirlas es trabajo

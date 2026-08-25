@@ -11,6 +11,7 @@ import {
   InlineAddChip,
   SubmitBar,
 } from "@/components/figma-shared/Modal";
+import { ProductImages } from "./ProductImages";
 
 const SIZE_OPTIONS = ["OS", "XS", "S", "M", "L", "XL", "XXL"];
 
@@ -168,6 +169,11 @@ export function EditProductModal({
           <div>
             <FieldLabel>Product Code (SKU)</FieldLabel>
             <TextInput value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+          </div>
+
+          <div>
+            <FieldLabel>Images</FieldLabel>
+            <ProductImages productId={detail.id} />
           </div>
 
           <div>

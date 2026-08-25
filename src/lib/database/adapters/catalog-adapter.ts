@@ -19,6 +19,8 @@ export type CatalogProduct = {
   collection_name: string | null;
   variante_count: number;
   stock_total: number;
+  /** URL pública de la imagen principal, o null si el producto no tiene ninguna. */
+  image_url: string | null;
 };
 
 export type CategoryForFilter = { id: number; name: string };
@@ -47,6 +49,7 @@ export async function listCatalogProducts(): Promise<CatalogProduct[]> {
     collection_name: p.coleccion_nombre,
     variante_count: Number(p.variante_count || 0),
     stock_total: Number(p.stock_total || 0),
+    image_url: p.imagen_url ?? null,
   }));
 }
 
@@ -119,6 +122,7 @@ export async function createCatalogProduct(input: CreateCatalogProductInput): Pr
     collection_name: null, // Debería obtenerse si es necesario
     variante_count: 0,
     stock_total: 0,
+    image_url: null, // Recién creado: todavía no puede tener imágenes.
   };
 }
 
@@ -438,4 +442,95 @@ export async function updateCatalogProductFull(
   const detail = await getCatalogProductDetail(id);
   if (!detail) throw new Error('Product not found after update');
   return detail;
+}
+
+// ── Imágenes de producto ──────────────────────────────────────────────────────
+
+/** Bucket público creado para esto. Las imágenes de producto no son sensibles y
+ *  una URL directa se cachea en el CDN sin firmar nada. */
+const IMAGE_BUCKET = 'product-images';
+
+export type ProductImage = {
+  id: number;
+  url: string;
+  is_primary: boolean;
+  order: number;
+};
+
+export async function listProductImages(productId: number): Promise<ProductImage[]> {
+  const { data, error } = await (db() as any).rpc('get_product_images', {
+    p_id_producto: productId,
+  });
+  if (error) throw error;
+  return (data ?? []).map((i: any) => ({
+    id: i.id_imagen,
+    url: i.url,
+    is_primary: i.es_principal,
+    order: i.orden,
+  }));
+}
+
+/**
+ * Sube el archivo al bucket y registra la fila. El orden importa: si el insert
+ * fallara después de subir quedaría un archivo huérfano, así que se borra el
+ * objeto antes de propagar el error.
+ *
+ * La subida va por el servidor con service_role a propósito — el bucket no
+ * acepta escrituras con la anon key, así que un tercero no puede llenarlo.
+ */
+export async function uploadProductImage(
+  productId: number,
+  file: File,
+  isPrimary: boolean
+): Promise<ProductImage> {
+  const supabase = db();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  // El nombre lo genera el servidor: el del archivo original puede traer rutas,
+  // acentos o colisionar entre productos.
+  const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (upErr) throw upErr;
+
+  const { data: pub } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+
+  const { data, error } = await (db() as any).rpc('add_product_image', {
+    p_id_producto: productId,
+    p_url: pub.publicUrl,
+    p_es_principal: isPrimary,
+    p_orden: 0,
+  });
+
+  if (error) {
+    await supabase.storage.from(IMAGE_BUCKET).remove([path]);
+    throw error;
+  }
+
+  return { id: data as number, url: pub.publicUrl, is_primary: isPrimary, order: 0 };
+}
+
+/** Borra la fila y además el objeto del bucket, para no dejar basura pagando espacio. */
+export async function deleteProductImage(imageId: number): Promise<void> {
+  const { data: url, error } = await (db() as any).rpc('delete_product_image', {
+    p_id_imagen: imageId,
+  });
+  if (error) throw error;
+
+  const marker = `/${IMAGE_BUCKET}/`;
+  const idx = String(url).indexOf(marker);
+  if (idx !== -1) {
+    const path = String(url).slice(idx + marker.length);
+    // Si esto falla el registro ya se borró: la imagen desaparece de la UI y solo
+    // queda un archivo suelto. No se propaga para no fallar la acción del usuario.
+    await db().storage.from(IMAGE_BUCKET).remove([path]);
+  }
+}
+
+export async function setPrimaryProductImage(imageId: number): Promise<void> {
+  const { error } = await (db() as any).rpc('set_primary_product_image', {
+    p_id_imagen: imageId,
+  });
+  if (error) throw error;
 }

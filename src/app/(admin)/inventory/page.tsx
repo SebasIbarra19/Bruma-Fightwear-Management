@@ -22,12 +22,16 @@ interface InventoryItem {
   stock: number;
   price: number;
   status: string;
-  img: string;
+  /** null mientras `list_inventory_items` no devuelva la imagen del producto. */
+  img: string | null;
 }
 
-const mapInventoryImage = (sku: string) => {
-  return "/imports/image-3.png"; // Default fallback
-};
+// Nota: `list_inventory_items` todavía no devuelve la imagen del producto. Las
+// imágenes viven en `producto_imagen` y hoy se muestran en Catálogo, que es donde
+// se administran (ver migración 20260825040000). Acá se deja el placeholder
+// explícito en vez del `/imports/image-3.png` inexistente que había antes — ese
+// path obligaba a un guard que comparaba contra la ruta rota para no mostrar una
+// imagen fallida.
 
 function CollectionFilterBar({ active, onToggle, onClear, collections }: { active: Set<string>; onToggle: (c: string) => void; onClear: () => void; collections: string[] }) {
   return (
@@ -119,7 +123,7 @@ export default function InventoryView() {
     stock: item.current_stock || 0,
     price: item.price || 0,
     status: item.status,
-    img: mapInventoryImage(item.sku)
+    img: null as string | null
   })), [rawInventory]);
 
   const [showMovementModal, setShowMovementModal] = useState(false);
@@ -169,7 +173,7 @@ export default function InventoryView() {
       render: (item) => (
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-[2px] overflow-hidden bg-obsidian border border-bone/10 flex-shrink-0 flex items-center justify-center">
-            {item.img && item.img !== "/imports/image-3.png" ? (
+            {item.img ? (
                <ImageWithFallback src={item.img} alt={item.name} className="w-full h-full object-cover" />
             ) : (
                <span className="font-geist text-[8px] uppercase tracking-widest text-bone/30">IMG</span>

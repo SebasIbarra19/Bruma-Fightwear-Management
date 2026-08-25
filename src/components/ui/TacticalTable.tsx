@@ -51,7 +51,7 @@ export function TacticalTable<T>({
   if (loading) {
     return (
       <div className="bg-obsidian/40 border border-bone/10 rounded-[4px] overflow-hidden backdrop-blur-md">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto tactical-scrollbar">
           <table className="w-full">
             <thead>
               <tr className="border-b border-bone/10">
@@ -87,7 +87,7 @@ export function TacticalTable<T>({
 
   return (
     <div className="bg-obsidian/40 border border-bone/10 rounded-[4px] overflow-hidden backdrop-blur-md">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto tactical-scrollbar">
         <table className="w-full">
           <thead>
             <tr className="border-b border-bone/10">
