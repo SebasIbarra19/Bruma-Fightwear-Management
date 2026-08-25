@@ -30,7 +30,8 @@ interface UseCatalogDataResult {
     stockQty: number;
     sizes: string[];
   }) => Promise<void>;
-  createCategory: (nombre: string) => Promise<{ id: number; name: string }>;
+  /** `prefijo` opcional: gobierna el código de los productos de la categoría. */
+  createCategory: (nombre: string, prefijo?: string) => Promise<{ id: number; name: string }>;
   createCollection: (nombre: string) => Promise<{ id: number; name: string }>;
 }
 
@@ -91,11 +92,11 @@ export function useCatalogData(): UseCatalogDataResult {
     refetch();
   };
 
-  const createCategory: UseCatalogDataResult['createCategory'] = async (nombre) => {
+  const createCategory: UseCatalogDataResult['createCategory'] = async (nombre, prefijo) => {
     const res = await fetch('/api/catalog/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre }),
+      body: JSON.stringify({ nombre, prefijo }),
     });
     const result = await res.json();
     if (result.error) throw new Error(result.error);

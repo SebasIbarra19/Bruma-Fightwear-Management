@@ -40,7 +40,7 @@ interface EditProductModalProps {
   productId: number | null;
   categories: NamedOption[];
   collections: NamedOption[];
-  onCreateCategory: (name: string) => Promise<NamedOption>;
+  onCreateCategory: (name: string, prefijo?: string) => Promise<NamedOption>;
   onCreateCollection: (name: string) => Promise<NamedOption>;
   onSaved: () => void;
 }
@@ -201,8 +201,10 @@ export function EditProductModal({
             />
             <InlineAddChip
               placeholder="New category name..."
-              onAdd={async (name) => {
-                const created = await onCreateCategory(name);
+              extraPlaceholder="SKU"
+              extraMaxLength={3}
+              onAdd={async (name, prefijo) => {
+                const created = await onCreateCategory(name, prefijo);
                 setLocalCategories((prev) => [...prev, created]);
                 setCategoryId(created.id);
               }}

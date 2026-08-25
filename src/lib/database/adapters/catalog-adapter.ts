@@ -133,12 +133,24 @@ export async function listCollectionsForFilter(): Promise<CollectionForFilter[]>
   return (data ?? []).map((c: any) => ({ id: c.id_coleccion, name: c.nombre }));
 }
 
-export async function createCatalogCategory(nombre: string): Promise<{ id: number; name: string }> {
-  const { data, error } = await (db() as any).rpc('create_category', { p_nombre: nombre });
+/**
+ * `prefijo` es opcional: gobierna el código autogenerado de los productos de
+ * esta categoría (<prefijo>-BRU-###, ver `next_product_code`). Si no se pasa,
+ * la base lo deriva del nombre — ver `category_prefix`, migración
+ * 20260822010000.
+ */
+export async function createCatalogCategory(
+  nombre: string,
+  prefijo?: string
+): Promise<{ id: number; name: string; prefix: string | null }> {
+  const { data, error } = await (db() as any).rpc('create_category', {
+    p_nombre: nombre,
+    p_prefijo: prefijo?.trim() || null,
+  });
   if (error) throw error;
   const c = data?.[0];
   if (!c) throw new Error('Failed to create category');
-  return { id: c.id_tipo, name: c.nombre };
+  return { id: c.id_tipo, name: c.nombre, prefix: c.prefijo ?? null };
 }
 
 export async function createCatalogCollection(nombre: string): Promise<CollectionForFilter> {

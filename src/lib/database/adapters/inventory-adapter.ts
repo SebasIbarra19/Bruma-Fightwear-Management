@@ -109,9 +109,11 @@ export class InventoryAdapter {
       inventory_id: item.id_producto_talla,
       product_id: item.id_producto,
       variant_id: item.id_variante,
-      sku: item.id_producto_talla
-        ? (item.variante_codigo || item.producto_codigo) + (item.talla_codigo ? `-${item.talla_codigo}` : '')
-        : `${item.producto_codigo} — No size set`,
+      // El SKU lo compone `build_sku` en la base (migración 20260822000000):
+      // una sola definición para Inventory, Movements y Orders. Antes se
+      // concatenaba acá, y la rama de respaldo descartaba `variante_codigo`,
+      // con lo que dos variantes del mismo producto rendían el mismo string.
+      sku: item.sku,
       product_name: item.producto_nombre,
       product_sku: item.producto_codigo,
       category_name: item.categoria_nombre,

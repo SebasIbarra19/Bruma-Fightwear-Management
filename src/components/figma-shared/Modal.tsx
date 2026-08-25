@@ -198,20 +198,31 @@ export function ChipPicker({
 
 export function InlineAddChip({
   placeholder,
+  extraPlaceholder,
+  extraMaxLength,
   onAdd,
 }: {
   placeholder: string;
-  onAdd: (value: string) => Promise<void>;
+  /**
+   * Si se pasa, aparece un segundo input angosto y opcional. Lo usa la creación
+   * de categorías para el prefijo del SKU; las colecciones no lo pasan y el
+   * control queda igual que antes.
+   */
+  extraPlaceholder?: string;
+  extraMaxLength?: number;
+  onAdd: (value: string, extra?: string) => Promise<void>;
 }) {
   const [value, setValue] = useState("");
+  const [extra, setExtra] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleAdd = async () => {
     if (!value.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await onAdd(value.trim());
+      await onAdd(value.trim(), extra.trim() || undefined);
       setValue("");
+      setExtra("");
     } finally {
       setSubmitting(false);
     }
@@ -225,6 +236,15 @@ export function InlineAddChip({
         placeholder={placeholder}
         className="flex-1 px-3 py-1.5 bg-bone/5 border border-bone/20 rounded-[2px] text-bone placeholder:text-bone/30 text-xs font-geist focus:outline-none focus:border-ember"
       />
+      {extraPlaceholder && (
+        <input
+          value={extra}
+          onChange={(e) => setExtra(e.target.value.toUpperCase())}
+          placeholder={extraPlaceholder}
+          maxLength={extraMaxLength}
+          className="w-20 px-3 py-1.5 bg-bone/5 border border-bone/20 rounded-[2px] text-bone placeholder:text-bone/30 text-xs font-geist uppercase tracking-widest text-center focus:outline-none focus:border-ember"
+        />
+      )}
       <button
         type="button"
         onClick={handleAdd}

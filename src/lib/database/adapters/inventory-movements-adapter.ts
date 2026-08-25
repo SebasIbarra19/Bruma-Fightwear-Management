@@ -42,7 +42,10 @@ export async function listInventoryMovements(): Promise<MovementWithInventory[]>
     quantity: m.cantidad,
     notes: m.motivo,
     created_at: m.fecha,
-    sku: m.variante_codigo || m.producto_codigo,
+    // Ver `build_sku` (migración 20260822000000). Antes se armaba acá SIN la
+    // talla, así que el mismo ítem se mostraba distinto en Movements que en
+    // Inventory. `size` se sigue exponiendo aparte para quien lo necesite.
+    sku: m.sku,
     size: m.talla_codigo || null,
     product_name: m.producto_nombre
   }));
@@ -57,7 +60,7 @@ export async function listInventoryItems(): Promise<InventoryItemForFilter[]> {
   
   return (data ?? []).map((i: any) => ({
     id: i.id_producto_talla,
-    sku: i.variante_codigo || i.producto_codigo,
+    sku: i.sku,
     product_name: i.producto_nombre
   }));
 }
