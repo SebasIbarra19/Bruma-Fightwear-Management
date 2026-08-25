@@ -219,20 +219,50 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ## 🟡 Fase 2 — Conectar lo que ya existe
 
-- [ ] **2.1 Dashboard** — el backend ya existe y nadie lo llama:
-      `get_dashboard_stats` y `get_order_analytics` (rango de fechas, ingresos,
-      promedio) funcionan; `useDashboardData.ts` + `/api/dashboard` + adapter
-      también. La página es un cartel de "Próximamente" hardcodeado. Es trabajo de
-      **conectar**, no de construir. Graficar con `recharts` — ya instalado
-      (`^3.9.2`) y sin usar en ningún lado.
-- [ ] **2.2 Statistics** — mismos SPs. Sin OLAP (ver descartados).
-- [ ] **2.3 Limpieza de huérfanos** — quedan ~52 (se fueron `valuation/route.ts` y
-      `useInventoryData.ts` en la pasada de Fase 0). Medición original:
-      **54 archivos, 7 564 líneas = 39% del código**
-      (19 550 totales), verificado por importadores. Los gordos:
-      `chart-container.tsx` (774, librería de charts en SVG hecha a mano),
-      `sidebar.tsx` (726), `useInventoryData.ts` (405), `useCategoriesData.ts` (394),
-      `carousel.tsx` (241, con `embla` instalado).
+- [x] **2.1 Dashboard — HECHO.** Los 4 KPI y el panel de reposición salen de tres
+      SPs que ya existían y nadie invocaba: `get_dashboard_stats`,
+      `get_order_analytics` y `list_inventory_items`. Cero SQL nuevo — fue
+      conectar, tal como decía el diagnóstico. `getDashboardPayload()` dispara las
+      tres en paralelo, así el cliente hace un solo viaje.
+      **Decisiones:** (a) se quitó el KPI de *clientes* — daba 0 con 2 pedidos
+      existentes, porque desde `20260813000000` los pedidos guardan el contacto en
+      línea y la tabla `cliente` quedó sin uso: un dato correcto que se lee como
+      roto; (b) "Stock Burn Rate" se reemplazó por **Necesita reposición**, que sí
+      es accionable, y de paso deja a la vista el stock en −2 del Rashguard;
+      (c) "Monthly Goal" sigue en Próximamente porque las metas no existen como
+      concepto en el esquema — ahí no falta conectar, falta definir.
+- [x] **2.2 Statistics — HECHO.** Lo que la separa del dashboard es el **selector
+      de período**: `get_order_analytics` siempre aceptó `p_start_date`/`p_end_date`
+      y nadie los usaba. Presets 7/30/90 días y Todo. Segundo SP rescatado:
+      `get_inventory_valuation` (valor total, productos, agotados, bajo stock),
+      muerto desde que se borró la ruta `valuation` que lo llamaba mal.
+      La valuación **no** se filtra por rango a propósito: es una foto de hoy.
+      `/api/statistics` valida formato de fecha y que `start <= end`; el hook
+      cancela respuestas viejas para que cambiar de preset rápido no deje pintado
+      un rango anterior que llegó tarde.
+      Verificado: 30 días → 2 pedidos ₡200; 7 días → 0 con aviso de rango vacío.
+- **Sin gráficos, en ambas.** `recharts` sigue instalado y sin usar, a propósito:
+  hay **2 pedidos y los dos son del 13 de agosto**. Cualquier serie temporal es un
+  punto. Un gráfico vacío se ve peor que no tenerlo. Revisitar cuando haya
+  volumen real — el paquete ya está pago.
+- [ ] **2.3 Limpieza de huérfanos** — **medición actualizada 2026-08-25** (la
+      anterior contaba solo primer nivel): recorriendo el grafo desde los puntos
+      de entrada reales (`page.tsx`, `layout.tsx`, `route.ts`, `middleware.ts`),
+      hay **75 archivos inalcanzables · 8 532 líneas · 43% del código**. Sin
+      importador directo son 59; la diferencia son cadenas donde A importa B pero
+      nadie importa A.
+      **48 de los 75 son `src/components/ui/`** — shadcn/ui instalado entero y
+      usado a medias (`chart-container.tsx` 775, `sidebar.tsx` 727, `menubar`,
+      `context-menu`, `dropdown-menu`, `carousel`, `select`…).
+      Los otros 27 son residuo de la reestructuración: `lib/supabase.ts`,
+      `lib/supabase/service.ts`, `components/auth/ProtectedRoute.tsx` (lo
+      reemplazó el middleware), `components/layout/VerticalNav.tsx` y
+      `GlobalHeader.tsx` (los reemplazó BeltNavigation), 8 hooks, `lib/theme/*`
+      (5), `types/*` (2), `utils/*` (3).
+      ⚠️ **No borrar a ciegas.** Tres grupos distintos: (1) lo reemplazado, que no
+      vuelve — borrar ya; (2) librería sin usar, borrar con criterio por si se
+      quiere después; (3) lo que espera su turno. `useDashboardData` estaba en la
+      lista y **ya salió** al conectarse el dashboard.
 
 ---
 

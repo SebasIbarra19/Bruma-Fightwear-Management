@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 
 async function getDashboardHandler(_request: NextRequest) {
   const adapter = new DashboardAdapter();
-  const stats = await adapter.getDashboardStats();
-  return ApiResponse.success(stats);
+  const payload = await adapter.getDashboardPayload();
+  return ApiResponse.success(payload);
 }
 
 export const GET = withErrorHandling(withAuth(getDashboardHandler));
