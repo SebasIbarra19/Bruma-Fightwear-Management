@@ -300,7 +300,7 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ## 🟢 Fase 3 — Construcción nueva
 
-- [~] **3.1 Auditoría y logs de sistema — BASE DE DATOS HECHA (etapa 1).**
+- [x] **3.1 Auditoría y logs de sistema — COMPLETA (A, B, C y D).**
       Migración `20260826000000`. Antes no había ni tabla ni un solo trigger.
 
       **Diseño acordado con el usuario.** Cada fila lleva una `descripcion`
@@ -370,13 +370,24 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
         falla no hubo descarga), y el ajuste **solo** cuando `forzar` viene
         activo (uno normal ya lo cubre el trigger).
 
-  - [ ] **3.1.C · Que los triggers sepan quién** — *la parte cara.* Cada SP que
-        muta recibe `p_id_usuario` y hace `set_config('app.user_id', …, true)`
-        —local a la transacción—; el helper `actor()` ya lo lee, así que **el
-        esquema no cambia**: solo se llenan columnas hoy vacías. Toca los
-        adaptadores y ~15 stored procedures.
-        Mientras no esté, las filas de `categoria='datos'` quedan con usuario
-        NULL, que es exactamente lo que hoy pasa.
+  - [x] **3.1.C · Que los triggers sepan quién — HECHO, y salió barato.**
+        Se planificó como "la parte cara": instrumentar ~15 stored procedures
+        con `p_id_usuario` + `set_config`. **No hizo falta ninguno.**
+        Antes de escribir eso se probó una vía más simple y funcionó:
+        **PostgREST publica las cabeceras HTTP en `request.headers`**, así que
+        basta con que la app mande `x-bruma-user`. Verificado con una sonda
+        temporal antes de comprometerse (`probe_headers`, ya eliminada):
+        `sin cabecera → null` / `con cabecera → el uuid`.
+        Migración `20260827000000`: `actor()` lee la cabecera, con fallback al
+        GUC `app.user_id` para cambios sin HTTP (migraciones, scripts, consola).
+        Lado app: se intercepta `fetch` en el cliente de servicio
+        (`src/lib/api/client.ts`) — **un solo lugar** atribuye TODAS las
+        escrituras, las de hoy y las que se escriban mañana, sin cambiar firmas
+        ni depender de que alguien recuerde pasar el usuario.
+        Se agregó `email_de()` y los triggers ahora desnormalizan el email: si
+        el usuario se borra, su historial no queda como una lista de uuids.
+        Un cambio hecho fuera de la app sigue quedando **sin autor**, a
+        propósito: eso es información, no una carencia.
 
   - [x] **3.1.D · Conectar `/reporting` — HECHO.** Cadena nueva:
         `actividad-adapter.ts` → `/api/actividad` → `useActividadData` → la
@@ -602,6 +613,21 @@ Completado antes de escribir este roadmap:
 - [x] **3.1 etapa 1** — bitácora con 6 triggers y descripciones legibles.
 - [x] **Hueco de privilegios cerrado** (ver 3.1.b) — se descubrió porque con la
       anon key se podía leer la bitácora entera **e insertar filas falsas**.
+
+- [x] **3.1 completa (A, B, C y D).** La parte que se estimó cara —que los
+      triggers supieran quién— salió barata: PostgREST expone las cabeceras HTTP
+      en `request.headers`, así que interceptar `fetch` en un solo archivo
+      atribuye todas las escrituras. Cero stored procedures tocados de los ~15
+      previstos.
+- [x] ⚠️ **Regresión propia encontrada y corregida: el PDF de facturas.** Al
+      desinstalar dependencias en 2.4 se fueron `@fontsource/fraunces` y
+      `@fontsource/geist`, que `InvoicePdfDocument.tsx` carga **por ruta de
+      archivo** (`path.join(node_modules, '@fontsource', …)`), no por `import`.
+      La detección por imports no puede verlo. Reinstalados; el PDF vuelve a
+      generar (185 KB verificados).
+      Lección para la próxima limpieza de dependencias: además de plugins de
+      config y peer deps, revisar **referencias por ruta a archivos dentro de
+      `node_modules`**.
 
 **Estado del tablero:** Fases 0, 1 y 2 cerradas. Fase 3 en curso: 3.1 en la
 etapa 1 de 4 (ver el desglose A–D), 3.2 hecha, el resto sin empezar.

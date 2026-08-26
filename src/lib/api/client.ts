@@ -30,6 +30,40 @@ export class SupabaseServiceClient {
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      global: {
+        /**
+         * Adjunta `x-bruma-user` a cada llamada para que los triggers sepan
+         * quién hizo el cambio.
+         *
+         * ¿Por qué acá y no en cada stored procedure? Porque PostgREST publica
+         * las cabeceras HTTP en la variable de sesión `request.headers`, y
+         * `actor()` (migración 20260827000000) las lee. Interceptando `fetch`
+         * en un solo lugar quedan atribuidas TODAS las escrituras —las de hoy y
+         * las que se escriban mañana— sin cambiar ninguna firma ni depender de
+         * que alguien se acuerde de pasar el usuario.
+         *
+         * El token de servicio no lleva identidad (sus claims son
+         * exp/iat/iss/ref/role, sin `sub`), así que sin esta cabecera
+         * `auth.uid()` dentro de un trigger es NULL siempre.
+         */
+        fetch: async (input, init) => {
+          const headers = new Headers(init?.headers)
+
+          try {
+            // Memoizado por request, así que preguntarlo en cada llamada a la
+            // base no agrega viajes al servidor de Auth.
+            const { getSessionUser } = await import('@/lib/api/middleware')
+            const user = await getSessionUser()
+            if (user?.id) headers.set('x-bruma-user', user.id)
+          } catch {
+            // Fuera de una petición HTTP —un script, el build— no hay cookies
+            // que leer. La operación sigue; la bitácora la registra sin autor,
+            // que es exactamente lo que corresponde: no vino de la aplicación.
+          }
+
+          return fetch(input, { ...init, headers })
+        }
       }
     })
 
