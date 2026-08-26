@@ -3,6 +3,7 @@
 // Funciones middleware reutilizables
 // ================================================
 
+import { cache } from 'react'
 import { NextRequest } from 'next/server'
 import { ApiResponse } from './response-builder'
 import { 
@@ -62,7 +63,20 @@ export function withProjectValidation(
  *
  *     export const GET = withErrorHandling(withAuth(handler))
  */
-async function getAuthenticatedUser() {
+/**
+ * Usuario de la sesión actual, o `null`.
+ *
+ * Envuelto en `cache()` de React, que memoiza **por request** en el App Router.
+ * Eso es lo que permite que `withAuth` valide y que además el handler pida el
+ * usuario para registrarlo en la bitácora, sin pagar dos veces el viaje al
+ * servidor de Auth: la segunda llamada devuelve el resultado ya resuelto.
+ *
+ * Se expone en vez de pasar el usuario como argumento porque las 24 rutas ya
+ * están escritas contra las firmas actuales —unas reciben `params`, otras no—,
+ * y cambiar la forma de composición obligaría a tocarlas todas para que solo
+ * dos lo aprovechen.
+ */
+export const getSessionUser = cache(async () => {
   const { createRouteHandlerClient } = await import('@supabase/auth-helpers-nextjs')
   const { cookies } = await import('next/headers')
 
@@ -73,11 +87,11 @@ async function getAuthenticatedUser() {
   } = await supabase.auth.getUser()
 
   return error ? null : user
-}
+})
 
 export function withAuth<T extends Handler | HandlerWithParams<any>>(handler: T): T {
   return (async (request: NextRequest, params?: any) => {
-    const user = await getAuthenticatedUser()
+    const user = await getSessionUser()
     if (!user) throw new AuthenticationError('No autenticado')
     return (handler as any)(request, params)
   }) as unknown as T
@@ -92,7 +106,7 @@ export function withAuth<T extends Handler | HandlerWithParams<any>>(handler: T)
  *     if (denied) return denied;
  */
 export async function requireAuth(): Promise<Response | null> {
-  const user = await getAuthenticatedUser()
+  const user = await getSessionUser()
   return user ? null : ApiResponse.unauthorized('No autenticado')
 }
 

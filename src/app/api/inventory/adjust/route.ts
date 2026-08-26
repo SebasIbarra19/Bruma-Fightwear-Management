@@ -8,6 +8,7 @@ import { withErrorHandling, withAuth } from '@/lib/api/middleware'
 import { ApiResponse } from '@/lib/api/response-builder'
 import { InventoryAdapter } from '@/lib/database/adapters/inventory-adapter'
 import { ValidationError } from '@/lib/api/error-handler'
+import { registrarAccion } from '@/lib/api/actividad'
 
 // Autenticada: lee cookies de sesion, asi que nunca puede prerenderizarse.
 // Sin esto Next intenta hacerlo en el build y escupe 'Dynamic server usage'.
@@ -58,6 +59,19 @@ async function adjustInventoryHandler(request: NextRequest) {
     tipoMovimiento,
     forzar
   )
+
+  // El trigger de `productotallastock` ve el stock nuevo, pero no puede saber
+  // que se pidió saltear la guarda de negativos. Ese "cómo" es justo el camino
+  // por el que el Rashguard llegó a -2 sin dejar rastro de quién lo autorizó.
+  // Solo se registra cuando `forzar` viene activo: un ajuste normal ya queda
+  // cubierto por el trigger y duplicarlo sería ruido.
+  if (forzar) {
+    await registrarAccion(
+      `Ajuste FORZADO de stock (fila ${inventoryId}): ` +
+        `${result.stock_anterior} → ${result.stock_nuevo} — motivo: ${reason}`,
+      'alerta'
+    )
+  }
 
   return ApiResponse.success(result)
 }

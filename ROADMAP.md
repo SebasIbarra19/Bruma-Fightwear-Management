@@ -340,14 +340,20 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
   el usuario ya se conoce, así que **no esperan al trabajo pesado de los SPs**.
   Lo único compartido es el paso A.
 
-  - [ ] **3.1.A · Exponer el usuario en `withAuth`** — *prerequisito de todo lo
-        demás, ~20 líneas.* Hoy `withAuth` (`src/lib/api/middleware.ts:78`)
-        obtiene el usuario, comprueba que exista y **lo descarta**. Pasa a
-        entregárselo al handler. Cambio compatible: los handlers que no lo usen
-        siguen igual.
+  - [x] **3.1.A · Exponer el usuario en `withAuth` — HECHO.** Antes lo obtenía,
+        comprobaba que existiera y **lo descartaba**. Ahora se exporta
+        `getSessionUser` (`src/lib/api/middleware.ts`), envuelto en `cache()` de
+        React, que memoiza **por request** en el App Router.
+        Esa envoltura es la decisión de diseño: permite que `withAuth` valide y
+        que además el handler pida el usuario para la bitácora **sin pagar dos
+        veces** el viaje al servidor de Auth. Se prefirió a pasar el usuario como
+        argumento porque las 24 rutas ya están escritas contra las firmas
+        actuales —unas reciben `params`, otras no— y cambiar la composición
+        obligaría a tocarlas todas para que solo dos lo aprovechen.
 
-  - [ ] **3.1.B · Acciones destacadas** — *barato y de alto valor; el SP
-        `registrar_evento` ya existe y ya acepta `p_id_usuario`/`p_email`.*
+  - [x] **3.1.B · Acciones destacadas — HECHO.** Helper `registrarAccion`
+        (`src/lib/api/actividad.ts`); el SP `registrar_evento` ya aceptaba
+        `p_id_usuario`/`p_email`.
         Solo se registran las que un trigger **estructuralmente no puede ver**:
 
         | Acción | Por qué el trigger no la ve |
@@ -358,6 +364,11 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
         Deliberadamente **no** se duplican acciones que los triggers ya cubren
         (factura pagada, producto borrado, cambio de estado de pedido).
         Estas filas **sí nacen diciendo quién**, sin depender de 3.1.C.
+        `registrarAccion` nunca lanza: una bitácora que tumba la operación que
+        registra es peor que una bitácora incompleta. Si falla, queda en el log
+        del servidor. El PDF se registra **después** de renderizar (si el render
+        falla no hubo descarga), y el ajuste **solo** cuando `forzar` viene
+        activo (uno normal ya lo cubre el trigger).
 
   - [ ] **3.1.C · Que los triggers sepan quién** — *la parte cara.* Cada SP que
         muta recibe `p_id_usuario` y hace `set_config('app.user_id', …, true)`
@@ -367,11 +378,17 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
         Mientras no esté, las filas de `categoria='datos'` quedan con usuario
         NULL, que es exactamente lo que hoy pasa.
 
-  - [ ] **3.1.D · Conectar `/reporting`** — la pantalla Activity Log es un
-        placeholder; el SP `list_actividad` ya está hecho y paginado. Es
-        conectar, igual que fue el dashboard en 2.1.
-        Se puede hacer **en cuanto haya filas**, incluso antes de 3.1.C: la
-        bitácora ya es legible sin la columna de usuario.
+  - [x] **3.1.D · Conectar `/reporting` — HECHO.** Cadena nueva:
+        `actividad-adapter.ts` → `/api/actividad` → `useActividadData` → la
+        pantalla. Filtros Todo / Datos / Acciones, ícono según el origen
+        (trigger o aplicación) y las filas de `severidad='alerta'` resaltadas en
+        ember, que es donde está el valor: stock negativo y ajustes forzados
+        saltan a la vista.
+        El hook descarta respuestas fuera de orden con un flag `vigente`, el
+        mismo patrón que Statistics: cambiar de filtro rápido no deja pintado el
+        resultado del filtro anterior.
+        Se hizo antes que 3.1.C a propósito: la bitácora ya es legible sin la
+        columna de usuario.
 
 - [x] **3.1.b Hueco de privilegios cerrado** (hallazgo de 3.1) — migración
       `20260826010000`. Fase 0 dejó `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE
