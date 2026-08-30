@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { User } from 'lucide-react'
 import {
   BELTS,
   DEFAULT_BELT,
@@ -67,7 +69,23 @@ export function BeltNavigation() {
           <BeltImage belt={belt} geometry={geometry} priority />
           <NavigationItems activeIndex={activeIndex} geometry={geometry} />
 
-          <div className="absolute bottom-5 left-0 z-30 flex w-full justify-center">
+          {/* El acceso al perfil va acá y NO como un noveno ítem de `NAV`:
+              los slots se reparten sobre el panel del cinturón, así que sumar
+              uno cambiaría la geometría de las ocho secciones reales. Además
+              el perfil no es una sección del sistema, es la cuenta. */}
+          <div className="absolute bottom-5 left-0 z-30 flex w-full flex-col items-center gap-3">
+            <Link
+              href="/profile"
+              aria-label="Perfil"
+              aria-current={pathname === '/profile' ? 'page' : undefined}
+              className={`flex items-center gap-2 rounded-[2px] border px-3 py-1.5 font-geist text-[10px] font-bold uppercase tracking-widest outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ember ${
+                pathname === '/profile'
+                  ? 'border-ember/40 bg-ember/10 text-ember'
+                  : 'border-bone/20 bg-obsidian/70 text-bone/70 hover:border-bone/50 hover:text-bone'
+              }`}
+            >
+              <User size={12} /> Perfil
+            </Link>
             <BeltPicker value={belt} onChange={selectBelt} />
           </div>
         </div>

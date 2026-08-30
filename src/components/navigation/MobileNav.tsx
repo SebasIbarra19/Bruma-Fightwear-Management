@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { User } from 'lucide-react'
 import { NAV, type BeltId } from './belts'
 import { BeltPicker } from './BeltPicker'
 
@@ -28,7 +29,18 @@ export function MobileNav({ belt, onBeltChange, activeIndex }: MobileNavProps) {
         <span className="font-fraunces text-sm font-bold tracking-wide text-bone">
           BRUMA
         </span>
-        <BeltPicker value={belt} onChange={onBeltChange} />
+        <div className="flex items-center gap-3">
+          <BeltPicker value={belt} onChange={onBeltChange} />
+          {/* Mismo criterio que en el rail: el perfil es la cuenta, no una
+              sección, así que va en la fila de identidad y no entre los pills. */}
+          <Link
+            href="/profile"
+            aria-label="Perfil"
+            className="flex items-center justify-center rounded-[2px] border border-bone/20 p-1.5 text-bone/70 outline-none transition-colors hover:border-bone/50 hover:text-bone focus-visible:ring-1 focus-visible:ring-ember"
+          >
+            <User size={14} />
+          </Link>
+        </div>
       </div>
 
       <nav

@@ -449,7 +449,44 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       `list_inventory_items` tendría que devolverla, y ese SP ya se redefinió 5
       veces y tiene un `UNION ALL` — tocarlo por una miniatura de 12px no vale el
       riesgo. Ahí quedó el placeholder honesto en vez de la ruta fantasma.
-- [ ] **3.3 Perfil de usuario** — depende de auth aplicada (Fase 0).
+- [x] **3.3 Perfil de usuario — HECHO.** Migración `20260830000000`.
+      Cierra además un bloqueo que estaba en FINDINGS.md desde el rediseño del
+      nav: **la aplicación no tenía ninguna forma de cerrar sesión.**
+      `AuthContext` exponía `signOut` desde siempre y ningún componente lo
+      llamaba. Ahora el botón vive en el perfil.
+      **Tabla `perfil_usuario`**: 1-a-1 opcional con `auth.users` —la PK ES el
+      uuid de la cuenta, así que no puede haber dos perfiles para el mismo
+      usuario ni un perfil huérfano—, con `ON DELETE CASCADE`. Campos: nombre,
+      teléfono, avatar, puesto y preferencia de cinturón.
+      `get_perfil` usa `LEFT JOIN`, así que **siempre devuelve una fila**
+      aunque el usuario nunca haya guardado nada: la pantalla no tiene que
+      distinguir "sin perfil" de "usuario inexistente". `upsert_perfil` conserva
+      lo que no se manda (`COALESCE`), en vez de borrarlo.
+      ⚠️ **`puesto` es descriptivo, NO un rol de permisos.** Se documentó en la
+      columna: hoy no hay control de acceso por rol, y una columna que parezca
+      autorización sin serlo invita a confiar en algo que no protege nada.
+      **El id nunca viene del cliente**, sale de la sesión (`getSessionUser`).
+      Aceptarlo por body dejaría que cualquiera leyera o pisara el perfil ajeno
+      cambiando un uuid; que hoy haya una sola cuenta es circunstancia, no
+      garantía.
+      Avatar en bucket `avatars` (público, 2 MB, solo imágenes), mismo patrón
+      que `uploadProductImage`: nombre generado por el servidor, carpeta por
+      usuario, y borrado del archivo si el upsert falla.
+      El acceso va junto al `BeltPicker` y **no como noveno ítem de `NAV`**: los
+      slots se reparten sobre el panel del cinturón, así que sumar uno cambiaría
+      la geometría de las ocho secciones reales. Y el perfil no es una sección,
+      es la cuenta.
+      Verificado end-to-end: guardado con acentos, subida de avatar, las tres
+      validaciones rechazando con mensaje claro, borrado en cascada del perfil,
+      logout redirigiendo a login con la API en 401, y el acceso visible en
+      mobile.
+
+- [ ] **3.3.b Avatares huérfanos en Storage** (hallazgo de 3.3) — al borrar una
+      cuenta, la FK se lleva la fila de `perfil_usuario` (verificado), pero
+      **el archivo del avatar queda en el bucket para siempre**: Storage no
+      participa del `ON DELETE CASCADE`. Con borrados de cuenta raros no
+      apremia; el arreglo es un hook de limpieza que borre el prefijo
+      `avatars/<uuid>/` al eliminar el usuario.
 - [ ] **3.4 Responsive** — el nav mobile ya se hizo. Falta el resto de pantallas.
 - [ ] **3.5 SSR** — las 8 páginas admin son `"use client"`. Convertirlas es trabajo
       real, no un flag.
