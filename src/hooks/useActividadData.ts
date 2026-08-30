@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useEffect, useState } from 'react'
 import type {
   CategoriaActividad,
@@ -33,7 +34,7 @@ export function useActividadData(): UseActividadDataResult {
     const qs = new URLSearchParams({ limit: '100' })
     if (categoria) qs.set('categoria', categoria)
 
-    fetch(`/api/actividad?${qs}`)
+    fetchApi(`/api/actividad?${qs}`)
       .then((r) => r.json())
       .then((result) => {
         if (!vigente) return

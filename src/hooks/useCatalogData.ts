@@ -3,6 +3,7 @@
 // ================================================
 
 import { useEffect, useState } from 'react';
+import { fetchApi } from '@/lib/api/fetch-cliente';
 import type {
   CatalogProduct,
   CategoryForFilter,
@@ -50,7 +51,7 @@ export function useCatalogData(): UseCatalogDataResult {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/catalog`)
+    fetchApi(`/api/catalog`)
       .then((r) => r.json())
       .then((result) => {
         if (result.error) setError(result.error);
@@ -66,7 +67,7 @@ export function useCatalogData(): UseCatalogDataResult {
   }, [refreshKey]);
 
   const toggleStatus = async (id: number, currentStatus: boolean) => {
-    await fetch('/api/catalog', {
+    await fetchApi('/api/catalog', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, is_active: !currentStatus }),
@@ -77,12 +78,12 @@ export function useCatalogData(): UseCatalogDataResult {
   };
 
   const deleteProduct = async (id: number) => {
-    await fetch(`/api/catalog?id=${id}`, { method: 'DELETE' });
+    await fetchApi(`/api/catalog?id=${id}`, { method: 'DELETE' });
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
   const createProduct: UseCatalogDataResult['createProduct'] = async (payload) => {
-    const res = await fetch('/api/catalog', {
+    const res = await fetchApi('/api/catalog', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -93,7 +94,7 @@ export function useCatalogData(): UseCatalogDataResult {
   };
 
   const createCategory: UseCatalogDataResult['createCategory'] = async (nombre, prefijo) => {
-    const res = await fetch('/api/catalog/categories', {
+    const res = await fetchApi('/api/catalog/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, prefijo }),
@@ -105,7 +106,7 @@ export function useCatalogData(): UseCatalogDataResult {
   };
 
   const createCollection: UseCatalogDataResult['createCollection'] = async (nombre) => {
-    const res = await fetch('/api/catalog/collections', {
+    const res = await fetchApi('/api/catalog/collections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre }),

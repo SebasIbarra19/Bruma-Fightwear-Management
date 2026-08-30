@@ -537,7 +537,36 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       `supabase-js` en el cliente. Bajarlo implicaría mover el logout a una ruta
       de API; no se hizo porque 177 kB en una pantalla de un panel interno no
       justifica tocar la autenticación.
-- [ ] **3.7 Auditoría de UX / funcionalidad inconsistente**
+- [~] **3.7 Auditoría de UX — hecha; el hallazgo mayor, corregido.**
+
+      ✅ **Sesión expirada dejaba la pantalla en un callejón — RESUELTO.**
+      Tras Fase 0 toda ruta devuelve 401 sin sesión, pero **los 8 hooks
+      trataban ese 401 como un error cualquiera**: la pantalla mostraba
+      "No autenticado" en rojo, sin decir qué hacer y sin salida salvo recargar
+      a mano. Ahora todos pasan por `fetchApi`
+      (`src/lib/api/fetch-cliente.ts`), que ante un 401 manda al login
+      conservando dónde estabas.
+      Usa `window.location.href` y no el router a propósito: con la sesión
+      vencida hay estado de cliente que ya no vale (datos a medio cargar,
+      formularios contra un usuario que ya no está), y una navegación dura lo
+      descarta.
+      Verificado en el navegador borrando las cookies `sb-` estando en
+      `/inventory` y navegando por el router —para que el middleware no
+      interviniera y el redirect saliera del hook—: terminó en
+      `/auth/login?redirectTo=%2Fmovements`.
+
+      Revisado y **sin problema** (queda anotado para no reauditarlo):
+      · Estados de carga y error: presentes en las 9 pantallas.
+      · Estados vacíos: 6 de 9. Las tres sin él —dashboard, profile,
+        statistics— siempre tienen contenido (KPIs, un formulario, agregados),
+        y el panel de reposición del dashboard sí trae su "Todo en orden".
+      · Acciones destructivas: los `Trash2` de invoicing quitan una línea de un
+        formulario todavía sin guardar, así que no necesitan confirmación. El
+        único borrado real con efecto inmediato —movimiento de stock— ya usa
+        `HoldToConfirmButton`.
+
+      Pendiente menor: `deleteProduct` en `useCatalogData` no lo usa ninguna
+      pantalla. O se expone en el catálogo (con confirmación) o se borra.
 - [x] **3.8 Keep-alive de Supabase — HECHO.**
       ⚠️ La premisa original NO funcionaba: un trigger de Postgres se dispara
       ante eventos de datos, **no puede auto-invocarse por tiempo**. Hace falta

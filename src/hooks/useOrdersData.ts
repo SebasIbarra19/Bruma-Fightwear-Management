@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useEffect, useState } from 'react';
 import type { Order } from '@/lib/database/adapters/orders-adapter';
 
@@ -49,7 +50,7 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
     id_estado: number;
     items: { id_producto_talla: number; cantidad: number; precio_unitario: number }[];
   }) => {
-    const res = await fetch('/api/orders', {
+    const res = await fetchApi('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -60,7 +61,7 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
   };
 
   const updateStatus = async (orderId: number, statusId: number) => {
-    const res = await fetch(`/api/orders/${orderId}`, {
+    const res = await fetchApi(`/api/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id_estado: statusId }),
@@ -71,7 +72,7 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
   };
 
   useEffect(() => {
-    fetch('/api/orders/statuses')
+    fetchApi('/api/orders/statuses')
       .then((res) => res.json())
       .then((result) => {
         if (result.success && Array.isArray(result.data)) setStatuses(result.data);
@@ -88,7 +89,7 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
         params.append(key, String(value));
       }
     });
-    fetch(`/api/orders?${params.toString()}`)
+    fetchApi(`/api/orders?${params.toString()}`)
       .then(res => res.json())
       .then((result) => {
         if (result.success && Array.isArray(result.data)) {

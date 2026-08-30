@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useEffect, useState } from 'react'
 import type { Perfil, PerfilEditable } from '@/lib/database/adapters/perfil-adapter'
 
@@ -18,7 +19,7 @@ export function usePerfilData(): UsePerfilDataResult {
 
   useEffect(() => {
     let vigente = true
-    fetch('/api/perfil')
+    fetchApi('/api/perfil')
       .then((r) => r.json())
       .then((res) => {
         if (!vigente) return
@@ -36,7 +37,7 @@ export function usePerfilData(): UsePerfilDataResult {
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch('/api/perfil', {
+      const res = await fetchApi('/api/perfil', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(campos),
@@ -60,7 +61,7 @@ export function usePerfilData(): UsePerfilDataResult {
       const fd = new FormData()
       fd.append('avatar', file)
       // Sin Content-Type a mano: el navegador tiene que ponerlo con el boundary.
-      const res = await fetch('/api/perfil', { method: 'PATCH', body: fd }).then((r) => r.json())
+      const res = await fetchApi('/api/perfil', { method: 'PATCH', body: fd }).then((r) => r.json())
       if (!res.success) throw new Error(res.error?.message || 'Error subiendo el avatar')
       setPerfil((p) => (p ? { ...p, avatar_url: res.data.avatar_url } : p))
     } catch (e: any) {

@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useEffect, useState } from 'react';
 import type { DashboardPayload } from '@/lib/database/adapters/dashboard-adapter';
 
@@ -20,7 +21,7 @@ export function useDashboardData(): UseDashboardDataResult {
     setLoading(true);
     setError(null);
 
-    fetch('/api/dashboard')
+    fetchApi('/api/dashboard')
       .then((r) => r.json())
       .then((result) => {
         if (result.success) setData(result.data);

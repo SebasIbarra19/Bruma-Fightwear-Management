@@ -3,6 +3,7 @@
 // ================================================
 
 import { useEffect, useState } from 'react';
+import { fetchApi } from '@/lib/api/fetch-cliente';
 import type {
   MovementWithInventory,
 } from '@/lib/database/adapters/inventory-movements-adapter';
@@ -26,7 +27,7 @@ export function useInventoryMovementsData(): UseInventoryMovementsDataResult {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/inventory-movements`)
+    fetchApi(`/api/inventory-movements`)
       .then((r) => r.json())
       .then((result) => {
         if (result.error) setError(result.error);

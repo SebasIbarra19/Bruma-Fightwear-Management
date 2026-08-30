@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useState } from 'react'
 
 // ================================================
@@ -44,7 +45,7 @@ export function useInventory(projectId?: string) {
       if (params.dateFrom) searchParams.set('dateFrom', params.dateFrom)
       if (params.dateTo) searchParams.set('dateTo', params.dateTo)
 
-      const response = await fetch(`/api/inventory/movements?${searchParams}`)
+      const response = await fetchApi(`/api/inventory/movements?${searchParams}`)
       const result = await response.json()
       console.log('[Inventory] Movements API response:', result)
 
@@ -74,7 +75,7 @@ export function useInventory(projectId?: string) {
     setLoadingInventory(true)
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/items?limit=100&includeZeroStock=true`)
+      const response = await fetchApi(`/api/inventory/items?limit=100&includeZeroStock=true`)
       const result = await response.json()
 
       if (!response.ok) {
@@ -108,7 +109,7 @@ export function useInventory(projectId?: string) {
     setLoadingDetails(true)
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`)
+      const response = await fetchApi(`/api/inventory/items/${inventoryId}?projectId=${projectId}`)
       const result = await response.json()
       if (!response.ok) {
         setError(result.error?.message || result.error || 'Error cargando item')
@@ -150,7 +151,7 @@ export function useInventory(projectId?: string) {
     }
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/items?projectId=${projectId}`, {
+      const response = await fetchApi(`/api/inventory/items?projectId=${projectId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -181,7 +182,7 @@ export function useInventory(projectId?: string) {
     }
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
+      const response = await fetchApi(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -212,7 +213,7 @@ export function useInventory(projectId?: string) {
     }
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
+      const response = await fetchApi(`/api/inventory/items/${inventoryId}?projectId=${projectId}`, {
         method: 'DELETE'
       })
       const result = await response.json()
@@ -280,7 +281,7 @@ export function useInventory(projectId?: string) {
     }
     setError(null)
     try {
-      const response = await fetch(`/api/inventory/adjust?projectId=${projectId}`, {
+      const response = await fetchApi(`/api/inventory/adjust?projectId=${projectId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inventoryId, newQuantity, reason })

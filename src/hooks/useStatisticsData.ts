@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente'
 import { useEffect, useState } from 'react';
 import type { StatisticsPayload } from '@/lib/database/adapters/dashboard-adapter';
 
@@ -46,7 +47,7 @@ export function useStatisticsData(inicial: RangePresetId = '30d'): UseStatistics
       query.set('end', toIsoDate(new Date()));
     }
 
-    fetch(`/api/statistics?${query}`)
+    fetchApi(`/api/statistics?${query}`)
       .then((r) => r.json())
       .then((result) => {
         // Sin este guard, cambiar de preset rápido puede dejar pintada la
