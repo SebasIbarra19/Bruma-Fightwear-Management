@@ -13,12 +13,19 @@ export function FormModal({
   eyebrow,
   title,
   children,
+  size = "md",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   eyebrow: string;
   title: string;
   children: React.ReactNode;
+  /**
+   * `md` (por defecto) mantiene el ancho de siempre, así los modales existentes
+   * no cambian. `lg` es para los que necesitan dos columnas — hoy solo la
+   * edición de producto, que muestra las imágenes al lado del formulario.
+   */
+  size?: "md" | "lg";
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -26,7 +33,8 @@ export function FormModal({
         <DialogOverlay className="bg-obsidian/80 backdrop-blur-sm" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2",
+            "fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2",
+            size === "lg" ? "max-w-3xl" : "max-w-lg",
             "bg-obsidian border border-bone/20 rounded-[4px] shadow-[0_0_40px_rgba(0,0,0,0.6)]",
             "max-h-[85vh] overflow-y-auto"
           )}

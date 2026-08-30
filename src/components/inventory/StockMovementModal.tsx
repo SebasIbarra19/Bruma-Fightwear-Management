@@ -27,10 +27,21 @@ interface StockMovementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   skuOptions: SkuOption[];
+  /**
+   * SKU preseleccionado al abrir. Lo usa el clic sobre una fila del inventario:
+   * si ya elegiste el producto en la tabla, volver a buscarlo en el desplegable
+   * es trabajo repetido. Abriendo desde el botón general viene `null` y el
+   * formulario arranca vacío, como siempre.
+   *
+   * Se recibe el SKU y no la clave interna (`id-idVariante`) porque la fila de
+   * la tabla no carga `variant_id`; el SKU sí lo tiene y es único por fila de
+   * stock, así que alcanza para resolverlo contra `skuOptions`.
+   */
+  initialSku?: string | null;
   onSubmit: (payload: { inventoryId: number | null; idVariante?: number; quantityChange: number; reason: string; tipoMovimiento?: string; forzar?: boolean }) => Promise<void>;
 }
 
-export function StockMovementModal({ open, onOpenChange, skuOptions, onSubmit }: StockMovementModalProps) {
+export function StockMovementModal({ open, onOpenChange, skuOptions, onSubmit, initialSku = null }: StockMovementModalProps) {
   const [movementType, setMovementType] = useState<MovementTypeId>("in");
   const [selectedSkuKey, setSelectedSkuKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -51,6 +62,15 @@ export function StockMovementModal({ open, onOpenChange, skuOptions, onSubmit }:
       setPendingNegative(null);
     }
   }, [open]);
+
+  // La preselección se resuelve acá y no en el estado inicial porque
+  // `skuOptions` llega por red DESPUÉS de que el modal se monta: al montarse la
+  // lista está vacía y no habría con qué emparejar.
+  useEffect(() => {
+    if (!open || !initialSku || skuOptions.length === 0) return;
+    const opt = skuOptions.find((o) => o.sku === initialSku);
+    if (opt) setSelectedSkuKey(`${opt.id ?? 'v'}-${opt.idVariante}`);
+  }, [open, initialSku, skuOptions]);
 
   useEffect(() => {
     setPendingNegative(null);

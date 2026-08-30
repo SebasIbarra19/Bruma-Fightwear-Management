@@ -134,6 +134,9 @@ export default function InventoryView() {
   })), [rawInventory]);
 
   const [showMovementModal, setShowMovementModal] = useState(false);
+  // SKU con el que se abrió el modal. `null` cuando se abre desde el botón
+  // general; con valor cuando se abre clicando una fila de la tabla.
+  const [movementSku, setMovementSku] = useState<string | null>(null);
 
   const [movementSkuOptions, setMovementSkuOptions] = useState<{ id: number | null; idVariante: number; sku: string; productName: string; currentStock: number }[]>([]);
 
@@ -268,7 +271,7 @@ export default function InventoryView() {
         sub="Track every SKU across the pack. Filter, sort, and spot low stock before the jungle runs dry."
         actionLabel="+ Log Movement"
         actionIcon={<Plus size={16} />}
-        onAction={() => setShowMovementModal(true)}
+        onAction={() => { setMovementSku(null); setShowMovementModal(true); }}
         bgImage="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=300&fit=crop&auto=format"
       />
 
@@ -278,6 +281,7 @@ export default function InventoryView() {
           open={showMovementModal}
           onOpenChange={setShowMovementModal}
           skuOptions={movementSkuOptions}
+          initialSku={movementSku}
           onSubmit={async (payload) => {
             await logInventoryMovement(payload);
             await fetchInventory();
@@ -306,6 +310,13 @@ export default function InventoryView() {
             columns={columns}
             data={paginated}
             keyExtractor={(item) => item.sku}
+            // Clicar una fila abre el mismo formulario que "+ Log Movement",
+            // pero con ese SKU ya elegido: si acabás de señalar el producto en
+            // la tabla, volver a buscarlo en el desplegable es trabajo repetido.
+            onRowClick={(item) => {
+              setMovementSku(item.sku);
+              setShowMovementModal(true);
+            }}
             emptyTitle="Sector Clear"
             emptyDescription="No tactical inventory matches your current search parameters."
             emptyActionLabel="Reset Filters"

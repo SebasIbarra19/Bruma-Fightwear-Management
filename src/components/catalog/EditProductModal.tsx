@@ -12,6 +12,8 @@ import {
   SubmitBar,
 } from "@/components/figma-shared/Modal";
 import { ProductImages } from "./ProductImages";
+import { HoldToConfirmButton } from "@/components/figma-shared/HoldToConfirmButton";
+import { fetchApi } from "@/lib/api/fetch-cliente";
 
 const SIZE_OPTIONS = ["OS", "XS", "S", "M", "L", "XL", "XXL"];
 
@@ -69,6 +71,7 @@ export function EditProductModal({
   const [localCategories, setLocalCategories] = useState(categories);
   const [localCollections, setLocalCollections] = useState(collections);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setLocalCategories(categories), [categories]);
@@ -81,7 +84,7 @@ export function EditProductModal({
     }
     setFetching(true);
     setError(null);
-    fetch(`/api/catalog/${productId}`)
+    fetchApi(`/api/catalog/${productId}`)
       .then((r) => r.json())
       .then((result) => {
         if (!result.success) throw new Error(result.error?.message || 'Error cargando el producto');
@@ -104,6 +107,27 @@ export function EditProductModal({
   const existingCodes = new Set(existingSizes.map((s) => s.talla_codigo).filter(Boolean));
   const availableToAdd = SIZE_OPTIONS.filter((s) => !existingCodes.has(s));
 
+  const handleDelete = async () => {
+    if (!detail) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetchApi(`/api/catalog?id=${detail.id}`, { method: "DELETE" });
+      const result = await res.json();
+      // Esta ruta responde `{error}` en vez de `{success}`; se comprueba también
+      // el status para no dar por buena una respuesta que no lo es.
+      if (!res.ok || result.error) {
+        throw new Error(result.error || "No se pudo borrar el producto");
+      }
+      onSaved();
+      onOpenChange(false);
+    } catch (err: any) {
+      setError(err.message || "No se pudo borrar el producto");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detail) return;
@@ -115,7 +139,7 @@ export function EditProductModal({
     setError(null);
     try {
       const variant = detail.variantes[0];
-      const res = await fetch(`/api/catalog/${detail.id}`, {
+      const res = await fetchApi(`/api/catalog/${detail.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,8 +169,7 @@ export function EditProductModal({
   };
 
   return (
-    <FormModal open={open} onOpenChange={onOpenChange} eyebrow="Edit Gear" title="Edit Product">
-      {fetching && <p className="text-sm text-bone/50 font-geist">Cargando...</p>}
+    <FormModal open={open} onOpenChange={onOpenChange} eyebrow="Edit Gear" title="Edit Product" size="lg">
       {!fetching && !detail && error && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-ember font-geist">{error}</p>
@@ -159,8 +182,33 @@ export function EditProductModal({
           </button>
         </div>
       )}
-      {!fetching && detail && (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+      {(fetching || detail) && (
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] gap-x-6 gap-y-5">
+          {/* Las imágenes ocupan su propia columna y no el flujo del formulario:
+              antes quedaban intercaladas entre SKU y Precio, empujando los
+              campos hacia abajo. En pantallas angostas la grilla colapsa a una
+              sola columna y vuelven a quedar arriba.
+              ⚠️ Se monta con `productId` y NO con `detail.id`, y por eso está
+              fuera del bloque que espera al detalle: `ProductImages` solo
+              necesita el id, que se conoce desde el clic. Antes vivía dentro y
+              su fetch quedaba ENCADENADO al del producto —medido en
+              producción: `/api/catalog/18` 942 ms y recién ahí arrancaba
+              `/api/catalog/18/images`, 649 ms más—. Ahora las dos salen juntas. */}
+          <div className="md:row-span-6">
+            <FieldLabel>Images</FieldLabel>
+            {productId && <ProductImages productId={productId} />}
+          </div>
+
+          {fetching && (
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-10 bg-bone/5 rounded-[2px] animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {detail && (<>
           <div>
             <FieldLabel>Product Name</FieldLabel>
             <TextInput value={nombre} onChange={(e) => setNombre(e.target.value)} />
@@ -169,11 +217,6 @@ export function EditProductModal({
           <div>
             <FieldLabel>Product Code (SKU)</FieldLabel>
             <TextInput value={codigo} onChange={(e) => setCodigo(e.target.value)} />
-          </div>
-
-          <div>
-            <FieldLabel>Images</FieldLabel>
-            <ProductImages productId={detail.id} />
           </div>
 
           <div>
@@ -277,7 +320,32 @@ export function EditProductModal({
             <TextArea rows={3} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
           </div>
 
-          <SubmitBar submitLabel="Save Changes" loading={loading} error={error} />
+          {/* `md:col-span-2` para que el pie cruce las dos columnas en vez de
+              quedar apretado bajo los campos. */}
+          <div className="md:col-span-2 flex flex-col gap-4">
+            <SubmitBar submitLabel="Save Changes" loading={loading} error={error} />
+
+            <div className="border-t border-bone/10 pt-4">
+              <p className="text-[10px] text-bone/40 font-geist uppercase tracking-widest mb-2">
+                Zona de riesgo
+              </p>
+              <p className="text-xs text-bone/50 font-geist mb-3">
+                Borrar el producto elimina también sus variantes, tallas e
+                imágenes. No se puede deshacer.
+              </p>
+              {/* Se usa `HoldToConfirmButton` —el mismo patrón que ya confirma
+                  los movimientos de stock— en vez de un `confirm()` del
+                  navegador: mantener sostenido obliga a una intención
+                  deliberada y no se puede saltar por accidente. */}
+              <HoldToConfirmButton
+                label={deleting ? "Borrando..." : "Mantené para borrar"}
+                disabled={deleting || loading}
+                onConfirm={handleDelete}
+                className="border-ember/40 text-ember hover:bg-ember/10"
+              />
+            </div>
+          </div>
+          </>)}
         </form>
       )}
     </FormModal>
