@@ -1,0 +1,55 @@
+name: Keep-alive Supabase
+
+# Los proyectos gratuitos de Supabase se pausan tras ~7 días sin actividad, y
+# reactivarlos es manual. Este cron mantiene la base despierta llamando a
+# `ping()` (migración 20260901000000), la única función abierta a `anon`: no lee
+# tablas, no acepta parámetros y solo devuelve la hora del servidor.
+#
+# ¿Por qué GitHub Actions y no Vercel Cron? Vercel Cron necesita un despliegue,
+# y hoy no hay ninguno. Esto corre desde donde ya vive el repo.
+#
+# ⚠️ GitHub desactiva los cron de repositorios sin actividad durante 60 días.
+# Si el proyecto queda quieto ese tiempo, hay que reactivarlo a mano desde la
+# pestaña Actions — o sea que esto cubre las pausas por inactividad de días o
+# semanas, no un abandono largo.
+
+on:
+  schedule:
+    # 12:00 UTC = 06:00 en Costa Rica. Una vez al día sobra contra una ventana
+    # de 7 días; GitHub no garantiza el minuto exacto y acá no importa.
+    - cron: '0 12 * * *'
+  # Permite dispararlo a mano desde la pestaña Actions para comprobar que anda
+  # sin esperar al día siguiente.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar a ping()
+        env:
+          # La URL y la anon key NO son secretos —viajan en el bundle del
+          # navegador—, pero van como secrets del repositorio igual: así el
+          # archivo no fija el identificador del proyecto y cambiar de entorno
+          # no obliga a tocar el workflow.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Faltan los secrets SUPABASE_URL y/o SUPABASE_ANON_KEY."
+            echo "Cargarlos en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          # `-f` hace que curl falle ante un HTTP de error: si la base está
+          # caída o `ping()` perdió su GRANT, el job se pone en rojo en vez de
+          # fingir éxito.
+          respuesta=$(curl -sf -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          echo "Base despierta. Hora del servidor: $respuesta"

@@ -538,18 +538,33 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       de API; no se hizo porque 177 kB en una pantalla de un panel interno no
       justifica tocar la autenticación.
 - [ ] **3.7 Auditoría de UX / funcionalidad inconsistente**
-- [ ] **3.8 Keep-alive de Supabase** — ⚠️ la premisa original no funciona: un
-      trigger de Postgres solo se dispara ante eventos de datos, **no puede
-      auto-invocarse por tiempo**. Necesita un agendador: `pg_cron` dentro de la DB
-      (verificar disponibilidad en el plan) o, más simple, un cron externo que
-      pegue a un endpoint — GitHub Actions con `schedule` es gratis y el repo ya
-      está ahí.
-      ⚠️ Interacción con Fase 0: **después del REVOKE la anon key no ejecuta nada**,
-      así que el ping no puede ir a `/rest/v1/rpc/...` con esa llave. Mejor pegarle
-      a un `/api/health` de la propia app (sin secretos fuera, y verifica la cadena
-      completa). Vercel Cron en gratuito sirve: mínimo 1 vez por día, ±59 min de
-      precisión — suficiente contra una ventana de 7 días. Cron de GitHub Actions
-      se desactiva solo si el repo no tiene actividad en 60 días.
+- [x] **3.8 Keep-alive de Supabase — HECHO.**
+      ⚠️ La premisa original NO funcionaba: un trigger de Postgres se dispara
+      ante eventos de datos, **no puede auto-invocarse por tiempo**. Hace falta
+      un agendador externo.
+      **Base:** función `ping()` (migración `20260901000000`) que devuelve
+      `now()` y nada más. Es la **única excepción** al cierre de Fase 0 —que
+      revocó `EXECUTE` a `anon` sobre todo el esquema—, y por eso lleva `GRANT`
+      explícito. Es segura de abrir porque no lee ninguna tabla, no acepta
+      parámetros, y lo que revela (que el proyecto existe y su hora) ya es
+      público: la URL y la anon key viajan en el bundle del navegador.
+      **Agendador:** `.github/workflows/keep-alive.yml`, cron diario a las 12:00
+      UTC. Se eligió GitHub Actions sobre Vercel Cron porque **Vercel Cron
+      necesita un despliegue y hoy no hay ninguno**; esto corre desde donde ya
+      vive el repo.
+      Verificado: `ping()` responde 200 con la anon key, el resto sigue cerrado
+      (`42501 permission denied` en `get_dashboard_stats`), el paso del workflow
+      corre tal cual está escrito, y con una key inválida `curl -f` falla — o
+      sea que el job se pone en rojo en vez de fingir éxito.
+
+      ⚠️ **Falta un paso manual tuyo:** cargar los secrets del repositorio en
+      *Settings → Secrets and variables → Actions*:
+      `SUPABASE_URL` y `SUPABASE_ANON_KEY`. No son datos sensibles —ya son
+      públicos—, van como secrets solo para que el workflow no fije el
+      identificador del proyecto. Sin ellos el job falla con un mensaje que lo
+      explica.
+      ⚠️ GitHub desactiva los cron de repositorios sin actividad por 60 días.
+      Esto cubre pausas de días o semanas, no un abandono largo.
 
 ---
 
