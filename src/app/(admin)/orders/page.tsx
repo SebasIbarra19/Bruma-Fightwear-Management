@@ -258,8 +258,8 @@ export default function OrdersPage() {
         )}
         {selected && (
           <FloraGlass className="lg:col-span-3 p-8 md:p-10 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between mb-8 border-b border-bone/10 pb-6">
+            <div className="flex grow flex-col">
+              <div className="flex items-start justify-between border-b border-bone/10 pb-6">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="text-ember">{statusIcon((selected.estado_nombre || '').toLowerCase())}</div>
@@ -271,14 +271,20 @@ export default function OrdersPage() {
                 <StatusBadge status={(selected.estado_nombre || '').toLowerCase()} />
               </div>
 
-              {/* Opaque Scrim behind detailed data for 100% legibility */}
-              <div className="bg-obsidian/90 border border-bone/5 p-6 rounded-[2px] mb-8 relative">
-                {/* Subtle technical corner ticks */}
-                <div className="absolute top-2 left-2 w-1 h-1 bg-bone/20"></div>
-                <div className="absolute top-2 right-2 w-1 h-1 bg-bone/20"></div>
-                <div className="absolute bottom-2 left-2 w-1 h-1 bg-bone/20"></div>
-                <div className="absolute bottom-2 right-2 w-1 h-1 bg-bone/20"></div>
-
+              {/* Relleno del sándwich, igual que en Invoicing: el bloque opaco
+                  abarca TODO el segmento central —de la divisoria del
+                  encabezado a la de los botones—, no solo los items.
+                  `-mx-8/-mx-10` cancelan el padding del FloraGlass para que la
+                  banda sangre hasta el borde de la tarjeta (su `overflow:
+                  hidden` la recorta contra el radio); `px-8/px-10` devuelven la
+                  alineación del contenido con el encabezado y las divisorias.
+                  `grow` la estira hasta la divisoria de los botones cuando
+                  sobra alto, para que el relleno siempre toque los dos panes.
+                  El scrim `bg-obsidian/90` que envolvía solo las tres métricas
+                  desapareció acá dentro: era la misma opacidad sobre la misma
+                  opacidad, y sus esquinas técnicas enmarcaban una caja que ya
+                  no existe. */}
+              <div className="grow bg-obsidian/90 -mx-8 px-8 py-6 md:-mx-10 md:px-10">
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {[["Date", new Date(selected.fecha).toLocaleDateString()], ["Units", String(selected.items_count)], ["Total", formatColones(selected.total)]].map(([k, v]) => (
                     <div key={k} className="bg-bone/5 border border-bone/10 rounded-[2px] p-4 flex flex-col justify-center">
@@ -287,39 +293,39 @@ export default function OrdersPage() {
                     </div>
                   ))}
                 </div>
-              </div>
 
-              <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-4">Requisition Details</p>
-              <div className="space-y-2 mb-8">
-                {orderDetailError && (
-                  <p className="text-xs text-ember font-geist">{orderDetailError}</p>
-                )}
-                {!orderDetailError && (orderDetail?.items ?? []).map((item) => (
-                  <div key={item.id_producto_talla} className="flex items-center gap-4 py-3 px-4 bg-obsidian/60 border border-bone/5 rounded-[2px]">
-                    <div className="w-8 h-8 bg-bone/5 rounded-[2px] border border-bone/10 flex items-center justify-center flex-shrink-0">
-                      <Package size={14} className="text-bone/40" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-bone font-geist truncate">
-                        {item.producto_nombre ?? `Producto #${item.id_producto_talla}`}
-                      </p>
-                      {/* `sku` viene del SP `get_order_details` (migración
-                          20260821000000). Queda null solo si la línea apunta a
-                          un producto borrado — ahí no se muestra nada en vez de
-                          un "SKU" vacío. */}
-                      {item.sku && (
-                        <p className="text-[10px] text-bone/40 font-geist uppercase tracking-widest">
-                          {item.sku}
+                <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-4">Requisition Details</p>
+                <div className="space-y-2">
+                  {orderDetailError && (
+                    <p className="text-xs text-ember font-geist">{orderDetailError}</p>
+                  )}
+                  {!orderDetailError && (orderDetail?.items ?? []).map((item) => (
+                    <div key={item.id_producto_talla} className="flex items-center gap-4 py-3 px-4 bg-bone/5 border border-bone/10 rounded-[2px]">
+                      <div className="w-8 h-8 bg-bone/5 rounded-[2px] border border-bone/10 flex items-center justify-center flex-shrink-0">
+                        <Package size={14} className="text-bone/40" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-bone font-geist truncate">
+                          {item.producto_nombre ?? `Producto #${item.id_producto_talla}`}
                         </p>
-                      )}
+                        {/* `sku` viene del SP `get_order_details` (migración
+                            20260821000000). Queda null solo si la línea apunta a
+                            un producto borrado — ahí no se muestra nada en vez de
+                            un "SKU" vacío. */}
+                        {item.sku && (
+                          <p className="text-[10px] text-bone/40 font-geist uppercase tracking-widest">
+                            {item.sku}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs text-bone/50 font-geist">x{item.cantidad}</span>
+                      <span className="text-sm text-bone font-geist">{formatColones(item.precio_unitario)}</span>
                     </div>
-                    <span className="text-xs text-bone/50 font-geist">x{item.cantidad}</span>
-                    <span className="text-sm text-bone font-geist">{formatColones(item.precio_unitario)}</span>
-                  </div>
-                ))}
-                {!orderDetailError && orderDetailLoading && (
-                  <p className="text-xs text-bone/40 font-geist">Cargando detalle...</p>
-                )}
+                  ))}
+                  {!orderDetailError && orderDetailLoading && (
+                    <p className="text-xs text-bone/40 font-geist">Cargando detalle...</p>
+                  )}
+                </div>
               </div>
             </div>
 

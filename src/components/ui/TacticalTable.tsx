@@ -28,6 +28,18 @@ interface TacticalTableProps<T> {
   totalItems?: number;
   onPageChange?: (page: number) => void;
   itemsLabel?: string;
+  /**
+   * Filas por página. Sin esto, el pie tenía que INFERIR el tamaño dividiendo
+   * `totalItems / totalPages`, que solo da entero cuando la última página está
+   * llena: con 103 registros en páginas de 10 imprimía literalmente
+   * "Showing 1-9.36 of 103 records". Afectaba a Inventory, Movements y
+   * Activity Log por igual.
+   *
+   * Es opcional para no romper a quien ya pasa las otras props; cuando falta,
+   * se cae al cálculo viejo pero redondeado, que al menos nunca muestra
+   * decimales.
+   */
+  pageSize?: number;
 }
 
 export function TacticalTable<T>({
@@ -45,7 +57,8 @@ export function TacticalTable<T>({
   totalPages = 0,
   totalItems = 0,
   onPageChange,
-  itemsLabel = "items"
+  itemsLabel = "items",
+  pageSize
 }: TacticalTableProps<T>) {
 
   if (loading) {
@@ -145,10 +158,18 @@ export function TacticalTable<T>({
         </table>
       </div>
 
-      {totalPages > 1 && onPageChange && (
+      {totalPages > 1 && onPageChange && (() => {
+        // `data` es la página ya cortada por quien usa el componente, así que su
+        // largo ES el tamaño real de ESTA página — incluida la última, que suele
+        // venir incompleta. Se prefiere a dividir `totalItems / totalPages`,
+        // que era la fuente del "1-9.36".
+        const porPagina = pageSize ?? Math.ceil(totalItems / totalPages)
+        const desde = currentPage * porPagina + 1
+        const hasta = Math.min(desde + data.length - 1, totalItems)
+        return (
         <div className="flex items-center justify-between px-6 py-4 border-t border-bone/10 bg-obsidian/30">
           <p className="text-[10px] uppercase tracking-widest text-bone/50 font-geist">
-            Showing {currentPage * (totalItems / totalPages) + 1}-{Math.min((currentPage + 1) * (totalItems / totalPages), totalItems)} of {totalItems} {itemsLabel}
+            Showing {desde}-{hasta} of {totalItems} {itemsLabel}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -167,7 +188,8 @@ export function TacticalTable<T>({
             </button>
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
   );
 }

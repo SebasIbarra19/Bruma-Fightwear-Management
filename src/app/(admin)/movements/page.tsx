@@ -187,6 +187,7 @@ export default function MovementsView() {
             totalItems={filtered.length}
             onPageChange={(p) => setPage(p)}
             itemsLabel="movements"
+            pageSize={PER_PAGE}
           />
         </div>
 

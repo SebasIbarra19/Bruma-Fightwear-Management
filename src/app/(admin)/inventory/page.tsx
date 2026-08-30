@@ -311,6 +311,7 @@ export default function InventoryView() {
             totalItems={filtered.length}
             onPageChange={(p) => setPage(p)}
             itemsLabel="inventory items"
+            pageSize={PER_PAGE}
           />
         </div>
 

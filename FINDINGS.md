@@ -41,6 +41,8 @@
 - [ ] **`VerticalNav.tsx` es código muerto** — `src/components/layout/VerticalNav.tsx` no se importa desde ningún archivo. Apunta a rutas de storefront (`/storefront`, `/category/gis`, `/expeditions`) que no existen. No es la navegación admin activa (esa es `AdminSidebar` dentro de `AdminLayout.tsx`).
 
 ### Componentes / componentes faltantes
+- [x] **El pie de paginación de `TacticalTable` calculaba el tamaño de página con una división** — RESUELTO (2026-08-30). Armaba "Showing X-Y of Z" con `currentPage * (totalItems / totalPages) + 1`, que solo da entero cuando la última página está llena: con 23 registros en páginas de 10 imprimía decimales. Ahora acepta un prop opcional `pageSize` y el final del rango sale de `data.length` —las filas realmente renderizadas—, así que la última página incompleta sale bien sola. Verificado en pantalla: `1-10`, `11-20`, `21-23 of 23` en Activity Log y `11-14 of 14` en Movements. Las tres pantallas que lo usan (Inventory, Movements, Activity Log) ya pasan el prop.
+
 - [ ] **Perfil de fauna no importado** — `NewAuthPage.tsx` usa `<Fauna>` y `<FloraGlass>`, pero `src/components/ui/Fauna.tsx` y `FloraGlass.tsx` sí existen. Sin embargo: `Fauna` solo se usa en NewAuthPage.tsx y otro lugar (tal vez /auth/login). `FloraGlass` se usa en NewAuthPage y otros componentes (por ejemplo, AuthContainer).
 
 ### Frontend-Backend Integration Audit (2026-08-04)
