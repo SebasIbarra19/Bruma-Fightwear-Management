@@ -13,8 +13,18 @@ import { FloraGlass } from "@/components/ui/FloraGlass";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCatalogData } from "@/hooks/useCatalogData";
-import { AddProductModal } from "@/components/catalog/AddProductModal";
-import { EditProductModal } from "@/components/catalog/EditProductModal";
+import dynamic from "next/dynamic";
+
+// Los dos modales solo existen cuando se abren; con el import estático viajaban
+// en el bundle de la página aunque nadie creara ni editara un producto.
+const AddProductModal = dynamic(
+  () => import("@/components/catalog/AddProductModal").then((m) => m.AddProductModal),
+  { ssr: false }
+);
+const EditProductModal = dynamic(
+  () => import("@/components/catalog/EditProductModal").then((m) => m.EditProductModal),
+  { ssr: false }
+);
 
 function catalogStatus(stockTotal: number): "in-stock" | "low" | "out" {
   if (stockTotal <= 0) return "out";
@@ -94,26 +104,33 @@ export default function CatalogPage() {
         bgImage="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=300&fit=crop&auto=format"
       />
 
-      <AddProductModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        categories={categories}
-        collections={collections}
-        onCreateCategory={createCategory}
-        onCreateCollection={createCollection}
-        onSubmit={createProduct}
-      />
+      {/* El montaje condicional es lo que hace efectivo el `dynamic`: montados
+          siempre con `open={false}`, los chunks se descargarían igual al entrar
+          a la página. */}
+      {showAddModal && (
+        <AddProductModal
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          categories={categories}
+          collections={collections}
+          onCreateCategory={createCategory}
+          onCreateCollection={createCollection}
+          onSubmit={createProduct}
+        />
+      )}
 
-      <EditProductModal
-        open={showEditModal}
-        onOpenChange={setShowEditModal}
-        productId={editingProductId}
-        categories={categories}
-        collections={collections}
-        onCreateCategory={createCategory}
-        onCreateCollection={createCollection}
-        onSaved={refetch}
-      />
+      {showEditModal && (
+        <EditProductModal
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          productId={editingProductId}
+          categories={categories}
+          collections={collections}
+          onCreateCategory={createCategory}
+          onCreateCollection={createCollection}
+          onSaved={refetch}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 

@@ -8,7 +8,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { TacticalTable, Column } from "@/components/ui/TacticalTable";
 import { PageHeader, StatusBadge } from "@/components/figma-shared/Common";
 import { useInventory } from "@/hooks/useInventory";
-import { StockMovementModal } from "@/components/inventory/StockMovementModal";
+import dynamic from "next/dynamic";
+
+// Solo existe cuando se abre; con el import estático viajaba en el bundle de la
+// página aunque nadie registrara un movimiento.
+const StockMovementModal = dynamic(
+  () => import("@/components/inventory/StockMovementModal").then((m) => m.StockMovementModal),
+  { ssr: false }
+);
 import { logInventoryMovement } from "@/lib/inventory-movements-client";
 import { formatColones } from "@/lib/utils";
 
@@ -265,15 +272,18 @@ export default function InventoryView() {
         bgImage="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=300&fit=crop&auto=format"
       />
 
-      <StockMovementModal
-        open={showMovementModal}
-        onOpenChange={setShowMovementModal}
-        skuOptions={movementSkuOptions}
-        onSubmit={async (payload) => {
-          await logInventoryMovement(payload);
-          await fetchInventory();
-        }}
-      />
+      {/* Montaje condicional: es lo que hace efectivo el `dynamic`. */}
+      {showMovementModal && (
+        <StockMovementModal
+          open={showMovementModal}
+          onOpenChange={setShowMovementModal}
+          skuOptions={movementSkuOptions}
+          onSubmit={async (payload) => {
+            await logInventoryMovement(payload);
+            await fetchInventory();
+          }}
+        />
+      )}
 
       {/* Grid: Main Column Left (containing Search + Table), Filters Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -30,14 +30,51 @@ export function BeltNavigation() {
   // primer render de cliente coinciden. Si el valor guardado difiere hay un
   // único frame con el cinturón por defecto — es deliberado, para no repetir
   // el desajuste de hidratación que ya arrastra ThemeContext.
+  //
+  // `localStorage` primero y el perfil después, a propósito: lo local pinta en
+  // el mismo frame y el perfil llega por red. Al revés se vería el cinturón por
+  // defecto durante toda la petición. El perfil manda cuando llega, que es lo
+  // que hace que la elección siga al usuario entre equipos; `localStorage`
+  // queda como caché para que la próxima carga en ESTE navegador ya arranque
+  // bien.
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (isBeltId(stored)) setBelt(stored)
+
+    let vigente = true
+    fetch('/api/perfil')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (!vigente || !res?.success) return
+        const guardado = res.data?.preferencia_cinturon
+        if (isBeltId(guardado)) {
+          setBelt(guardado)
+          window.localStorage.setItem(STORAGE_KEY, guardado)
+        }
+      })
+      .catch(() => {
+        // Sin sesión o sin red: se sigue con lo local. La barra nunca debe
+        // quedar sin cinturón por un problema de perfil.
+      })
+
+    return () => {
+      vigente = false
+    }
   }, [])
 
   const selectBelt = (next: BeltId) => {
     setBelt(next)
     window.localStorage.setItem(STORAGE_KEY, next)
+
+    // Persistir en el perfil es lo que hace que la elección sobreviva al
+    // navegador. No se espera ni se revierte si falla: el cambio visual ya
+    // ocurrió y bloquear la interfaz por guardar una preferencia sería peor
+    // que perderla.
+    fetch('/api/perfil', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferencia_cinturon: next }),
+    }).catch(() => {})
   }
 
   // Derivado durante el render, no en un efecto. Así el primer render ya emite

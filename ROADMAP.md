@@ -481,16 +481,62 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       logout redirigiendo a login con la API en 401, y el acceso visible en
       mobile.
 
-- [ ] **3.3.b Avatares huérfanos en Storage** (hallazgo de 3.3) — al borrar una
-      cuenta, la FK se lleva la fila de `perfil_usuario` (verificado), pero
-      **el archivo del avatar queda en el bucket para siempre**: Storage no
-      participa del `ON DELETE CASCADE`. Con borrados de cuenta raros no
-      apremia; el arreglo es un hook de limpieza que borre el prefijo
-      `avatars/<uuid>/` al eliminar el usuario.
-- [ ] **3.4 Responsive** — el nav mobile ya se hizo. Falta el resto de pantallas.
-- [ ] **3.5 SSR** — las 8 páginas admin son `"use client"`. Convertirlas es trabajo
-      real, no un flag.
-- [ ] **3.6 Lazy loading**
+- [~] **3.3.b Avatares huérfanos — el caso frecuente RESUELTO; el raro, documentado.**
+      **Resuelto:** al reemplazar el avatar se borra el anterior
+      (`uploadAvatar` en perfil-adapter.ts). Antes cada cambio de foto filtraba
+      un archivo, que es lo que pasa seguido.
+      ⚠️ **El primer intento no podía funcionar y se revirtió** (migraciones
+      `20260831000000` y `20260831010000`): la idea era un trigger SQL que
+      borrara filas de `storage.objects`, y **Supabase lo impide a propósito** —
+      `42501: Direct deletion from storage tables is not allowed. Use the
+      Storage API instead.` Con razón: esa tabla es solo metadata, así que
+      borrar la fila dejaría el binario huérfano e invisible, empeorando la
+      fuga. Se descubrió probándolo, no razonándolo.
+      **Pendiente:** limpiar los avatares al borrar una cuenta. Requiere la
+      Storage API, o sea la capa de aplicación, y hoy **no existe ningún flujo
+      de borrado de usuarios** en la app (se hace desde el dashboard de
+      Supabase), así que no hay dónde engancharlo. Queda para cuando exista.
+- [ ] **3.4 Responsive — EN PAUSA por decisión del usuario (2026-08-30).** El
+      nav mobile ya se hizo; falta el resto de pantallas.
+- [ ] **3.5 SSR — NO HECHO, y con una recomendación en contra por ahora.**
+      Son **9** páginas `"use client"`, no 8 (166–493 líneas cada una), todas
+      con su fetch en un hook tras la hidratación. Convertirlas implica partir
+      cada una en componente de servidor (que trae los datos) + componente de
+      cliente (interactividad), y que cada hook acepte datos iniciales.
+      **Por qué no ahora:** el beneficio típico de SSR —SEO y primer pintado
+      para visitantes— **no aplica a un panel detrás de login**. Lo que se
+      ganaría es ahorrar un viaje (HTML → JS → hidratar → fetch → pintar), a
+      cambio de refactorizar 9 archivos que hoy funcionan. Contra eso,
+      3.6 dio ~30 kB por página con un diff de ~10 líneas y riesgo casi nulo.
+      **Cuándo sí:** si el panel empieza a usarse con conexiones lentas, o si
+      alguna pantalla llega a doler de verdad. Entonces conviene empezar por
+      **una sola** —Dashboard es la más simple y la de menos interactividad— y
+      medir antes de seguir.
+- [x] **3.6 Lazy loading — HECHO.** Los cuatro modales (`AddProductModal`,
+      `EditProductModal`, `NewOrderModal`, `StockMovementModal`) pasan a
+      `next/dynamic` con `ssr: false`, **más montaje condicional** — que es lo
+      que de verdad lo hace efectivo: montados siempre con `open={false}`, el
+      chunk se descargaba igual al entrar a la página. Radix no renderiza nada
+      cerrado y estos modales no tienen animación de salida, así que
+      desmontarlos no cambia lo que se ve.
+
+      | Página | Antes | Ahora |
+      |---|---|---|
+      | `/catalog` | 134 kB | **103 kB** |
+      | `/inventory` | 135 kB | **105 kB** |
+      | `/orders` | 133 kB | **104 kB** |
+
+      Verificado en el navegador: los cuatro modales abren bien y su código
+      llega recién al abrirlos.
+      Nota de lectura: `/profile` figura con más "Size" pero su First Load no
+      cambió (178 → 177 kB). Es reatribución de chunks —el de `Modal` dejó de
+      ser compartido con las tres páginas que ahora lo difieren—, no una
+      regresión.
+      ⚠️ `/profile` sigue siendo el más pesado (177 kB) porque es la **única**
+      página que importa `useAuth`, y `AuthContext` es lo único que mete
+      `supabase-js` en el cliente. Bajarlo implicaría mover el logout a una ruta
+      de API; no se hizo porque 177 kB en una pantalla de un panel interno no
+      justifica tocar la autenticación.
 - [ ] **3.7 Auditoría de UX / funcionalidad inconsistente**
 - [ ] **3.8 Keep-alive de Supabase** — ⚠️ la premisa original no funciona: un
       trigger de Postgres solo se dispara ante eventos de datos, **no puede

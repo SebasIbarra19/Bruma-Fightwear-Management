@@ -71,6 +71,10 @@ export async function uploadAvatar(idUsuario: string, file: File): Promise<strin
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `${idUsuario}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
+  // Se lee ANTES de pisar el campo: después ya no habría forma de saber qué
+  // archivo dejó de estar referenciado.
+  const anterior = (await getPerfil(idUsuario))?.avatar_url ?? null
+
   const { error: upErr } = await supabase.storage
     .from(AVATAR_BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
@@ -85,5 +89,35 @@ export async function uploadAvatar(idUsuario: string, file: File): Promise<strin
     throw e
   }
 
+  // Recién con el perfil ya apuntando al nuevo se borra el viejo: al revés, un
+  // fallo del upsert dejaría al usuario sin avatar y sin el archivo anterior.
+  // Que esto falle no invalida la subida, así que no se propaga.
+  //
+  // Se hace por la Storage API y NO con SQL: Supabase bloquea a propósito el
+  // borrado directo sobre `storage.objects` ("Direct deletion from storage
+  // tables is not allowed"), porque eso solo quitaría la metadata y dejaría el
+  // binario huérfano — justo la fuga que se quiere evitar.
+  if (anterior && anterior !== pub.publicUrl) {
+    const previo = rutaDesdeUrl(anterior)
+    if (previo) {
+      const { error } = await supabase.storage.from(AVATAR_BUCKET).remove([previo])
+      if (error) console.error('[perfil] no se pudo borrar el avatar anterior:', error.message)
+    }
+  }
+
   return pub.publicUrl
+}
+
+/**
+ * Ruta dentro del bucket a partir de la URL pública guardada en el perfil.
+ *
+ * Devuelve `null` si la URL no tiene la forma esperada, en vez de arriesgar un
+ * `remove()` sobre una ruta inventada a partir de un texto arbitrario.
+ */
+function rutaDesdeUrl(url: string): string | null {
+  const marca = `/${AVATAR_BUCKET}/`
+  const i = url.indexOf(marca)
+  if (i === -1) return null
+  const ruta = url.slice(i + marca.length)
+  return ruta || null
 }

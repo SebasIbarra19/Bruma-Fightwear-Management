@@ -16,7 +16,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrdersData } from "@/hooks/useOrdersData";
-import { NewOrderModal, OrderLineOption, StatusOption } from "@/components/orders/NewOrderModal";
+import dynamic from "next/dynamic";
+import type { OrderLineOption, StatusOption } from "@/components/orders/NewOrderModal";
+
+// El modal solo existe cuando se abre. Con el import estático su código viajaba
+// en el bundle de la página aunque nadie tocara "New Order"; los tipos de
+// arriba se borran al compilar, así que no arrastran nada.
+const NewOrderModal = dynamic(
+  () => import("@/components/orders/NewOrderModal").then((m) => m.NewOrderModal),
+  { ssr: false }
+);
 import { formatColones } from "@/lib/utils";
 
 export default function OrdersPage() {
@@ -155,13 +164,19 @@ export default function OrdersPage() {
         bgImage="https://images.unsplash.com/photo-1587293852726-70cdb56c2866?w=1200&h=300&fit=crop&auto=format"
       />
 
-      <NewOrderModal
-        open={showNewOrderModal}
-        onOpenChange={setShowNewOrderModal}
-        lineOptions={lineOptions}
-        statusOptions={statusOptions}
-        onSubmit={createOrder}
-      />
+      {/* El montaje condicional es lo que hace efectivo el `dynamic`: montado
+          siempre con `open={false}`, el chunk se descargaría igual al entrar a
+          la página. Radix no renderiza nada cuando está cerrado y el modal no
+          tiene animación de salida, así que desmontarlo no cambia lo que se ve. */}
+      {showNewOrderModal && (
+        <NewOrderModal
+          open={showNewOrderModal}
+          onOpenChange={setShowNewOrderModal}
+          lineOptions={lineOptions}
+          statusOptions={statusOptions}
+          onSubmit={createOrder}
+        />
+      )}
 
       <div className="flex flex-col gap-3">
         <div className="relative group">
