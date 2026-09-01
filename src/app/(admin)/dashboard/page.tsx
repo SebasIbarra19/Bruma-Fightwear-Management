@@ -6,10 +6,15 @@ import { ShoppingCart, Package, Coins, AlertTriangle, CheckCircle2, Target } fro
 import { PageHeader } from "@/components/figma-shared/Common";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useEsqueletoDemorado } from "@/hooks/useEsqueletoDemorado";
 import { formatColones } from "@/lib/utils";
 
 export default function DashboardView() {
   const { data, loading, error } = useDashboardData();
+  // Con la cache caliente la respuesta llega en milisegundos: sin este umbral
+  // los esqueletos aparecerian y desapareceran en un parpadeo, que se percibe
+  // peor que una pausa breve sin nada.
+  const mostrarEsqueleto = useEsqueletoDemorado(loading);
 
   // Los cuatro KPI salen de SPs que ya existian y nadie llamaba
   // (`get_dashboard_stats` y `get_order_analytics`).
@@ -81,7 +86,7 @@ export default function DashboardView() {
               </p>
               <Icon size={14} className={color} />
             </div>
-            {loading ? (
+            {mostrarEsqueleto ? (
               <div className="h-8 w-24 bg-bone/10 rounded-[2px] animate-pulse mb-2" />
             ) : (
               <p className="font-fraunces text-3xl font-bold text-bone leading-none mb-2">
@@ -109,7 +114,7 @@ export default function DashboardView() {
             </Link>
           </div>
 
-          {loading && (
+          {mostrarEsqueleto && (
             <div className="flex flex-col gap-2">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-12 bg-bone/5 rounded-[2px] animate-pulse" />
@@ -172,7 +177,7 @@ export default function DashboardView() {
             Meta del mes
           </p>
 
-          {loading && <div className="h-24 bg-bone/5 rounded-[2px] animate-pulse" />}
+          {mostrarEsqueleto && <div className="h-24 bg-bone/5 rounded-[2px] animate-pulse" />}
 
           {!loading && data && data.stats.meta_mensual <= 0 && (
             <div className="flex-1 flex flex-col items-center justify-center text-center">

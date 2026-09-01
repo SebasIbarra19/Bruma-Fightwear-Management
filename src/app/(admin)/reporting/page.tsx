@@ -6,6 +6,7 @@ import { PageHeader, StatusBadge } from "@/components/figma-shared/Common";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TacticalTable, Column } from "@/components/ui/TacticalTable";
 import { useActividadData } from "@/hooks/useActividadData";
+import { useEsqueletoDemorado } from "@/hooks/useEsqueletoDemorado";
 import type {
   CategoriaActividad,
   RegistroActividad,
@@ -31,6 +32,9 @@ export default function ReportingView() {
   const { registros, loading, error, categoria, setCategoria, refetch } =
     useActividadData();
   const [page, setPage] = useState(0);
+  // Con la cache caliente la respuesta llega en milisegundos: el umbral evita
+  // que el esqueleto aparezca y desaparezca en un parpadeo.
+  const mostrarEsqueleto = useEsqueletoDemorado(loading);
 
   // El hook pide 100 filas de una sola vez y la bitacora crece sin limite, asi
   // que se pagina en cliente con el mismo patron de Movements e Inventory.
@@ -182,7 +186,7 @@ export default function ReportingView() {
       <TacticalTable
         columns={columns}
         data={paginated}
-        loading={loading}
+        loading={mostrarEsqueleto}
         keyExtractor={(r) => r.id_registro}
         emptyTitle="Sin registros"
         emptyDescription={

@@ -1,81 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
-import {
-  BELTS,
-  DEFAULT_BELT,
-  activeNavIndex,
-  beltGeometry,
-  type BeltId,
-} from './belts'
+import { activeNavIndex, beltGeometry } from './belts'
 import { BeltImage } from './BeltImage'
 import { NavigationItems } from './NavigationItems'
-import { BeltPicker } from './BeltPicker'
 import { MobileNav } from './MobileNav'
-
-const STORAGE_KEY = 'bruma.belt'
-
-function isBeltId(value: string | null): value is BeltId {
-  return value !== null && value in BELTS
-}
+import { useBelt } from '@/contexts/BeltContext'
 
 export function BeltNavigation() {
   const pathname = usePathname()
-  const [belt, setBelt] = useState<BeltId>(DEFAULT_BELT)
-
-  // La preferencia se lee tras el montaje, no durante el render: servidor y
-  // primer render de cliente coinciden. Si el valor guardado difiere hay un
-  // único frame con el cinturón por defecto — es deliberado, para no repetir
-  // el desajuste de hidratación que ya arrastra ThemeContext.
-  //
-  // `localStorage` primero y el perfil después, a propósito: lo local pinta en
-  // el mismo frame y el perfil llega por red. Al revés se vería el cinturón por
-  // defecto durante toda la petición. El perfil manda cuando llega, que es lo
-  // que hace que la elección siga al usuario entre equipos; `localStorage`
-  // queda como caché para que la próxima carga en ESTE navegador ya arranque
-  // bien.
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (isBeltId(stored)) setBelt(stored)
-
-    let vigente = true
-    fetch('/api/perfil')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (!vigente || !res?.success) return
-        const guardado = res.data?.preferencia_cinturon
-        if (isBeltId(guardado)) {
-          setBelt(guardado)
-          window.localStorage.setItem(STORAGE_KEY, guardado)
-        }
-      })
-      .catch(() => {
-        // Sin sesión o sin red: se sigue con lo local. La barra nunca debe
-        // quedar sin cinturón por un problema de perfil.
-      })
-
-    return () => {
-      vigente = false
-    }
-  }, [])
-
-  const selectBelt = (next: BeltId) => {
-    setBelt(next)
-    window.localStorage.setItem(STORAGE_KEY, next)
-
-    // Persistir en el perfil es lo que hace que la elección sobreviva al
-    // navegador. No se espera ni se revierte si falla: el cambio visual ya
-    // ocurrió y bloquear la interfaz por guardar una preferencia sería peor
-    // que perderla.
-    fetch('/api/perfil', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preferencia_cinturon: next }),
-    }).catch(() => {})
-  }
+  // El cinturón ya no se elige acá: vive en el perfil. Este componente solo lo
+  // consume (ver `BeltContext`), así que la barra queda para navegar y nada más.
+  const { belt } = useBelt()
 
   // Derivado durante el render, no en un efecto. Así el primer render ya emite
   // el translateY final: entrar directo a /inventory pinta la cinta alineada
@@ -91,7 +29,7 @@ export function BeltNavigation() {
           completo y esta variante compuesta aparte lo reemplaza (ver
           MobileNav.tsx). No comparte geometría con el rail: es markup nuevo
           en paralelo, no un ajuste de `beltGeometry`. */}
-      <MobileNav belt={belt} onBeltChange={selectBelt} activeIndex={activeIndex} />
+      <MobileNav activeIndex={activeIndex} />
 
       {/* >=lg (sin cambios de comportamiento respecto de antes, solo ahora
           oculto por debajo de `lg` en vez de renderizarse a ancho completo).
@@ -123,7 +61,6 @@ export function BeltNavigation() {
             >
               <User size={12} /> Perfil
             </Link>
-            <BeltPicker value={belt} onChange={selectBelt} />
           </div>
         </div>
       </aside>

@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import { User } from 'lucide-react'
-import { NAV, type BeltId } from './belts'
-import { BeltPicker } from './BeltPicker'
+import { NAV } from './belts'
+import { precargarRuta } from '@/lib/api/cache-cliente'
 
 interface MobileNavProps {
-  belt: BeltId
-  onBeltChange: (belt: BeltId) => void
   activeIndex: number
 }
 
@@ -17,12 +15,13 @@ interface MobileNavProps {
  * no tiene solución mobile"). En vez de forzar esa geometría a otra escala,
  * esta es una variante compuesta aparte: registro producto (legibilidad y
  * densidad, no el rail fotográfico) — franja superior sticky con identidad
- * (wordmark + selector de grado, reutilizando `BeltPicker` tal cual) y los 8
- * destinos de `NAV` como fila horizontal con scroll. Mismo lenguaje visual
+ * (wordmark y acceso al perfil) y los 8 destinos de `NAV` como fila horizontal
+ * con scroll. El selector de cinturón se mudó al perfil, así que esta barra ya
+ * no recibe ni el cinturón activo. Mismo lenguaje visual
  * que los pills de filtro de Inventory (`bg-ember/10 text-ember
  * border-ember/30` para el activo) en vez de inventar un estilo nuevo.
  */
-export function MobileNav({ belt, onBeltChange, activeIndex }: MobileNavProps) {
+export function MobileNav({ activeIndex }: MobileNavProps) {
   return (
     <div className="sticky top-0 z-40 flex flex-col bg-obsidian border-b border-bone/10 lg:hidden">
       <div className="flex items-center justify-between gap-4 px-4 py-2 border-b border-bone/10">
@@ -30,7 +29,6 @@ export function MobileNav({ belt, onBeltChange, activeIndex }: MobileNavProps) {
           BRUMA
         </span>
         <div className="flex items-center gap-3">
-          <BeltPicker value={belt} onChange={onBeltChange} />
           {/* Mismo criterio que en el rail: el perfil es la cuenta, no una
               sección, así que va en la fila de identidad y no entre los pills. */}
           <Link
@@ -54,6 +52,8 @@ export function MobileNav({ belt, onBeltChange, activeIndex }: MobileNavProps) {
             <Link
               key={item.id}
               href={item.href}
+              onMouseEnter={() => precargarRuta(item.href)}
+              onFocus={() => precargarRuta(item.href)}
               aria-current={isActive ? 'page' : undefined}
               className={`flex shrink-0 items-center gap-2 rounded-[2px] border px-3 py-2 font-geist text-[11px] font-bold uppercase tracking-widest outline-none transition-all focus-visible:ring-1 focus-visible:ring-ember ${
                 isActive

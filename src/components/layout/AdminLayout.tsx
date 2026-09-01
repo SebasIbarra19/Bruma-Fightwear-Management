@@ -3,13 +3,18 @@
 import React from "react";
 import { BeltNavigation } from "@/components/navigation/BeltNavigation";
 import { BrumaPatternBackground } from "@/components/figma-shared/BrumaPatternBackground";
+import { BeltProvider } from "@/contexts/BeltContext";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    // Sin padding vertical en el contenedor: cualquier padding acá le resta
-    // recorrido al `sticky` de la barra respecto del rango de scroll, y la
-    // barra se despegaría justo al final. Va en <main>.
-    <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-8 px-4 md:px-8 relative z-10">
+    // El provider envuelve todo el admin porque ahora hay DOS componentes que
+    // deben coincidir en el cinturón: la barra que lo pinta y el perfil que lo
+    // elige. Sin estado común, el cambio solo se vería al recargar.
+    <BeltProvider>
+      {/* Sin padding vertical en el contenedor: cualquier padding acá le resta
+          recorrido al `sticky` de la barra respecto del rango de scroll, y la
+          barra se despegaría justo al final. Va en <main>. */}
+      <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-8 px-4 md:px-8 relative z-10">
       <BeltNavigation />
       {/*
         overflow-hidden en <main> (no en el contenedor de arriba) es
@@ -33,5 +38,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="relative z-10 flex flex-col gap-12">{children}</div>
       </main>
     </div>
+    </BeltProvider>
   );
 }

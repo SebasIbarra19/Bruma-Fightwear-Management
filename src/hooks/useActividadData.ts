@@ -1,4 +1,4 @@
-import { fetchApi } from '@/lib/api/fetch-cliente'
+import { fetchConCache, invalidarCache } from '@/lib/api/cache-cliente'
 import { useEffect, useState } from 'react'
 import type {
   CategoriaActividad,
@@ -21,7 +21,12 @@ export function useActividadData(): UseActividadDataResult {
   const [categoria, setCategoria] = useState<CategoriaActividad | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const refetch = () => setRefreshKey((k) => k + 1)
+  // Invalida antes de volver a pedir: si no, la caché devolvería lo mismo que
+  // ya se muestra y el botón de recargar no haría nada.
+  const refetch = () => {
+    invalidarCache('/api/actividad')
+    setRefreshKey((k) => k + 1)
+  }
 
   useEffect(() => {
     // Cambiar de filtro rápido dispara varias peticiones; sin esto, una
@@ -34,13 +39,15 @@ export function useActividadData(): UseActividadDataResult {
     const qs = new URLSearchParams({ limit: '100' })
     if (categoria) qs.set('categoria', categoria)
 
-    fetchApi(`/api/actividad?${qs}`)
-      .then((r) => r.json())
-      .then((result) => {
-        if (!vigente) return
-        if (result.success) setRegistros(result.data)
-        else setError(result.error?.message || 'Error cargando la bitácora')
-      })
+    // La caché se indexa por URL, así que cada filtro guarda lo suyo y volver a
+    // uno ya visto pinta al instante. `onDatos` puede llamarse dos veces —
+    // cacheado y luego fresco—: `loading` se apaga en la primera para que la
+    // revalidación no reabra los esqueletos.
+    fetchConCache<RegistroActividad[]>(`/api/actividad?${qs}`, (filas) => {
+      if (!vigente) return
+      setRegistros(filas)
+      setLoading(false)
+    })
       .catch((e) => {
         if (vigente) setError(e.message)
       })

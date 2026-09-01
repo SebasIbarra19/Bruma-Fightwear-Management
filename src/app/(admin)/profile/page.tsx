@@ -9,11 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePerfilData } from "@/hooks/usePerfilData";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { BELTS, BELT_IDS } from "@/components/navigation/belts";
+import { BELTS, BELT_IDS, type BeltId } from "@/components/navigation/belts";
+import { useBelt } from "@/contexts/BeltContext";
 
 export default function ProfilePage() {
   const { perfil, loading, saving, error, guardar, subirAvatar } = usePerfilData();
   const { signOut } = useAuth();
+  // El contexto es lo que hace que el cambio se vea en la barra SIN recargar.
+  const { setBelt } = useBelt();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [nombre, setNombre] = useState("");
@@ -286,7 +289,15 @@ export default function ProfilePage() {
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setCinturon(activo ? "" : id)}
+                      onClick={() => {
+                        const siguiente = activo ? "" : id;
+                        setCinturon(siguiente);
+                        // Se aplica al instante, antes de guardar: el cinturon
+                        // es una preferencia visual y esperar al viaje de red
+                        // haria que el clic se sintiera muerto. Si el guardado
+                        // falla, lo peor es que no sobreviva a la recarga.
+                        if (siguiente) setBelt(siguiente as BeltId);
+                      }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-[2px] border text-[10px] font-geist font-bold uppercase tracking-widest transition-colors ${
                         activo
                           ? "bg-ember/10 text-ember border-ember/30"

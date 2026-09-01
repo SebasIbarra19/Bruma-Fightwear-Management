@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { NavItem } from './belts'
+import { precargarRuta } from '@/lib/api/cache-cliente'
 
 interface NavigationButtonProps {
   item: NavItem
@@ -21,6 +22,11 @@ export function NavigationButton({ item, isActive }: NavigationButtonProps) {
   return (
     <Link
       href={item.href}
+      // Precarga los DATOS al pasar el mouse: Next ya precarga el codigo de la
+      // ruta por su cuenta, pero lo que realmente se espera al entrar es la
+      // peticion. `onFocus` cubre el mismo camino por teclado.
+      onMouseEnter={() => precargarRuta(item.href)}
+      onFocus={() => precargarRuta(item.href)}
       aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       // z-20 lo deja por encima de la cinta (z-10), para que ícono y texto del
