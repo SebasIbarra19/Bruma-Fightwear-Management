@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/types/database'
@@ -20,6 +20,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
   const router = useRouter()
+
+  // Ref y no estado: solo la lee el listener y no debe provocar re-render ni
+  // volver a suscribirlo.
+  const huboSesion = useRef(false)
 
   useEffect(() => {
     // Obtener sesión inicial
@@ -41,19 +45,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      console.log('Auth state change:', event, session?.user?.email)
-      
       setUser(session?.user ?? null)
       setIsLoading(false)
 
-      // El middleware maneja las redirecciones automáticamente
-      // Solo redirigir en logout explícito
-      if (event === 'SIGNED_OUT') {
-        // Delay para permitir que las cookies se limpien
+      // ⚠️ `SIGNED_OUT` NO significa "el usuario cerró sesión": Supabase también
+      // lo emite al inicializar el cliente en una página sin sesión previa
+      // (comprobado en consola: INITIAL_SESSION seguido de SIGNED_OUT, ambos
+      // sin usuario). Redirigir ante cualquiera de esos eventos rompía el
+      // enlace de recuperación: la pantalla `/auth/reset` se montaba, este
+      // listener disparaba antes de que el cliente terminara de procesar el
+      // token del fragmento, y mandaba a login sin darle tiempo.
+      //
+      // Por eso solo se navega cuando ANTES hubo un usuario de verdad, que es
+      // el cierre de sesión real. El resto de las redirecciones ya las resuelve
+      // el middleware, que además es la defensa que no se puede saltear.
+      if (event === 'SIGNED_OUT' && huboSesion.current) {
+        huboSesion.current = false
         setTimeout(() => {
           router.push('/auth/login')
         }, 100)
       }
+
+      if (session?.user) huboSesion.current = true
     })
 
     return () => {

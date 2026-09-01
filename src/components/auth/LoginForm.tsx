@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
@@ -86,9 +87,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             <label className="block font-geist text-[10px] uppercase tracking-widest text-bone/50 transition-colors group-focus-within:text-ember">
               Passkey
             </label>
-            <button type="button" className="text-[10px] uppercase tracking-widest text-bone/40 hover:text-bone transition-colors">
+            <Link
+              href="/auth/forgot"
+              className="text-[10px] uppercase tracking-widest text-bone/40 hover:text-bone transition-colors"
+            >
               Reset Protocol?
-            </button>
+            </Link>
           </div>
           <div className="relative">
             <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-bone/30 group-focus-within:text-ember transition-colors" />
@@ -118,19 +122,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         {loading ? "Decrypting..." : "Initialize Session"}
       </Button>
 
-      <div className="relative py-2 flex items-center gap-4">
-        <div className="h-[1px] flex-1 bg-bone/10" />
-        <span className="text-[10px] font-geist text-bone/30 uppercase tracking-widest">External Node</span>
-        <div className="h-[1px] flex-1 bg-bone/10" />
-      </div>
-
-      <button type="button" className="w-full flex items-center justify-center gap-3 py-3 bg-bone/5 border border-bone/20 rounded-[2px] hover:bg-bone/10 hover:border-bone/40 transition-all font-geist text-xs text-bone/80 uppercase tracking-widest">
-        <svg className="w-4 h-4" viewBox="0 0 24 24">
-          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="currentColor" className="opacity-60" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        </svg>
-        Authenticate Google
-      </button>
     </form>
   )
 }

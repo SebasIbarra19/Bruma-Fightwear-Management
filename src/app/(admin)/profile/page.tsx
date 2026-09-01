@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { LogOut, Upload, User } from "lucide-react";
+import { KeyRound, LogOut, Upload, User } from "lucide-react";
 import { PageHeader } from "@/components/figma-shared/Common";
 import { FieldLabel, TextInput } from "@/components/figma-shared/Modal";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePerfilData } from "@/hooks/usePerfilData";
 import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { BELTS, BELT_IDS } from "@/components/navigation/belts";
 
 export default function ProfilePage() {
@@ -20,6 +21,47 @@ export default function ProfilePage() {
   const [puesto, setPuesto] = useState("");
   const [cinturon, setCinturon] = useState<string>("");
   const [guardado, setGuardado] = useState(false);
+
+  const [cambiandoClave, setCambiandoClave] = useState(false);
+  const [claveNueva, setClaveNueva] = useState("");
+  const [claveRepetida, setClaveRepetida] = useState("");
+  const [guardandoClave, setGuardandoClave] = useState(false);
+  const [errorClave, setErrorClave] = useState<string | null>(null);
+  const [claveOk, setClaveOk] = useState(false);
+
+  const onCambiarClave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorClave(null);
+    setClaveOk(false);
+
+    if (claveNueva.length < 6) {
+      setErrorClave("La clave debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (claveNueva !== claveRepetida) {
+      setErrorClave("Las dos claves no coinciden.");
+      return;
+    }
+
+    setGuardandoClave(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password: claveNueva });
+      if (error) throw error;
+      setClaveOk(true);
+      setClaveNueva("");
+      setClaveRepetida("");
+      // Se deja ver la confirmación un momento antes de plegar el formulario.
+      setTimeout(() => {
+        setCambiandoClave(false);
+        setClaveOk(false);
+      }, 2000);
+    } catch (err: any) {
+      setErrorClave(err.message || "No se pudo cambiar la clave.");
+    } finally {
+      setGuardandoClave(false);
+    }
+  };
 
   // El formulario se siembra una vez que llega el perfil. Sin esto los campos
   // quedarian vacios aunque la base tuviera datos.
@@ -143,8 +185,55 @@ export default function ProfilePage() {
               (registrado en FINDINGS.md tras el rediseño del nav). */}
           <button
             type="button"
+            onClick={() => setCambiandoClave((v) => !v)}
+            className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 bg-transparent border border-bone/20 text-bone/70 rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:border-bone/50 hover:text-bone transition-all"
+          >
+            <KeyRound size={14} /> Cambiar clave
+          </button>
+
+          {/* Estando dentro no hace falta el correo de recuperación: Supabase
+              permite actualizar la clave con la sesión activa. La ruta por
+              correo (`/auth/forgot`) queda para cuando NO se puede entrar. */}
+          {cambiandoClave && (
+            <form onSubmit={onCambiarClave} className="w-full mt-3 flex flex-col gap-2">
+              <input
+                type="password"
+                value={claveNueva}
+                onChange={(e) => setClaveNueva(e.target.value)}
+                placeholder="Nueva clave"
+                autoComplete="new-password"
+                className="w-full px-3 py-2 bg-obsidian border border-bone/20 rounded-[2px] text-bone placeholder:text-bone/20 text-xs font-geist focus:outline-none focus:border-ember"
+              />
+              <input
+                type="password"
+                value={claveRepetida}
+                onChange={(e) => setClaveRepetida(e.target.value)}
+                placeholder="Repetir clave"
+                autoComplete="new-password"
+                className="w-full px-3 py-2 bg-obsidian border border-bone/20 rounded-[2px] text-bone placeholder:text-bone/20 text-xs font-geist focus:outline-none focus:border-ember"
+              />
+              {errorClave && (
+                <p className="text-[10px] text-ember font-geist">{errorClave}</p>
+              )}
+              {claveOk && (
+                <p className="text-[10px] text-[#7ddb7d] font-geist uppercase tracking-widest">
+                  Clave actualizada
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={guardandoClave}
+                className="w-full px-4 py-2 bg-ember/10 border border-ember/30 text-ember rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-ember/20 transition-colors disabled:opacity-50"
+              >
+                {guardandoClave ? "Guardando..." : "Confirmar"}
+              </button>
+            </form>
+          )}
+
+          <button
+            type="button"
             onClick={() => signOut()}
-            className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 bg-transparent border border-ember/40 text-ember rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-ember/10 transition-all"
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 bg-transparent border border-ember/40 text-ember rounded-[4px] text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-ember/10 transition-all"
           >
             <LogOut size={14} /> Cerrar sesión
           </button>
