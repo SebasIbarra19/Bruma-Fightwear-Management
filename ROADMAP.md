@@ -690,6 +690,70 @@ Eso cambia dos cosas de fondo:
       el plan actual y, si no hay nada, definir un export periódico antes de
       que Luis cargue información que duela perder.
 
+### 4.A-bis — Paso a paso del despliegue
+
+> Orden importante: **A.3 antes que A.6**. Si Luis entra y ve pedidos de
+> prueba, el primer contacto con el sistema es confuso. Y **A.5 antes de que
+> nadie intente iniciar sesión**, o el login redirige a `localhost`.
+
+#### A.4 · Variables de entorno en Vercel
+
+1. Vercel → tu proyecto → **Settings → Environment Variables**.
+2. Cargar exactamente estas tres, con el mismo valor que tiene tu `.env`:
+
+   | Nombre | Entornos | ¿Llega al navegador? |
+   |---|---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview, Development | Sí, y está bien |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production, Preview, Development | Sí, y está bien |
+   | `SUPABASE_SERVICE_ROLE_KEY` | **Solo Production** | **No, jamás** |
+
+3. ⚠️ **El error que hay que no cometer:** `NEXT_PUBLIC_` no es un prefijo
+   decorativo — le dice a Next que incluya la variable **en el JavaScript que
+   descarga el navegador**. Escribir `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`
+   publicaría la llave que saltea todo el RLS. Sería regalar la base entera a
+   cualquiera que abra las herramientas de desarrollo.
+4. Tras cargarlas hay que **volver a desplegar**: Vercel las inyecta en el
+   build, así que un deploy anterior no las ve.
+
+#### A.5 · URLs en Supabase
+
+1. Supabase → **Authentication → URL Configuration**.
+2. **Site URL** → `https://<tu-dominio-de-vercel>`
+   Es a donde Supabase manda por defecto tras validar un enlace de correo. Hoy
+   apunta a `http://localhost:3000`, que es exactamente por qué el enlace de
+   recuperación te dejaba en la nada.
+3. **Redirect URLs** → agregar estas dos entradas:
+   - `https://<tu-dominio>/auth/reset`
+   - `https://<tu-dominio>/**` *(comodín, cómodo para las vistas previas)*
+   Supabase **ignora** cualquier `redirectTo` que no esté en esta lista y cae
+   al Site URL. Sin esto, el flujo de recuperación que construimos no funciona
+   aunque el código esté bien.
+4. Para seguir desarrollando en local, dejá también `http://localhost:3000/**`.
+
+#### A.6 · Crear el usuario de Luis
+
+1. Supabase → **Authentication → Users → Add user**.
+2. Su correo, una clave provisional, y **marcar *Auto Confirm User***. Sin eso
+   queda esperando un correo de confirmación que quizá no llegue.
+3. Pasarle la clave provisional **por un canal aparte** (mensaje directo), no
+   por correo junto con el enlace.
+4. Que entre y la cambie desde **Perfil → Cambiar clave**. Estando dentro no
+   necesita correo: Supabase permite cambiarla con la sesión activa.
+5. El registro público sigue cerrado, así que este es el único camino para
+   sumar gente. Es deliberado.
+
+#### A.7 · Respaldos
+
+1. Supabase → **Settings → Database**, buscar la sección de *Backups*.
+2. ⚠️ **Sin verificar de mi parte:** hay que confirmar si el plan actual
+   incluye respaldos automáticos diarios. Con datos reales desde el día uno,
+   esto pasa de detalle a riesgo real.
+3. Si **no** los incluye, la salida barata es un export periódico:
+   `supabase db dump -f respaldo.sql --linked` guardado fuera del repo (nunca
+   dentro: contiene datos de clientes).
+4. Definirlo **antes** de que Luis cargue información que duela perder. Después
+   es tarde por definición.
+
 ### 4.B — No bloquean: se ordenan con el uso real de Luis
 
 - [ ] **B.1 Subida de imágenes** — el cableado está bien y los `input` pasaron
@@ -698,34 +762,74 @@ Eso cambia dos cosas de fondo:
       de archivos es UI nativa del sistema y exige un gesto humano. Confirmar a
       mano en producto y perfil.
 - [ ] **B.2 Dashboard** — sacar *Ticket promedio* (métrica de análisis, no de
-      "qué hago hoy"), sumar *Resueltos hoy*, y decidir dónde viven las metas
-      mensuales antes de construir *Monthly Goal*: hoy no existen en el esquema.
-- [ ] **B.3 Statistics con gráficos.** Hoy hay 2 pedidos del mismo día, así que
-      cualquier serie temporal es un punto — esto **gana valor recién con el uso
-      de Luis**. Prioridad acordada: **ingresos en el tiempo** y **top productos
-      por unidades**, que son las dos preguntas que un dueño se hace cada
-      semana. La dona por estado se descarta: esa información ya está en Orders
-      con más detalle. Requiere un SP nuevo que agrupe por período;
-      `get_order_analytics` solo devuelve totales.
+      "qué hago hoy") y sumar *Resueltos hoy*.
+      **Monthly Goal** necesita una decisión previa: la meta es un dato que
+      alguien escribe, no algo que se calcule, y hoy **no hay dónde guardarlo**.
+      Dos formas de resolverlo:
+      · *Tabla de configuración* — una tabla `configuracion` de pares
+        clave/valor (`meta_mensual` → `500000`). Sirve para esto y para todo lo
+        que venga después (IVA, moneda, datos de la empresa en la factura), sin
+        agregar una tabla por cada ajuste.
+      · *Tabla de metas por mes* — `meta_mensual(anio, mes, monto)`. Permite
+        historial y comparar "cumplimos en marzo, no en abril", pero solo sirve
+        para eso.
+      Recomendación: la segunda **si** la meta cambia mes a mes y querés ver el
+      histórico; la primera si es un número que se fija una vez y casi no se
+      toca. Decidir antes de construir la tarjeta.
+- [ ] **B.3 Statistics con gráficos — las 5 preguntas aprobadas
+      (2026-08-31).** El criterio no es qué se ve bien sino qué pregunta de
+      negocio responde:
+
+      | Pregunta | Gráfico | Fuente |
+      |---|---|---|
+      | ¿Vendemos más o menos que antes? | Línea de ingresos por día/semana | `pedido.fecha` + `total` |
+      | ¿Qué productos se mueven? | Barras horizontales, top SKU por unidades | `pedidodetalle` |
+      | ¿En qué estado están los pedidos? | Dona por estado | `pedido.id_estado` |
+      | ¿Qué está por agotarse? | Ya resuelto en el dashboard | `list_inventory_items` |
+      | ¿Qué categoría factura más? | Barras por categoría | `pedidodetalle` → `producto` → `tipoproducto` |
+
+      Requiere **un SP nuevo que agrupe por período**: `get_order_analytics`
+      solo devuelve totales, sin desglose temporal ni por producto.
+      ⚠️ Gana valor **recién con el uso de Luis**: hoy hay 2 pedidos del mismo
+      día y toda serie temporal es un punto. Construir los gráficos antes de
+      que haya datos es adornar un vacío.
 - [ ] **B.4 Selector de cinturón** — sacarlo del cinturón y dejarlo solo en el
       perfil, aplicando sin recargar. La columna `preferencia_cinturon` ya
       existe y se guarda; falta que `BeltNavigation` la lea en vez de
       `localStorage`.
-- [ ] **B.5 Fluidez de navegación.** Los esqueletos **no tienen duración fija**:
-      duran lo que tarde la petición, y por eso a veces parpadean. El problema
-      de fondo es que cada cambio de pestaña vuelve a pedir todo desde cero.
-      Ideas por impacto: (1) caché en memoria que muestre lo anterior mientras
-      revalida; (2) precarga al pasar el mouse por el enlace; (3) umbral de
-      ~200 ms antes de mostrar esqueleto, porque un parpadeo se siente peor que
-      una pausa; (4) recortar el viaje a Auth que cada ruta paga hoy (~300 ms)
-      antes de su consulta.
+- [ ] **B.5 Fluidez de navegación — aprobadas 1, 2 y 3 (2026-08-31).**
+      Los esqueletos **no tienen duración fija**: duran lo que tarde la
+      petición, y por eso a veces parpadean. El problema de fondo es que cada
+      cambio de pestaña vuelve a pedir todo desde cero.
+      1. **Caché en memoria** — mostrar lo anterior al instante mientras
+         revalida en segundo plano. Es lo que más cambia la sensación.
+      2. **Precarga al pasar el mouse** por el enlace del nav: para cuando se
+         hace clic, los datos ya vienen en camino.
+      3. **Umbral de ~200 ms** antes de mostrar esqueleto — un parpadeo se
+         siente peor que una pausa breve.
+      La cuarta idea (recortar el viaje a Auth de ~300 ms por ruta) **queda
+      fuera por ahora**: toca el middleware, que es justo lo que protege la
+      aplicación, y no vale arriesgarlo por rendimiento antes del deploy.
 
 ### 4.C — Riesgos que el deploy vuelve serios
 
-- [ ] **C.1 El `p_forzar` de `adjust_inventory`.** Permite saltear la guarda de
-      stock negativo, y así fue como el Rashguard llegó a −2. Con Luis cargando
-      inventario real conviene decidir si sigue existiendo, y si sigue, que la
-      bitácora ya lo registre (eso ya está hecho).
+- [ ] **C.1 Permitir stock negativo en pedidos — DECIDIDO (2026-08-31).**
+      Hoy `add_order_item` (migración `20260825010000`) corta con
+      `RAISE EXCEPTION 'Stock insuficiente'` cuando `stock < cantidad`. O sea:
+      **si a Luis le piden 5 y tiene 3, no puede registrar el pedido.**
+      Decisión del usuario: el pedido es un hecho del negocio y el sistema no
+      debe negarlo. Se permite que el stock quede negativo, **a cambio de que
+      sea imposible no verlo**:
+      · avisar en el momento de crear el pedido cuántas unidades faltan;
+      · la fila queda en rojo en Inventory y sube al panel *Necesita
+        reposición* del dashboard (ambas cosas ya funcionan así);
+      · la bitácora ya registra el cambio con su autor.
+      El negativo deja de ser un accidente —como fue el −2 del Rashguard— y
+      pasa a significar algo: **deuda de stock**, unidades vendidas que hay que
+      reponer.
+      ⚠️ Con esto, `p_forzar` pierde su razón de ser en el camino del pedido.
+      Conviene revisar si sigue haciendo falta en los ajustes manuales o si se
+      retira para no dejar dos mecanismos que hacen lo mismo.
 - [ ] **C.2 Correo de recuperación.** Supabase envía con su servicio propio,
       que tiene límites bajos por hora — durante esta sesión el rate limit
       bloqueó varias pruebas. Para dos usuarios probablemente alcance; si falla,
