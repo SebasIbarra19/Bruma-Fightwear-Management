@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FormModal, FieldLabel, TextInput, SubmitBar } from "@/components/figma-shared/Modal";
 import { cn, formatColones } from "@/lib/utils";
 
@@ -82,6 +82,22 @@ export function NewOrderModal({ open, onOpenChange, lineOptions, statusOptions, 
     setError(null);
   };
 
+  /**
+   * Líneas que piden más de lo que hay. No impiden registrar el pedido —solo se
+   * avisan— porque la venta ya ocurrió; ver el comentario en `handleSubmit`.
+   */
+  const faltantes = useMemo(
+    () =>
+      Array.from(selected)
+        .map(([id, qty]) => {
+          const opt = lineOptions.find((o) => o.id === id);
+          if (!opt || qty <= opt.stock) return null;
+          return { label: opt.label, falta: qty - opt.stock, disponible: opt.stock };
+        })
+        .filter((f): f is { label: string; falta: number; disponible: number } => f !== null),
+    [selected, lineOptions]
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim()) {
@@ -92,13 +108,11 @@ export function NewOrderModal({ open, onOpenChange, lineOptions, statusOptions, 
       setError("Selecciona al menos un producto");
       return;
     }
-    for (const [id, qty] of Array.from(selected)) {
-      const opt = lineOptions.find((o) => o.id === id);
-      if (opt && qty > opt.stock) {
-        setError(`${opt.label}: cantidad (${qty}) excede el stock disponible (${opt.stock})`);
-        return;
-      }
-    }
+    // Ya NO se corta por falta de stock. El pedido es un hecho del negocio: si
+    // el cliente pidió 5, pidió 5, y negarlo no hace aparecer las unidades que
+    // faltan — solo obliga a no registrar la venta. El faltante se avisa arriba
+    // (ver `faltantes`) y queda visible como stock negativo en Inventory y en
+    // el panel de reposición del dashboard.
     if (!effectiveStatusId) {
       setError("No hay estados disponibles para asignar");
       return;
@@ -219,6 +233,30 @@ export function NewOrderModal({ open, onOpenChange, lineOptions, statusOptions, 
             ))}
           </div>
         </div>
+
+        {/* Aviso, no bloqueo: el pedido se registra igual. Va en ámbar y no en
+            rojo a propósito — rojo se lee como "error, no podés seguir", y acá
+            sí podés. Lo que comunica es una consecuencia: vas a quedar debiendo
+            stock. */}
+        {faltantes.length > 0 && (
+          <div className="rounded-[2px] border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+            <p className="font-geist text-[10px] font-bold uppercase tracking-widest text-amber-400">
+              Stock insuficiente — el pedido se registra igual
+            </p>
+            <ul className="mt-2 flex flex-col gap-1">
+              {faltantes.map((f) => (
+                <li key={f.label} className="font-geist text-xs text-bone/80">
+                  <span className="text-amber-400 font-bold">{f.label}</span>
+                  {" — "}faltan {f.falta} {f.falta === 1 ? "unidad" : "unidades"}
+                  {" "}(hay {f.disponible})
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 font-geist text-[10px] text-bone/50">
+              Quedará como stock negativo hasta que repongas.
+            </p>
+          </div>
+        )}
 
         <SubmitBar submitLabel="Place Order" loading={loading} error={error} />
       </form>

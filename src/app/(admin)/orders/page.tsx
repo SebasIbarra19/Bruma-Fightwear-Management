@@ -27,6 +27,7 @@ const NewOrderModal = dynamic(
   { ssr: false }
 );
 import { formatColones } from "@/lib/utils";
+import { fetchApi } from "@/lib/api/fetch-cliente";
 
 export default function OrdersPage() {
   const { orders, loading, error, refetch, createOrder, statuses, updateStatus } = useOrdersData({ limit: 50 });
@@ -86,7 +87,10 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!showNewOrderModal) return;
-    fetch("/api/inventory/items?limit=200")
+    // `includeZeroStock` es imprescindible desde que los pedidos permiten
+    // stock negativo: sin él, un producto agotado ni siquiera aparece en la
+    // lista y Luis no podría registrar la venta que ya ocurrió.
+    fetchApi("/api/inventory/items?limit=200&includeZeroStock=true")
       .then((res) => res.json())
       .then((result) => {
         const items = result.data ?? [];
@@ -106,7 +110,7 @@ export default function OrdersPage() {
     if (!targetId) { setOrderDetail(null); setOrderDetailError(null); return; }
     setOrderDetailLoading(true);
     setOrderDetailError(null);
-    fetch(`/api/orders/${targetId}`)
+    fetchApi(`/api/orders/${targetId}`)
       .then(res => res.json())
       .then((result) => {
         if (result.success) setOrderDetail(result.data);
