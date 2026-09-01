@@ -25,7 +25,6 @@ async function getInventoryStatsHandler(request: NextRequest) {
 
   if (!projectId) throw new ValidationError('projectId es requerido')
 
-  console.log('🔷 [API] GET /api/inventory/stats', { projectId })
 
   const adapter = new InventoryAdapter()
   const stats = await adapter.getInventoryValuation(projectId)

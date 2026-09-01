@@ -152,9 +152,13 @@ export function ProductImages({ productId }: { productId: number }) {
         </div>
       )}
 
+      {/* `sr-only` y no `hidden`: un input con `display:none` es ignorado por
+          `.click()` en varios navegadores, y entonces el explorador de archivos
+          no abre nunca. Así queda fuera de la vista pero renderizado. */}
       <input
         ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif"
-        onChange={(e) => upload(e.target.files)} className="hidden"
+        onChange={(e) => upload(e.target.files)}
+        className="sr-only" tabIndex={-1} aria-hidden
       />
       <button
         type="button" onClick={() => inputRef.current?.click()} disabled={busy}

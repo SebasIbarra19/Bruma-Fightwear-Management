@@ -36,7 +36,6 @@ async function getInventoryMovementsHandler(request: NextRequest) {
   if (limit < 1 || limit > 200) throw new ValidationError('limit debe estar entre 1 y 200')
   if (offset < 0) throw new ValidationError('offset debe ser mayor o igual a 0')
 
-  console.log('🔷 [API] GET /api/inventory/movements', { projectId, movementType, searchTerm, limit, offset })
 
   const adapter = new InventoryAdapter()
   const movements = await adapter.getInventoryMovements(projectId || undefined, {

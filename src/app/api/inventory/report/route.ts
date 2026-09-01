@@ -32,7 +32,6 @@ async function getInventoryReportHandler(request: NextRequest) {
 
   if (!projectId) throw new ValidationError('projectId es requerido')
 
-  console.log('🔷 [API] GET /api/inventory/report', { projectId, categoryId, lowStockOnly, includeMovements })
 
   const adapter = new InventoryAdapter()
   const report = await adapter.generateInventoryReport(projectId, {

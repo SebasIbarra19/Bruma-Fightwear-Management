@@ -149,7 +149,7 @@ export default function ProfilePage() {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/avif"
-            className="hidden"
+            className="sr-only" tabIndex={-1} aria-hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) subirAvatar(f).catch(() => {});

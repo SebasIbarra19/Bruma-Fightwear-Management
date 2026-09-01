@@ -47,7 +47,6 @@ export function useInventory(projectId?: string) {
 
       const response = await fetchApi(`/api/inventory/movements?${searchParams}`)
       const result = await response.json()
-      console.log('[Inventory] Movements API response:', result)
 
       if (!response.ok) {
         console.error('[Inventory] Error cargando movimientos:', result.error)
@@ -57,7 +56,6 @@ export function useInventory(projectId?: string) {
       }
       if (result.success) {
         setMovements(Array.isArray(result.data) ? result.data : [])
-        console.log('[Inventory] Movements loaded:', result.data)
       }
     } catch (err) {
       console.error('[Inventory] Movements fetch error:', err)

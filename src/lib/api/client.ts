@@ -67,7 +67,6 @@ export class SupabaseServiceClient {
       }
     })
 
-    console.log('✅ Supabase Service Client initialized')
   }
 
   /**

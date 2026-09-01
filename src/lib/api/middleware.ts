@@ -179,25 +179,6 @@ export function compose(...middlewares: Array<(handler: Handler) => Handler>) {
 }
 
 /**
- * Middleware para logging de requests
- */
-export function withLogging(handler: Handler): Handler {
-  return async (request: NextRequest) => {
-    const startTime = Date.now()
-    const { method, url } = request
-
-    console.log(`📥 ${method} ${url}`)
-
-    const response = await handler(request)
-    
-    const duration = Date.now() - startTime
-    console.log(`📤 ${method} ${url} - ${response.status} (${duration}ms)`)
-
-    return response
-  }
-}
-
-/**
  * Middleware para validar parámetros requeridos
  */
 export function withRequiredParams(params: string[]) {

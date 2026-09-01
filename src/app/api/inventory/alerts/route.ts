@@ -29,7 +29,6 @@ async function getInventoryAlertsHandler(request: NextRequest) {
     throw new ValidationError('projectId es requerido')
   }
 
-  console.log('🔷 [API] GET /api/inventory/alerts', { projectId, onlyCritical })
 
   const adapter = new InventoryAdapter()
   const alerts = await adapter.getInventoryAlerts(projectId, onlyCritical)

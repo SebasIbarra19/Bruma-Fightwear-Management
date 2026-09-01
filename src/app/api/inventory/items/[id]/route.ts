@@ -33,7 +33,6 @@ async function getInventoryItemByIdHandler(request: NextRequest, { params }: { p
     throw new ValidationError('id es requerido')
   }
 
-  console.log('🔷 [API] GET /api/inventory/items/[id]', { projectId, inventoryId })
 
   const invId = parseInt(inventoryId, 10)
   if (isNaN(invId)) throw new ValidationError('id debe ser numérico')
