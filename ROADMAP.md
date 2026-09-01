@@ -599,7 +599,13 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
 
 ## 🏁 Decisiones de lanzamiento (no bloquean el desarrollo)
 
-- [ ] **L.1 Hosting: resolver la licencia de Vercel antes de vender** — el plan
+- [x] **L.1 Hosting: licencia de Vercel — RESUELTA.** El usuario confirmó tener
+      aprobación de Vercel para este caso (2026-08-31), así que la ambigüedad
+      queda cerrada y **L.2 deja de ser necesaria**: no hace falta migrar a
+      Cloudflare ni pagar Pro por este motivo. El análisis de L.2 se conserva
+      abajo por si el costo cambia el cálculo más adelante.
+
+- [~] **L.1-bis (histórico) Hosting: resolver la licencia de Vercel** — el plan
       Hobby es **solo uso no comercial**. La definición literal es amplia
       ("beneficio económico de cualquiera involucrado en cualquier parte de la
       producción"), pero **ninguno de los cinco ejemplos que da Vercel aplica** a
@@ -634,6 +640,96 @@ quedó igual que antes (0 usuarios, pedidos 7 y 8, stock 11).
       existe en Workers**, donde todo debe ir bundleado.
       **Si se evalúa esta ruta, prototipar primero la ruta del PDF.** Es el
       make-or-break; el resto de la app es lo fácil.
+
+---
+
+## 🚀 Fase 4 — Deploy preliminar con Luis
+
+**Decisiones tomadas (2026-08-31):** Luis carga **datos reales desde el primer
+día**, y se despliega **antes** de pulir, para que su uso ordene qué pulir.
+
+Eso cambia dos cosas de fondo:
+- El proyecto de Supabase actual **pasa a ser producción**. Los datos de prueba
+  tienen que irse antes, y de acá en más cada cambio de esquema convive con
+  datos que importan.
+- La lista de pulido deja de ordenarse por gusto y se ordena por una sola
+  pregunta: **¿bloquea el deploy o no?**
+
+### 4.A — Bloquean el deploy
+
+- [x] **A.1 Fuga de facturación cerrada** — ver migración `20260902000000`.
+      Era lo único de seguridad que quedaba abierto, y habría salido a
+      producción: `factura`, `factura_item` y `factura_consecutivo` se leían
+      con la anon key.
+- [x] **A.2 Consola limpia** — se fueron los 11 `console.log` que imprimían
+      rutas de API con parámetros y respuestas completas, más `withLogging`.
+- [ ] **A.3 Limpiar los datos de prueba.** Hoy conviven productos reales
+      (`RSH-BRU-001`, `PSL-BRU-001`, `TSH-BRU-001`) con basura de desarrollo
+      (`HOODIEPRUEBA`, `mjm`), 2 pedidos y 2 facturas de prueba, y **una fila de
+      stock en −2**. Luis no debería ver nada de eso el primer día.
+      ⚠️ Ojo con el orden de borrado: las claves foráneas obligan a ir de
+      `factura_item` → `factura` → `pedidodetalle` → `pedido` →
+      `inventario_movimiento` → `productotallastock` → `productovariante` →
+      `producto`. Ya se pisó ese rastrillo antes en la sesión.
+- [ ] **A.4 Variables de entorno en Vercel** — `NEXT_PUBLIC_SUPABASE_URL`,
+      `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`.
+      ⚠️ La service role **jamás** con prefijo `NEXT_PUBLIC_`: ese prefijo la
+      publicaría en el bundle del navegador y equivaldría a regalar la base.
+      Hoy el nombre ya es correcto; el riesgo es tipearlo mal en el panel.
+- [ ] **A.5 URLs en Supabase** — Authentication → URL Configuration:
+      *Site URL* al dominio de producción y *Redirect URLs* con
+      `https://<dominio>/auth/reset`. Sin esto el login redirige a `localhost`
+      y la recuperación de clave vuelve a caer en la nada, que es exactamente
+      el bug que se acaba de arreglar.
+- [ ] **A.6 Crear el usuario de Luis** — el registro público está cerrado, así
+      que va por Authentication → Users → Add user, con *Auto Confirm*.
+      Que ponga su clave por el flujo de recuperación ya construido.
+- [ ] **A.7 Verificar los respaldos de Supabase.** ⚠️ **Sin confirmar:** el
+      plan gratuito puede no incluir respaldos automáticos. Con datos reales
+      desde el día uno, esto pasa de detalle a riesgo: hay que mirar qué ofrece
+      el plan actual y, si no hay nada, definir un export periódico antes de
+      que Luis cargue información que duela perder.
+
+### 4.B — No bloquean: se ordenan con el uso real de Luis
+
+- [ ] **B.1 Subida de imágenes** — el cableado está bien y los `input` pasaron
+      de `hidden` a `sr-only` (con `display:none`, `.click()` es ignorado en
+      varios navegadores). **No verificable por automatización**: el explorador
+      de archivos es UI nativa del sistema y exige un gesto humano. Confirmar a
+      mano en producto y perfil.
+- [ ] **B.2 Dashboard** — sacar *Ticket promedio* (métrica de análisis, no de
+      "qué hago hoy"), sumar *Resueltos hoy*, y decidir dónde viven las metas
+      mensuales antes de construir *Monthly Goal*: hoy no existen en el esquema.
+- [ ] **B.3 Statistics con gráficos.** Hoy hay 2 pedidos del mismo día, así que
+      cualquier serie temporal es un punto — esto **gana valor recién con el uso
+      de Luis**. Prioridad acordada: **ingresos en el tiempo** y **top productos
+      por unidades**, que son las dos preguntas que un dueño se hace cada
+      semana. La dona por estado se descarta: esa información ya está en Orders
+      con más detalle. Requiere un SP nuevo que agrupe por período;
+      `get_order_analytics` solo devuelve totales.
+- [ ] **B.4 Selector de cinturón** — sacarlo del cinturón y dejarlo solo en el
+      perfil, aplicando sin recargar. La columna `preferencia_cinturon` ya
+      existe y se guarda; falta que `BeltNavigation` la lea en vez de
+      `localStorage`.
+- [ ] **B.5 Fluidez de navegación.** Los esqueletos **no tienen duración fija**:
+      duran lo que tarde la petición, y por eso a veces parpadean. El problema
+      de fondo es que cada cambio de pestaña vuelve a pedir todo desde cero.
+      Ideas por impacto: (1) caché en memoria que muestre lo anterior mientras
+      revalida; (2) precarga al pasar el mouse por el enlace; (3) umbral de
+      ~200 ms antes de mostrar esqueleto, porque un parpadeo se siente peor que
+      una pausa; (4) recortar el viaje a Auth que cada ruta paga hoy (~300 ms)
+      antes de su consulta.
+
+### 4.C — Riesgos que el deploy vuelve serios
+
+- [ ] **C.1 El `p_forzar` de `adjust_inventory`.** Permite saltear la guarda de
+      stock negativo, y así fue como el Rashguard llegó a −2. Con Luis cargando
+      inventario real conviene decidir si sigue existiendo, y si sigue, que la
+      bitácora ya lo registre (eso ya está hecho).
+- [ ] **C.2 Correo de recuperación.** Supabase envía con su servicio propio,
+      que tiene límites bajos por hora — durante esta sesión el rate limit
+      bloqueó varias pruebas. Para dos usuarios probablemente alcance; si falla,
+      hay que configurar SMTP propio.
 
 ---
 
