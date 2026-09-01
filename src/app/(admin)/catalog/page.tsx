@@ -197,16 +197,27 @@ export default function CatalogPage() {
             ))}
             {filtered.length === 0 && (
               <div className="col-span-full">
-                <EmptyState
-                  title="Sector Clear"
-                  description="No catalog products match your search or filter parameters."
-                  actionLabel="Clear Filters"
-                  onAction={() => {
-                    setSearch("");
-                    setCatFilter(new Set());
-                    setCollFilter(new Set());
-                  }}
-                />
+                {/* Dos vacios distintos. Con cero productos, ofrecer "limpiar
+                    filtros" manda a deshacer algo que nadie hizo y sugiere que
+                    hay catalogo escondido detras de un filtro. Sin nada
+                    cargado, lo unico util es decir como empezar. */}
+                {products.length === 0 ? (
+                  <EmptyState
+                    title="Catálogo vacío"
+                    description="Todavía no hay productos. Creá el primero con + Add Product: al guardarlo aparece en Inventory con su SKU y ya se puede pedir."
+                  />
+                ) : (
+                  <EmptyState
+                    title="Sin coincidencias"
+                    description="Ningún producto coincide con la búsqueda o los filtros activos."
+                    actionLabel="Limpiar filtros"
+                    onAction={() => {
+                      setSearch("");
+                      setCatFilter(new Set());
+                      setCollFilter(new Set());
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>

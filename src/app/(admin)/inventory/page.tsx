@@ -307,6 +307,9 @@ export default function InventoryView() {
             />
           </div>
 
+          {/* Igual que en Catalog: sin nada cargado, "limpiar filtros" manda a
+              deshacer algo que nadie hizo. El inventario se llena solo al crear
+              productos, asi que ahi apunta el mensaje del vacio. */}
           <TacticalTable
             columns={columns}
             data={paginated}
@@ -318,16 +321,24 @@ export default function InventoryView() {
               setMovementSku(item.sku);
               setShowMovementModal(true);
             }}
-            emptyTitle="Sector Clear"
-            emptyDescription="No tactical inventory matches your current search parameters."
-            emptyActionLabel="Reset Filters"
-            onEmptyAction={() => {
-              setSearch("");
-              setColFilter(new Set());
-              setCatFilter(new Set());
-              setSizeFilter(new Set());
-              setPage(0);
-            }}
+            emptyTitle={inventory.length === 0 ? "Inventario vacío" : "Sin coincidencias"}
+            emptyDescription={
+              inventory.length === 0
+                ? "El inventario se llena solo: cada producto que creás en Catalog aparece acá con una fila por talla."
+                : "Ninguna fila coincide con la búsqueda o los filtros activos."
+            }
+            emptyActionLabel={inventory.length === 0 ? undefined : "Limpiar filtros"}
+            onEmptyAction={
+              inventory.length === 0
+                ? undefined
+                : () => {
+                    setSearch("");
+                    setColFilter(new Set());
+                    setCatFilter(new Set());
+                    setSizeFilter(new Set());
+                    setPage(0);
+                  }
+            }
             currentPage={page}
             totalPages={totalPages}
             totalItems={filtered.length}

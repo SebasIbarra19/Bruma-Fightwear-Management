@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { LoginForm } from '@/components/auth/LoginForm'
@@ -34,15 +33,6 @@ export function LoginPage() {
 
           <LoginForm onSuccess={() => router.push('/dashboard')} onToggleMode={() => {}} />
 
-          <div className="mt-8 pt-6 border-t border-bone/10 text-center">
-            <span className="text-[10px] text-bone/40 font-light tracking-wide">¿Aún sin credenciales?</span>
-            <Link
-              href="/auth/register"
-              className="text-[10px] text-ember font-bold hover:underline tracking-widest uppercase ml-2"
-            >
-              Regístrate
-            </Link>
-          </div>
         </div>
       </div>
     </div>
