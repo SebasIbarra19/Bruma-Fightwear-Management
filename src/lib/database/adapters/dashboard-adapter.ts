@@ -38,9 +38,20 @@ export interface InventoryValuation {
  * nadie los usaba. La valuación, en cambio, es una foto del inventario hoy —
  * no tiene sentido pedirle un rango.
  */
+/** Series para los graficos de Statistics (`get_statistics_series`). */
+export interface StatisticsSeries {
+  /** Un punto por dia del rango, con ceros incluidos: sin ellos la linea une
+   *  dos dias lejanos y dibuja una pendiente donde hubo una semana muerta. */
+  ingresos_por_dia: { fecha: string; ingresos: number; pedidos: number }[];
+  top_productos: { sku: string; producto: string; unidades: number; ingresos: number }[];
+  por_estado: { estado: string; pedidos: number; ingresos: number }[];
+  por_categoria: { categoria: string; unidades: number; ingresos: number }[];
+}
+
 export interface StatisticsPayload {
   analytics: OrderAnalytics;
   valuation: InventoryValuation;
+  series: StatisticsSeries;
   range: { start: string | null; end: string | null };
 }
 
@@ -96,6 +107,31 @@ export class DashboardAdapter {
    * Agregados de pedidos. Sin fechas devuelve el histórico completo, que es lo
    * que el dashboard muestra hoy; el SP ya acepta rango para cuando se filtre.
    */
+  /**
+   * Las cuatro series de los graficos, en una sola ida a la base. El SP las
+   * arma juntas a proposito: cuatro consultas separadas serian cuatro viajes
+   * para pintar una pantalla.
+   */
+  async getStatisticsSeries(startDate?: string, endDate?: string): Promise<StatisticsSeries> {
+    const supabase = this.client.getClient();
+    const { data, error } = await (supabase as any).rpc('get_statistics_series', {
+      p_start_date: startDate ?? null,
+      p_end_date: endDate ?? null,
+    });
+
+    if (error) {
+      console.error('[DashboardAdapter] Error getting statistics series:', error);
+      throw error;
+    }
+
+    return {
+      ingresos_por_dia: data?.ingresos_por_dia ?? [],
+      top_productos: data?.top_productos ?? [],
+      por_estado: data?.por_estado ?? [],
+      por_categoria: data?.por_categoria ?? [],
+    };
+  }
+
   async getOrderAnalytics(startDate?: string, endDate?: string): Promise<OrderAnalytics> {
     const supabase = this.client.getClient();
     const { data, error } = await (supabase as any).rpc('get_order_analytics', {
@@ -171,14 +207,16 @@ export class DashboardAdapter {
     startDate?: string,
     endDate?: string
   ): Promise<StatisticsPayload> {
-    const [analytics, valuation] = await Promise.all([
+    const [analytics, valuation, series] = await Promise.all([
       this.getOrderAnalytics(startDate, endDate),
       this.getInventoryValuation(),
+      this.getStatisticsSeries(startDate, endDate),
     ]);
 
     return {
       analytics,
       valuation,
+      series,
       range: { start: startDate ?? null, end: endDate ?? null },
     };
   }

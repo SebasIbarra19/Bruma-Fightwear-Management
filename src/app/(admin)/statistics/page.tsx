@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/figma-shared/Common";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { useStatisticsData, RANGE_PRESETS } from "@/hooks/useStatisticsData";
 import { formatColones } from "@/lib/utils";
+import { StatisticsCharts } from "@/components/statistics/Charts";
 
 function Metric({
   label,
@@ -120,6 +121,8 @@ export default function StatisticsPage() {
           </p>
         )}
       </div>
+
+      <StatisticsCharts series={data?.series ?? null} cargando={loading} />
 
       <div>
         {/* La valuacion NO se filtra por rango a proposito: es una foto del

@@ -803,8 +803,7 @@ Eso cambia dos cosas de fondo:
       **DECIDIDO (2026-08-31): tabla de configuración clave/valor.** Sirve para
       la meta y para todo lo que venga después —IVA, moneda, datos de la empresa
       en la factura— sin sumar una tabla por cada ajuste.
-- [ ] **B.3 Statistics con gráficos — las 5 preguntas aprobadas
-      (2026-08-31).** El criterio no es qué se ve bien sino qué pregunta de
+- [x] **B.3 Statistics con gráficos — hecho (2026-09-01).** El criterio no es qué se ve bien sino qué pregunta de
       negocio responde:
 
       | Pregunta | Gráfico | Fuente |
@@ -815,11 +814,35 @@ Eso cambia dos cosas de fondo:
       | ¿Qué está por agotarse? | Ya resuelto en el dashboard | `list_inventory_items` |
       | ¿Qué categoría factura más? | Barras por categoría | `pedidodetalle` → `producto` → `tipoproducto` |
 
-      Requiere **un SP nuevo que agrupe por período**: `get_order_analytics`
-      solo devuelve totales, sin desglose temporal ni por producto.
-      ⚠️ Gana valor **recién con el uso de Luis**: hoy hay 2 pedidos del mismo
-      día y toda serie temporal es un punto. Construir los gráficos antes de
-      que haya datos es adornar un vacío.
+      El SP nuevo es `get_statistics_series` (migración `20260905000000`), que
+      devuelve las cuatro series en **una sola ida** — cuatro consultas
+      separadas serían cuatro viajes para pintar una pantalla. La quinta
+      pregunta ya la responde el dashboard.
+      Componente: `src/components/statistics/Charts.tsx`, con `recharts`, que
+      ya estaba instalado.
+
+      Detalles que costaron encontrar:
+      - **La animación de entrada de `recharts` 3.9.2 se queda a medias.** El
+        `Pie` no llegaba a dibujar ni un sector (el grupo `recharts-pie` queda
+        vacío) y las barras y la línea se quedaban planas en cero. Un gráfico
+        congelado en el primer frame se lee como roto, así que está apagada en
+        los cuatro (`SIN_ANIMACION`).
+      - `height="100%"` de `ResponsiveContainer` se resuelve contra la altura
+        **computada** del padre. Con `flex-1 min-h-[220px]` esa altura es
+        `auto`, el 100% da 0 y los dos paneles anchos no dibujaban nada. Ahora
+        el contenedor tiene altura definida.
+      - La leyenda del donut va en HTML al lado, no como etiquetas SVG: en 220
+        px de alto se pisan entre sí.
+      - Los días sin ventas se rellenan con cero en el SP. Si se omitieran, la
+        línea uniría el día 3 con el 9 y dibujaría una pendiente suave donde
+        hubo una semana muerta.
+
+      ⚠️ **Lo que falta verificar: la agregación con datos reales.** Los cuatro
+      gráficos se probaron con series inyectadas en el navegador, y las cadenas
+      de claves foráneas que usa el SP están confirmadas contra la base. Pero
+      con la base vacía no se pudo comprobar que los números que agrupa sean
+      los correctos — y crear pedidos de prueba en la base de producción quedó
+      bloqueado, con razón. Se confirma solo con los primeros pedidos de Luis.
 - [x] **B.4 Selector de cinturón movido al perfil (2026-08-31).** El estado que
       era local de `BeltNavigation` pasó a `BeltContext`, así que el clic en el
       perfil repinta el rail al instante — sin recargar. `BeltPicker.tsx` quedó
