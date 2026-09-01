@@ -846,9 +846,17 @@ Eso cambia dos cosas de fondo:
       **Verificado en el navegador:** volver al dashboard → `0` peticiones;
       pasar el mouse por `/reporting` dispara la precarga y entrar después →
       `0` peticiones.
-      ⚠️ Falta enganchar el resto de los hooks (`orders`, `invoicing`,
-      `perfil`): la precarga ya calienta esas claves, pero mientras el hook use
-      `fetchApi` directo nunca las consulta y el trabajo no se nota.
+      Enganchadas las cinco pantallas del nav. Dos cosas que solo aparecieron
+      al medirlo:
+      - La clave de precarga de `/orders` era `/api/orders`, pero la pantalla
+        monta con `useOrdersData({ limit: 50 })` y pide `/api/orders?limit=50`.
+        La caché se indexa por URL, así que la precarga calentaba una clave que
+        nadie consultaba.
+      - El enlace al perfil no pasa por `NavigationButton`, así que era el
+        único del nav sin precarga.
+
+      **Medido con el nav completo:** pasar el mouse por las cuatro dispara sus
+      cuatro peticiones; entrar a las cuatro después dispara **cero**.
       Inventory y Catalog quedan fuera a propósito: arman su URL con filtros
       del estado de pantalla, y calentar una variante fija llenaría una clave
       que después nadie consulta.
@@ -870,6 +878,14 @@ se factura igual de bien que uno real. Hay que editarlos desde Catalog.
 Además, de las 4 variantes solo 2 tienen fila de talla (`RSH-BRU-001-NEG` y
 `TSH-BRU-001-NEG`). `PSL-BRU-001-NEG` y `TSH-BRU-001-BCO` no tienen ninguna
 talla cargada, así que hoy no se pueden pedir.
+
+- [x] **B.7 Las 11 llamadas que se saltaban el 401 (2026-08-31).** Salió al
+      revisar B.5. `fetchApi` existe para que una sesión vencida mande al login
+      conservando dónde estabas, pero 11 llamadas en 6 archivos usaban `fetch`
+      pelado (invoicing, orders, inventory, `ProductImages`,
+      `inventory-movements-client`). En esas pantallas la sesión vencida dejaba
+      un error rojo sin salida, que es justo el bug que `fetchApi` arregla.
+      Ahora no queda ninguna cruda.
 
 ### 4.C — Riesgos que el deploy vuelve serios
 

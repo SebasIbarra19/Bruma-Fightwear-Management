@@ -384,7 +384,7 @@ export default function OrdersPage() {
                   onClick={async () => {
                     setGeneratingInvoice(true);
                     try {
-                      const res = await fetch("/api/invoicing", {
+                      const res = await fetchApi("/api/invoicing", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id_pedido: selected.id_pedido }),

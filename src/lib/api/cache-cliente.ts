@@ -105,7 +105,11 @@ export async function fetchConCache<T>(
  */
 export const DATOS_POR_RUTA: Record<string, string> = {
   '/dashboard': '/api/dashboard',
-  '/orders': '/api/orders',
+  // Ojo: tiene que calzar EXACTO con lo que pide la pantalla al montar
+  // (`useOrdersData({ limit: 50 })` en orders/page.tsx). La cache se indexa
+  // por URL, asi que '/api/orders' a secas calentaria una clave que nadie
+  // consulta y la precarga no serviria de nada.
+  '/orders': '/api/orders?limit=50',
   '/invoicing': '/api/invoicing',
   '/reporting': '/api/actividad?limit=100',
   '/profile': '/api/perfil',

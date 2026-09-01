@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { InvoiceListItem, InvoiceDetail, DiscountKind } from "@/lib/database/adapters/invoicing-adapter";
 import { formatColones } from "@/lib/utils";
+import { fetchApi } from '@/lib/api/fetch-cliente';
+import { fetchConCache, invalidarCache } from '@/lib/api/cache-cliente';
 
 // Las filas en edición guardan los números como STRING a propósito. Si se guardan
 // como number, borrar el campo para escribir otro valor lo convierte en "" ->
@@ -43,20 +45,23 @@ export default function InvoicingPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const refetchList = () => {
+  // `usarCache` separa los dos motivos por los que se llama a esto. Al montar
+  // conviene lo cacheado —pinta al instante y revalida detras—; despues de
+  // guardar o anular una factura NO, porque mostraria el estado anterior al
+  // cambio que se acaba de hacer.
+  const refetchList = (usarCache = false) => {
     setLoading(true);
     setError(null);
-    fetch("/api/invoicing")
-      .then((r) => r.json())
-      .then((result) => {
-        if (!result.success) { setError(result.error?.message || "Error cargando facturas"); return; }
-        setInvoices(result.data ?? []);
-      })
+    if (!usarCache) invalidarCache("/api/invoicing");
+    fetchConCache<InvoiceListItem[]>("/api/invoicing", (filas) => {
+      setInvoices(filas ?? []);
+      setLoading(false);
+    })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { refetchList(); }, []);
+  useEffect(() => { refetchList(true); }, []);
 
   useEffect(() => {
     if (selectedId === null && invoices.length > 0) setSelectedId(invoices[0].id_factura);
@@ -66,7 +71,7 @@ export default function InvoicingPage() {
     if (selectedId === null) { setDetail(null); return; }
     setDetailLoading(true);
     setDetailError(null);
-    fetch(`/api/invoicing/${selectedId}`)
+    fetchApi(`/api/invoicing/${selectedId}`)
       .then((r) => r.json())
       .then((result) => {
         if (!result.success) { setDetailError(result.error?.message || "Error cargando factura"); return; }
@@ -156,7 +161,7 @@ export default function InvoicingPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/invoicing/${detail.factura.id_factura}`, {
+      const res = await fetchApi(`/api/invoicing/${detail.factura.id_factura}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -204,7 +209,7 @@ export default function InvoicingPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/invoicing/${detail.factura.id_factura}`, {
+      const res = await fetchApi(`/api/invoicing/${detail.factura.id_factura}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mark_paid: true }),

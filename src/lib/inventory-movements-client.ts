@@ -1,3 +1,4 @@
+import { fetchApi } from '@/lib/api/fetch-cliente';
 export interface LogMovementPayload {
   inventoryId: number | null;
   idVariante?: number;
@@ -8,7 +9,7 @@ export interface LogMovementPayload {
 }
 
 export async function logInventoryMovement(payload: LogMovementPayload) {
-  const res = await fetch('/api/inventory/adjust', {
+  const res = await fetchApi('/api/inventory/adjust', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

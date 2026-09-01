@@ -33,6 +33,8 @@ export function MobileNav({ activeIndex }: MobileNavProps) {
               sección, así que va en la fila de identidad y no entre los pills. */}
           <Link
             href="/profile"
+            onMouseEnter={() => precargarRuta('/profile')}
+            onFocus={() => precargarRuta('/profile')}
             aria-label="Perfil"
             className="flex items-center justify-center rounded-[2px] border border-bone/20 p-1.5 text-bone/70 outline-none transition-colors hover:border-bone/50 hover:text-bone focus-visible:ring-1 focus-visible:ring-ember"
           >

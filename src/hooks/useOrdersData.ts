@@ -1,4 +1,5 @@
 import { fetchApi } from '@/lib/api/fetch-cliente'
+import { fetchConCache, invalidarCache } from '@/lib/api/cache-cliente'
 import { useEffect, useState } from 'react';
 import type { Order } from '@/lib/database/adapters/orders-adapter';
 
@@ -40,7 +41,13 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
   const [refreshKey, setRefreshKey] = useState(0);
   const [statuses, setStatuses] = useState<OrderStatus[]>([]);
 
-  const refetch = () => setRefreshKey((k) => k + 1);
+  // Invalida antes de volver a pedir. Sin esto, crear un pedido o cambiar un
+  // estado repintaria la lista con lo cacheado de hace un segundo — o sea, sin
+  // el cambio que acaba de hacerse.
+  const refetch = () => {
+    invalidarCache('/api/orders');
+    setRefreshKey((k) => k + 1);
+  };
 
   const createOrder = async (payload: {
     cliente_nombre: string;
@@ -72,12 +79,13 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
   };
 
   useEffect(() => {
-    fetchApi('/api/orders/statuses')
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success && Array.isArray(result.data)) setStatuses(result.data);
-      })
-      .catch(() => {});
+    // Tabla de consulta: los estados no cambian entre pantallas, asi que
+    // pedirlos en cada montaje era la ultima peticion que quedaba disparandose
+    // siempre. Se ignora el error a proposito: sin estados la pantalla sigue
+    // sirviendo, solo se queda sin el selector.
+    fetchConCache<OrderStatus[]>('/api/orders/statuses', (filas) => {
+      if (Array.isArray(filas)) setStatuses(filas);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -89,21 +97,28 @@ export function useOrdersData(options: UseOrdersDataOptions = {}): UseOrdersData
         params.append(key, String(value));
       }
     });
-    fetchApi(`/api/orders?${params.toString()}`)
-      .then(res => res.json())
-      .then((result) => {
-        if (result.success && Array.isArray(result.data)) {
-          setOrders(result.data);
-        } else {
-          setError(result.error?.message || 'Error loading orders');
-        }
-      })
+    // Sin filtros la URL queda `/api/orders`, no `/api/orders?`: la cache se
+    // indexa por URL y esa interrogacion suelta era una clave distinta de la
+    // que calienta la precarga del nav, asi que el trabajo no se aprovechaba.
+    const qs = params.toString();
+    const url = qs ? `/api/orders?${qs}` : '/api/orders';
+
+    let vigente = true;
+    fetchConCache<Order[]>(url, (filas) => {
+      if (!vigente) return;
+      setOrders(filas);
+      setLoading(false);
+    })
       .catch((err) => {
-        setError(String(err));
+        if (vigente) setError(String(err));
       })
       .finally(() => {
-        setLoading(false);
+        if (vigente) setLoading(false);
       });
+
+    return () => {
+      vigente = false;
+    };
   }, [JSON.stringify(options), refreshKey]);
 
   return { orders, loading, error, refetch, createOrder, statuses, updateStatus };

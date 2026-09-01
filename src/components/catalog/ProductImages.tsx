@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ImageIcon, Star, Trash2, Upload } from "lucide-react";
+import { fetchApi } from '@/lib/api/fetch-cliente';
 
 interface ProductImage {
   id: number;
@@ -31,7 +32,7 @@ export function ProductImages({ productId }: { productId: number }) {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/catalog/${productId}/images`);
+      const res = await fetchApi(`/api/catalog/${productId}/images`);
       const result = await res.json();
       if (!result.success) throw new Error(result.error?.message || "No se pudieron cargar las imágenes");
       setImages(result.data);
@@ -57,7 +58,7 @@ export function ProductImages({ productId }: { productId: number }) {
       for (const file of Array.from(files)) {
         const body = new FormData();
         body.append("file", file);
-        const res = await fetch(`/api/catalog/${productId}/images`, { method: "POST", body });
+        const res = await fetchApi(`/api/catalog/${productId}/images`, { method: "POST", body });
         const result = await res.json();
         if (!result.success) throw new Error(result.error?.message || "Error al subir la imagen");
       }
@@ -74,7 +75,7 @@ export function ProductImages({ productId }: { productId: number }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/catalog/${productId}/images?imageId=${imageId}`, { method: "DELETE" });
+      const res = await fetchApi(`/api/catalog/${productId}/images?imageId=${imageId}`, { method: "DELETE" });
       const result = await res.json();
       if (!result.success) throw new Error(result.error?.message || "Error al borrar la imagen");
       await load();
@@ -89,7 +90,7 @@ export function ProductImages({ productId }: { productId: number }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/catalog/${productId}/images?imageId=${image.id}`, {
+      const res = await fetchApi(`/api/catalog/${productId}/images?imageId=${image.id}`, {
         method: "PATCH",
       });
       const result = await res.json();

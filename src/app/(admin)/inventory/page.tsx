@@ -18,6 +18,7 @@ const StockMovementModal = dynamic(
 );
 import { logInventoryMovement } from "@/lib/inventory-movements-client";
 import { formatColones } from "@/lib/utils";
+import { fetchApi } from '@/lib/api/fetch-cliente';
 
 interface InventoryItem {
   id: string;
@@ -142,7 +143,7 @@ export default function InventoryView() {
 
   React.useEffect(() => {
     if (!showMovementModal) return;
-    fetch('/api/inventory/items?limit=200&includeZeroStock=true&includeUnstocked=true')
+    fetchApi('/api/inventory/items?limit=200&includeZeroStock=true&includeUnstocked=true')
       .then((res) => res.json())
       .then((result) => {
         const items = result.data ?? [];

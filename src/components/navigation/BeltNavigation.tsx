@@ -8,6 +8,7 @@ import { BeltImage } from './BeltImage'
 import { NavigationItems } from './NavigationItems'
 import { MobileNav } from './MobileNav'
 import { useBelt } from '@/contexts/BeltContext'
+import { precargarRuta } from '@/lib/api/cache-cliente'
 
 export function BeltNavigation() {
   const pathname = usePathname()
@@ -51,6 +52,8 @@ export function BeltNavigation() {
           <div className="absolute bottom-5 left-0 z-30 flex w-full flex-col items-center gap-3">
             <Link
               href="/profile"
+              onMouseEnter={() => precargarRuta('/profile')}
+              onFocus={() => precargarRuta('/profile')}
               aria-label="Perfil"
               aria-current={pathname === '/profile' ? 'page' : undefined}
               className={`flex items-center gap-2 rounded-[2px] border px-3 py-1.5 font-geist text-[10px] font-bold uppercase tracking-widest outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ember ${

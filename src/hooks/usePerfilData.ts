@@ -1,4 +1,5 @@
 import { fetchApi } from '@/lib/api/fetch-cliente'
+import { fetchConCache, invalidarCache } from '@/lib/api/cache-cliente'
 import { useEffect, useState } from 'react'
 import type { Perfil, PerfilEditable } from '@/lib/database/adapters/perfil-adapter'
 
@@ -19,13 +20,11 @@ export function usePerfilData(): UsePerfilDataResult {
 
   useEffect(() => {
     let vigente = true
-    fetchApi('/api/perfil')
-      .then((r) => r.json())
-      .then((res) => {
-        if (!vigente) return
-        if (res.success) setPerfil(res.data)
-        else setError(res.error?.message || 'Error cargando el perfil')
-      })
+    fetchConCache<Perfil>('/api/perfil', (p) => {
+      if (!vigente) return
+      setPerfil(p)
+      setLoading(false)
+    })
       .catch((e) => vigente && setError(e.message))
       .finally(() => vigente && setLoading(false))
     return () => {
@@ -43,6 +42,8 @@ export function usePerfilData(): UsePerfilDataResult {
         body: JSON.stringify(campos),
       }).then((r) => r.json())
       if (!res.success) throw new Error(res.error?.message || 'Error guardando')
+      // Sin esto, salir del perfil y volver mostraria lo anterior al guardado.
+      invalidarCache('/api/perfil')
       // La respuesta trae el perfil ya releído, así que la pantalla queda
       // sincronizada con lo que quedó en la base y no con lo que se envió.
       setPerfil(res.data)
@@ -63,6 +64,7 @@ export function usePerfilData(): UsePerfilDataResult {
       // Sin Content-Type a mano: el navegador tiene que ponerlo con el boundary.
       const res = await fetchApi('/api/perfil', { method: 'PATCH', body: fd }).then((r) => r.json())
       if (!res.success) throw new Error(res.error?.message || 'Error subiendo el avatar')
+      invalidarCache('/api/perfil')
       setPerfil((p) => (p ? { ...p, avatar_url: res.data.avatar_url } : p))
     } catch (e: any) {
       setError(e.message)
