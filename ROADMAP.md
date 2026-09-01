@@ -773,9 +773,9 @@ Eso cambia dos cosas de fondo:
       · *Tabla de metas por mes* — `meta_mensual(anio, mes, monto)`. Permite
         historial y comparar "cumplimos en marzo, no en abril", pero solo sirve
         para eso.
-      Recomendación: la segunda **si** la meta cambia mes a mes y querés ver el
-      histórico; la primera si es un número que se fija una vez y casi no se
-      toca. Decidir antes de construir la tarjeta.
+      **DECIDIDO (2026-08-31): tabla de configuración clave/valor.** Sirve para
+      la meta y para todo lo que venga después —IVA, moneda, datos de la empresa
+      en la factura— sin sumar una tabla por cada ajuste.
 - [ ] **B.3 Statistics con gráficos — las 5 preguntas aprobadas
       (2026-08-31).** El criterio no es qué se ve bien sino qué pregunta de
       negocio responde:
@@ -827,13 +827,26 @@ Eso cambia dos cosas de fondo:
       El negativo deja de ser un accidente —como fue el −2 del Rashguard— y
       pasa a significar algo: **deuda de stock**, unidades vendidas que hay que
       reponer.
-      ⚠️ Con esto, `p_forzar` pierde su razón de ser en el camino del pedido.
-      Conviene revisar si sigue haciendo falta en los ajustes manuales o si se
-      retira para no dejar dos mecanismos que hacen lo mismo.
-- [ ] **C.2 Correo de recuperación.** Supabase envía con su servicio propio,
-      que tiene límites bajos por hora — durante esta sesión el rate limit
-      bloqueó varias pruebas. Para dos usuarios probablemente alcance; si falla,
-      hay que configurar SMTP propio.
+      ⚠️ **`p_forzar` SE MANTIENE.** Al revisarlo (2026-08-31) resultó que no es
+      un bypass sino una **confirmación en dos pasos**: el modal detecta que el
+      movimiento dejaría negativo, avisa *"Esta acción puede generar stock
+      negativo"* y exige mantener pulsado *SÉ LO QUE HAGO*
+      (`StockMovementModal.tsx:198-215`). Está bien diseñado y se queda.
+      La distinción que importa: **un ajuste manual pregunta** —estás
+      declarando un número que no coincide con la realidad—, mientras que **un
+      pedido no pregunta**, porque la venta ya ocurrió. Son dos caminos con
+      intenciones distintas, no dos mecanismos duplicados.
+      Alcance real del cambio: solo `add_order_item`.
+- [~] **C.2 Correo de recuperación — SMTP propio APLAZADO (2026-08-31).**
+      Supabase envía con su servicio compartido, de límites bajos por hora
+      (durante esta sesión el rate limit bloqueó varias pruebas de login). Con
+      dos usuarios que recuperan clave rara vez, alcanza.
+      Se revisita cuando el correo sea **parte del producto** —mandarle la
+      factura al cliente, por ejemplo—, no por dos recuperaciones al año.
+      Lo que costaría: proveedor (Resend/SendGrid/Brevo tienen plan gratuito de
+      ~100 correos diarios), **verificar el dominio con registros SPF y DKIM**
+      —la parte engorrosa, y sin ella los correos caen en spam— y cargar las
+      credenciales en Authentication → SMTP Settings.
 
 ---
 
