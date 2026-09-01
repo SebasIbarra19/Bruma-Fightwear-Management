@@ -383,6 +383,23 @@ export async function updateCatalogProductFull(
       p_precio_variante: input.variant.precio_variante,
     });
     if (varErr) throw varErr;
+
+    // El precio tambien vive en cada fila de talla, y es ESE el que manda: el
+    // total de un pedido se deriva de `productotallastock.precio` (ver
+    // `add_order_item`), no del de la variante. Sin propagarlo, editar el
+    // precio dejaba las tallas existentes en el valor viejo --normalmente 0--
+    // y los pedidos salian en cero aunque el catalogo mostrara otra cosa.
+    //
+    // Se pisan todas las tallas de la variante a proposito: la UI tiene UN
+    // solo campo de precio por producto, asi que no hay precio por talla que
+    // preservar.
+    if (input.variant.precio_variante != null) {
+      const { error: precioErr } = await (client as any)
+        .from('productotallastock')
+        .update({ precio: input.variant.precio_variante })
+        .eq('id_variante', input.variant.id_variante);
+      if (precioErr) throw precioErr;
+    }
   }
 
   if (input.removeSizeIds && input.removeSizeIds.length > 0) {
