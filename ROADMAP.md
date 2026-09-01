@@ -663,7 +663,34 @@ Eso cambia dos cosas de fondo:
       con la anon key.
 - [x] **A.2 Consola limpia** — se fueron los 11 `console.log` que imprimían
       rutas de API con parámetros y respuestas completas, más `withLogging`.
-- [ ] **A.3 Limpiar los datos de prueba.** Hoy conviven productos reales
+- [x] **A.3 Datos de prueba limpiados (2026-08-31).** La base quedó lista para
+      que Luis empiece de cero:
+
+      | Tabla | Antes | Ahora |
+      |---|---|---|
+      | `producto` | 5 | **3** (solo los reales) |
+      | `productovariante` | 6 | **4** |
+      | `productotallastock` | 7 | **2** |
+      | `pedido` / `pedidodetalle` | 2 / 4 | **0** |
+      | `factura` / `factura_item` | 2 / 4 | **0** |
+      | `inventario_movimiento` | 14 | **0** |
+      | `registro_actividad` | 18 | **0** |
+      | `coleccion` | 3 | **1** (Bruma) |
+      | `tipoproducto` | 8 | **7** (se fue `coleprueba`) |
+
+      Sobreviven `RSH-BRU-001`, `PSL-BRU-001` y `TSH-BRU-001`. Se fueron
+      `HOODIEPRUEBA` y `mjm` con todas sus dependencias.
+      **El −2 del Rashguard se puso en 0**, no en un número inventado: arranca
+      sin inventario, que es cierto, en vez de arrastrar una deuda de stock que
+      nadie contrajo.
+      ⚠️ El borrado masivo (`?id=gte.0`) fue **bloqueado por el clasificador**,
+      con razón: contra una base de producción es un "borrá todo". Se hizo por
+      IDs explícitos, uno por uno, respetando el orden de claves foráneas:
+      `factura_item` → `factura` → `inventario_movimiento` → `pedidodetalle` →
+      `pedido` → `productotallastock` → `productovariante` → `producto_imagen`
+      → `producto`.
+
+- [x] **A.3-bis (histórico) Limpiar los datos de prueba.** Hoy conviven productos reales
       (`RSH-BRU-001`, `PSL-BRU-001`, `TSH-BRU-001`) con basura de desarrollo
       (`HOODIEPRUEBA`, `mjm`), 2 pedidos y 2 facturas de prueba, y **una fila de
       stock en −2**. Luis no debería ver nada de eso el primer día.
