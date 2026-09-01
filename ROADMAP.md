@@ -820,11 +820,12 @@ Eso cambia dos cosas de fondo:
       ⚠️ Gana valor **recién con el uso de Luis**: hoy hay 2 pedidos del mismo
       día y toda serie temporal es un punto. Construir los gráficos antes de
       que haya datos es adornar un vacío.
-- [ ] **B.4 Selector de cinturón** — sacarlo del cinturón y dejarlo solo en el
-      perfil, aplicando sin recargar. La columna `preferencia_cinturon` ya
-      existe y se guarda; falta que `BeltNavigation` la lea en vez de
-      `localStorage`.
-- [ ] **B.5 Fluidez de navegación — aprobadas 1, 2 y 3 (2026-08-31).**
+- [x] **B.4 Selector de cinturón movido al perfil (2026-08-31).** El estado que
+      era local de `BeltNavigation` pasó a `BeltContext`, así que el clic en el
+      perfil repinta el rail al instante — sin recargar. `BeltPicker.tsx` quedó
+      huérfano y se borró; `MobileNav` perdió las props `belt` y `onBeltChange`
+      que ya no le servían.
+- [x] **B.5 Fluidez de navegación — hechas 1, 2 y 3 (2026-08-31).**
       Los esqueletos **no tienen duración fija**: duran lo que tarde la
       petición, y por eso a veces parpadean. El problema de fondo es que cada
       cambio de pestaña vuelve a pedir todo desde cero.
@@ -837,6 +838,38 @@ Eso cambia dos cosas de fondo:
       La cuarta idea (recortar el viaje a Auth de ~300 ms por ruta) **queda
       fuera por ahora**: toca el middleware, que es justo lo que protege la
       aplicación, y no vale arriesgarlo por rendimiento antes del deploy.
+
+      Lo construido: `src/lib/api/cache-cliente.ts` (sirve lo cacheado en el
+      mismo tick y revalida detrás, 30 s de frescura, solo en memoria) y
+      `src/hooks/useEsqueletoDemorado.ts`. Enganchados en `/dashboard` y
+      `/reporting`.
+      **Verificado en el navegador:** volver al dashboard → `0` peticiones;
+      pasar el mouse por `/reporting` dispara la precarga y entrar después →
+      `0` peticiones.
+      ⚠️ Falta enganchar el resto de los hooks (`orders`, `invoicing`,
+      `perfil`): la precarga ya calienta esas claves, pero mientras el hook use
+      `fetchApi` directo nunca las consulta y el trabajo no se nota.
+      Inventory y Catalog quedan fuera a propósito: arman su URL con filtros
+      del estado de pantalla, y calentar una variante fija llenaría una clave
+      que después nadie consulta.
+
+- [x] **B.6 El precio editado ahora sí cambia lo que se cobra (2026-08-31).**
+      Salió al revisar A.3, no estaba en la lista. `updateCatalogProductFull`
+      escribía el precio en `productovariante` y en las tallas **nuevas**, pero
+      nunca en las que ya existían — y el total de un pedido se deriva de
+      `productotallastock.precio`, no del de la variante. O sea: Luis editaba
+      el precio, el catálogo mostraba el número nuevo, y el pedido salía en
+      cero. El alta ya lo hacía bien; el agujero era solo la edición.
+
+⚠️ **Pendiente del usuario, no del código: los productos están en ₡0.**
+Los tres productos reales tienen `precio = 0` en sus filas de talla, así que
+cualquier pedido totaliza ₡0 y los KPI de Ingresos y Meta del mes van a
+mostrar cero por más pedidos que haya. No los pongo yo: un precio inventado
+se factura igual de bien que uno real. Hay que editarlos desde Catalog.
+
+Además, de las 4 variantes solo 2 tienen fila de talla (`RSH-BRU-001-NEG` y
+`TSH-BRU-001-NEG`). `PSL-BRU-001-NEG` y `TSH-BRU-001-BCO` no tienen ninguna
+talla cargada, así que hoy no se pueden pedir.
 
 ### 4.C — Riesgos que el deploy vuelve serios
 
