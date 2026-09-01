@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { TrendingUp, ShoppingCart, Package, Coins, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Package, Coins, AlertTriangle, CheckCircle2, Target } from "lucide-react";
 import { PageHeader } from "@/components/figma-shared/Common";
 import { FloraGlass } from "@/components/ui/FloraGlass";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -15,9 +15,9 @@ export default function DashboardView() {
   // (`get_dashboard_stats` y `get_order_analytics`).
   //
   // Se dejo fuera a proposito el contador de `clientes`: la tabla `cliente`
-  // esta vacia porque los pedidos guardan los datos de contacto en linea
-  // (migracion 20260813000000), asi que mostrarlo daria 0 con 2 pedidos
-  // existentes — un dato correcto que se lee como si estuviera roto.
+  // no se usa, porque los pedidos guardan los datos de contacto en linea
+  // (migracion 20260813000000). Mostrarla daria 0 aunque hubiera pedidos — un
+  // dato correcto que se lee como si estuviera roto.
   const kpis = [
     {
       label: "Pedidos",
@@ -34,11 +34,14 @@ export default function DashboardView() {
       color: "text-bone/40",
     },
     {
-      label: "Ticket promedio",
-      value: data ? formatColones(data.analytics.promedio_pedido) : "—",
-      sub: "Por pedido",
-      icon: TrendingUp,
-      color: "text-bone/40",
+      // Reemplaza a "Ticket promedio", que era una metrica de analisis y no de
+      // "que hago hoy". El promedio sigue disponible en Statistics, que es
+      // donde corresponde mirarlo.
+      label: "Resueltos hoy",
+      value: data ? String(data.stats.resueltos_hoy) : "—",
+      sub: "Pedidos entregados",
+      icon: CheckCircle2,
+      color: data && data.stats.resueltos_hoy > 0 ? "text-[#7ddb7d]" : "text-bone/40",
     },
     {
       label: "Bajo stock",
@@ -161,18 +164,71 @@ export default function DashboardView() {
           )}
         </FloraGlass>
 
-        {/* Sigue sin haber backend: las metas mensuales no existen como concepto
-            en el esquema, no es que falte conectarlas. */}
-        <FloraGlass className="p-6 flex flex-col items-center justify-center text-center min-h-[300px]">
-          <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-4 self-start">
-            Monthly Goal
+        {/* La meta sale de la tabla `configuracion` (migracion 20260903000000).
+            Con meta en 0 no se dibuja una barra al 0% --que se leeria como
+            fracaso-- sino una invitacion a definirla. */}
+        <FloraGlass className="p-6 flex flex-col min-h-[300px]">
+          <p className="text-[10px] text-bone/50 font-geist uppercase tracking-widest mb-5">
+            Meta del mes
           </p>
-          <p className="font-fraunces text-2xl font-bold text-bone/40 uppercase tracking-tight">
-            Proximamente
-          </p>
-          <p className="text-xs text-bone/30 font-geist mt-2 text-center max-w-xs">
-            Requiere definir metas mensuales; no existen en el backend actual.
-          </p>
+
+          {loading && <div className="h-24 bg-bone/5 rounded-[2px] animate-pulse" />}
+
+          {!loading && data && data.stats.meta_mensual <= 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <Target size={32} className="text-bone/30 mb-4" />
+              <p className="font-fraunces text-xl font-bold text-bone/50 uppercase tracking-tight">
+                Sin meta definida
+              </p>
+              <p className="text-xs text-bone/40 font-geist mt-2 max-w-xs">
+                Definila para seguir cuánto falta del mes. Este mes llevás{" "}
+                <span className="text-bone/70">{formatColones(data.stats.ingresos_mes)}</span>.
+              </p>
+            </div>
+          )}
+
+          {!loading && data && data.stats.meta_mensual > 0 && (() => {
+            const pct = Math.min(
+              100,
+              Math.round((data.stats.ingresos_mes / data.stats.meta_mensual) * 100)
+            );
+            const cumplida = data.stats.ingresos_mes >= data.stats.meta_mensual;
+            const falta = data.stats.meta_mensual - data.stats.ingresos_mes;
+            return (
+              <div className="flex-1 flex flex-col justify-center gap-5">
+                <div>
+                  <p className="font-fraunces text-4xl font-bold text-bone leading-none">
+                    {formatColones(data.stats.ingresos_mes)}
+                  </p>
+                  <p className="text-xs text-bone/40 font-geist mt-2">
+                    de {formatColones(data.stats.meta_mensual)}
+                  </p>
+                </div>
+
+                {/* La barra se corta al 100% pero el texto puede decir que se
+                    superó: una barra desbordada no comunica mejor el exceso. */}
+                <div>
+                  <div className="h-2 w-full rounded-full bg-bone/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        cumplida ? "bg-[#7ddb7d]" : "bg-ember"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p
+                    className={`text-[10px] font-geist uppercase tracking-widest mt-2 ${
+                      cumplida ? "text-[#7ddb7d]" : "text-bone/50"
+                    }`}
+                  >
+                    {cumplida
+                      ? `Meta cumplida — ${pct}%`
+                      : `${pct}% · faltan ${formatColones(falta)}`}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </FloraGlass>
       </div>
     </div>

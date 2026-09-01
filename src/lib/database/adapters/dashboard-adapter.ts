@@ -6,6 +6,12 @@ export interface DashboardStats {
   productos_bajo_stock: number;
   clientes: number;
   proveedores: number;
+  /** Pedidos que llegaron a Entregado hoy. Cancelado no cuenta. */
+  resueltos_hoy: number;
+  /** Facturado del mes en curso, para contrastar con la meta. */
+  ingresos_mes: number;
+  /** De la tabla `configuracion`. 0 = sin meta definida. */
+  meta_mensual: number;
 }
 
 /** Agregados de `get_order_analytics`. Sin rango = histórico completo. */
@@ -80,6 +86,9 @@ export class DashboardAdapter {
       productos_bajo_stock: Number(data?.productos_bajo_stock || 0),
       clientes: Number(data?.clientes || 0),
       proveedores: Number(data?.proveedores || 0),
+      resueltos_hoy: Number(data?.resueltos_hoy || 0),
+      ingresos_mes: Number(data?.ingresos_mes || 0),
+      meta_mensual: Number(data?.meta_mensual || 0),
     };
   }
 
